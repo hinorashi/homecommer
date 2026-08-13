@@ -48,6 +48,66 @@ Tập trung hoàn toàn vào **độ tin cậy**, **hiệu năng** và **tính s
 - **Hạ tầng tự phục hồi (Self-healing)**: Hệ thống có khả năng tự động cách ly lỗi, tự động restart hoặc tăng quy mô tài nguyên khi tải cao mà không cần con người can thiệp.
 - **Diễn tập sự cố (Chaos Engineering)**: Doanh nghiệp chủ động tổ chức các buổi diễn tập phá hoại hệ thống (GameDay) trên môi trường thử nghiệm hoặc chạy thử các kịch bản sập nguồn để kiểm tra độ bền bỉ của hệ thống.
 
+### 3. Công cụ cốt lõi
+
+Mục tiêu của SRE là thu thập mọi dữ liệu từ hệ thống, đưa ra cảnh báo chính xác để đảm bảo thời gian hoạt động (Uptime) cao nhất và tự động hóa việc cứu hộ:
+
+- **Thu thập Metrics & Giám sát**: **Prometheus**, Datadog, VictoriaMetrics.
+- **Quản lý Nhật ký (Logs)**: **ELK Stack** (Elasticsearch, Logstash, Kibana), Grafana Loki.
+- **Dấu vết luồng dữ liệu (Tracing)**: Jaeger, **OpenTelemetry** (tiêu chuẩn chung để thu thập dữ liệu).
+- **Hiển thị dữ liệu (Dashboard)**: **Grafana**.
+- **Định tuyến cảnh báo & Trực luân phiên (On-call)**: PagerDuty, Opsgenie, Better Stack, **Grafana On-call**.
+- **Diễn tập phá hoại (Chaos Engineering)**: Gremlin, Chaos Mesh, **Chaos Monkey**.
+
+### 4. Kiến trúc tổng thể đề xuất
+
+Sơ đồ này mô tả vòng lặp giám sát: Hệ thống chạy thật sinh ra dữ liệu -> Công cụ SRE thu thập và phân tích dựa trên SLO -> Gửi cảnh báo đúng người -> SRE viết mã tự động sửa lỗi để tối ưu hệ thống.
+
+```mermaid
+graph TD
+    %% Môi trường phát sinh dữ liệu
+    subgraph Production_Env ["Môi trường Chạy thật (Production)"]
+        App[Ứng dụng / Microservices]
+        K8s_Cluster[Cụm Kubernetes]
+    end
+
+    %% Lớp thu thập dữ liệu giám sát
+    subgraph Observability_Stack ["Lớp Giám sát Toàn diện (Telemetry)"]
+        Otel[OpenTelemetry Agent]
+        Prom[Prometheus <br> Thu thập Metrics]
+        Loki[Grafana Loki <br> Thu thập Logs]
+    end
+
+    App & K8s_Cluster -->|Sinh ra Dữ liệu thô| Otel
+    Otel -->|Phân phối dữ liệu| Prom & Loki
+
+    %% Lớp phân tích và hiển thị
+    subgraph Analysis_Alerting ["Lớp Phân tích & Cảnh báo"]
+        Grafana[Grafana Dashboard <br> Đo lường SLI / SLO / Error Budget]
+        AlertManager[Alertmanager / PagerDuty <br> Bộ lọc & Định tuyến Cảnh báo]
+    end
+
+    Prom & Loki -->|Cung cấp dữ liệu nguồn| Grafana
+    Prom -->|Kiểm tra ngưỡng vi phạm SLO| AlertManager
+
+    %% Lớp phản hồi và xử lý sự cố
+    subgraph Response_Action ["Luồng Xử lý & Tối ưu"]
+        SRE_OnCall([Kỹ sư SRE Trực])
+        Runbook[Automation Scripts <br> Tự động sửa lỗi / Auto-scale]
+    end
+
+    AlertManager -->|Hệ thống gặp sự cố nghiêm trọng| SRE_OnCall
+    AlertManager -->|Sự cố nhẹ, đã có kịch bản| Runbook
+    Runbook -->|Tác động sửa lỗi trực tiếp| K8s_Cluster
+    SRE_OnCall -->|Phân tích Post-mortem & Viết code tối ưu| App
+
+    %% Định dạng màu sắc
+    style App fill:#9b59b6,stroke:#8e44ad,stroke-width:2px,color:#fff
+    style Grafana fill:#e67e22,stroke:#d35400,stroke-width:2px,color:#fff
+    style AlertManager fill:#e74c3c,stroke:#c0392b,stroke-width:2px,color:#fff
+    style SRE_OnCall fill:#2ecc71,stroke:#27ae60,stroke-width:2px,color:#fff
+```
+
 ## II. DevOps
 
 Kết hợp giữa Phát triển (Development) và Vận hành (Operations) nhằm **rút ngắn thời gian vòng đời phát triển phần mềm** (SDLC) nhưng vẫn đảm bảo **chất lượng giao phẩm cao**.
@@ -93,6 +153,46 @@ Doanh nghiệp đạt chuẩn DevOps thành công phải đo lường và tối 
 - **Thời gian hoàn thành thay đổi (Lead Time for Changes)**: Thời gian từ lúc code được commit thành công cho đến khi nó chạy trên Production chỉ mất vài giờ hoặc dưới một ngày.
 - **Tỷ lệ thất bại khi thay đổi (Change Failure Rate)**: Tỷ lệ các bản deploy gây ra lỗi trên Production phải ở mức thấp (dưới 15%).
 - **Thời gian phục hồi dịch vụ (Time to Restore Service - MTTR)**: Khi có sự cố xảy ra do deploy bản mới, hệ thống có thể rollback (quay về phiên bản cũ) hoặc fix lỗi chỉ trong vòng vài phút.
+
+### 3. Công cụ cốt lõi
+
+Các công cụ cốt lõi của DevOps:
+
+- **Mã nguồn & Quản lý phiên bản (Git)**: GitHub, **GitLab**, Bitbucket.
+- **Tích hợp & Triển khai liên tục (CI/CD)**: Jenkins, **GitLab CI**, GitHub Actions, **ArgoCD** (GitOps).
+- **Đóng gói (Containerization)**: **Docker**, Podman.
+- **Hạ tầng dạng mã (IaC) & Cấu hình**: Terraform, OpenTofu, Ansible, **CloudFormation**.
+- **Quản lý bảo mật (DevSecOps)**: **SonarQube** (Quét code), Snyk, **Trivy** (Quét lỗ hổng container).
+
+### 4. Kiến trúc tổng thể đề xuất
+
+Sơ đồ này mô tả luồng tự động hóa khép kín từ máy của lập trình viên qua các bước kiểm thử, bảo mật cho đến khi triển khai lên môi trường chạy thật.
+
+```mermaid
+graph LR
+    %% Định nghĩa các thành phần
+    Dev([Developer]) -->|1. Commit & Push Code| Git[Git Repository <br> GitHub / GitLab]
+    
+    subgraph CI_Pipeline ["Luồng Tích hợp Liên tục (CI)"]
+        Git -->|2. Kích hoạt Webhook| CI_Engine[CI Engine <br> GitHub Actions / GitLab CI]
+        CI_Engine -->|3a. Kiểm tra mã nguồn| Linter[SonarQube <br> Code Quality / Security]
+        CI_Engine -->|3b. Đóng gói & Quét| DockerBuild[Docker Build <br> & Trivy Scan]
+    end
+
+    DockerBuild -->|4. Đẩy Image sạch| Registry[Container Registry <br> Docker Hub / AWS ECR]
+
+    subgraph CD_Pipeline ["Luồng Triển khai Liên tục (CD)"]
+        Registry -->|5. Phát hiện Image mới| GitOps[GitOps Engine <br> ArgoCD / FluxCD]
+        IaC[Terraform / Code hạ tầng] -->|Quản lý cấu hình| GitOps
+        GitOps -->|6. Tự động đồng bộ hóa| Infra[Hạ tầng Đích <br> Kubernetes / Cloud]
+    end
+
+    %% Định dạng màu sắc
+    style Dev fill:#2ecc71,stroke:#27ae60,stroke-width:2px,color:#fff
+    style CI_Engine fill:#3498db,stroke:#2980b9,stroke-width:2px,color:#fff
+    style GitOps fill:#e67e22,stroke:#d35400,stroke-width:2px,color:#fff
+    style Infra fill:#9b59b6,stroke:#8e44ad,stroke-width:2px,color:#fff
+```
 
 ## III. Platform Engineer
 

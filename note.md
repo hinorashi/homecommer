@@ -1,8 +1,8 @@
 # SRE & DevOps & Platform Engineer
 
+- **SRE**: **Availability/Reliability**: Đảm bảo hệ thống luôn sẵn sàng và chạy ổn định.
 - **DevOps**: **Velocity** - Tăng tốc độ bàn giao phần mềm.
 - **Platform**: **Developer Experience** - Giảm tải nhận thức, Dev tự phục vụ.
-- **SRE**: **Availability/Reliability**: Đảm bảo hệ thống luôn sẵn sàng và chạy ổn định.
 
 ## I. SRE
 
@@ -21,11 +21,12 @@ Tập trung hoàn toàn vào **độ tin cậy**, **hiệu năng** và **tính s
 - **Định nghĩa độ tin cậy bằng số liệu**: Mọi dịch vụ phải được đo lường bằng ngôn ngữ của người dùng (_Hệ thống có chạy không? Chạy nhanh không?_).
 - **Quy trình On-call rõ ràng**: Có lịch trực, phân cấp xử lý (Escalation) và quy định thời gian phản hồi sự cố cụ thể. Hướng tới quy trình Incident Response chuẩn mực.
 - **Quản lý Ngân sách lỗi (Error Budget)**: Quy trình đưa ra quyết định dựa trên dữ liệu: Nếu còn ngân sách lỗi -> tiếp tục deploy tính năng mới; nếu hết ngân sách lỗi -> dừng deploy, tập trung sửa lỗi hệ thống.
+- **Diễn tập sự cố (Chaos Engineering)**: Doanh nghiệp chủ động tổ chức các buổi diễn tập phá hoại hệ thống (GameDay) trên môi trường thử nghiệm hoặc chạy thử các kịch bản sập nguồn để kiểm tra độ bền bỉ của hệ thống.
 
 #### Technology
 
-- **Hệ thống Giám sát toàn diện (Observability)**: Công cụ thu thập đủ 3 trụ cột: Metrics (Chỉ số), Logs (Nhật ký), và Traces (Dấu vết luồng dữ liệu).
-- **Hệ thống Cảnh báo chủ động (Alerting)**: Công cụ tự động phân loại cảnh báo. Chỉ gửi cảnh báo đến kỹ sư trực khi sự cố đó thực sự ảnh hưởng đến trải nghiệm khách hàng (đã hoặc sắp vi phạm SLO).
+- **Hệ thống Quan sát toàn diện (Observability)**: Công cụ thu thập đủ 3 trụ cột: Metrics (Chỉ số), Logs (Nhật ký), và Traces (Dấu vết luồng dữ liệu).
+- **Hệ thống Cảnh báo chủ động (Alerting)**: Công cụ tự động phân loại cảnh báo. Chỉ gửi cảnh báo đến kỹ sư trực khi sự cố đó thực sự ảnh hưởng đến trải nghiệm khách hàng (*đã hoặc sắp vi phạm SLO*). Cần tránh tình trạng kỹ sư bị "ngập" trong các cảnh báo rác (_Alert Fatigue - cảnh báo lặp đi lặp lại nhưng không cần hành động ngay_).
 - **Tự động hóa vận hành**: Các công cụ tự động phát hiện, tự động mở rộng (Auto-scaling) hoặc tự phục hồi (Self-healing) khi có sự cố nhỏ.
 
 ### 2. Checklist
@@ -61,7 +62,25 @@ Mục tiêu của SRE là thu thập mọi dữ liệu từ hệ thống, đưa 
 - **Tự động hóa vận hành (Self-healing)**: **Ansible**, OpenTofu, Rundeck, Semaphore, Rundeck.
 - **Diễn tập phá hoại (Chaos Engineering)**: Gremlin, **Chaos Mesh**, **Chaos Monkey**.
 
-~~Technology Catalog, đi kèm đánh giá chi tiết khả năng tích hợp SSO với Keycloak cho từng công cụ:~~
+**Technology Catalog**, kèm đánh giá chi tiết khả năng tích hợp SSO với **Authentik** làm IdP cho từng công cụ:
+
+| STT | Phân nhóm công nghệ (Domain) | Công cụ (Tools) | Giao thức hỗ trợ Authentik | Cơ chế tích hợp & Đánh giá với Authentik/Traefik |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | **Thu thập Metrics & Giám sát** | **Prometheus** | Không hỗ trợ trực tiếp (Dùng Gateway) | **Bảo vệ qua Traefik.** Bản thân Prometheus không có Auth. Sử dụng **Traefik Forward Auth Middleware** kết nối với Authentik làm chốt chặn xác thực trước khi cho phép vào UI. |
+| **2** | **Quản lý Nhật ký (Logs)** | **EFK Stack** *(Elasticsearch, Fluentd, Kibana)* | **OIDC / SAML** | **Dễ (Dùng OpenSearch) - Khó (Dùng Elastic thuần).** Kibana hỗ trợ OIDC với Authentik. Khuyến khích dùng nhánh mã nguồn mở **OpenSearch/OpenSearch Dashboards** để tích hợp OIDC hoàn toàn miễn phí. Fluentd chạy ngầm không cần UI. |
+| **3** | **Dấu vết luồng dữ liệu (Tracing)** | **Jaeger** | Không hỗ trợ trực tiếp (Dùng Gateway) | **Bảo vệ qua Traefik.** Jaeger UI không có bộ máy xác thực riêng. Tương tự Prometheus, Jaeger UI được bọc an toàn phía sau **Traefik + Authentik Forward Auth**. |
+| | | **OpenTelemetry (Collector)** | Không áp dụng (No UI) | **Không cần thiết.** Hoạt động hoàn toàn ở backend để thu thập và phân phối dữ liệu (Data ingestion), không có giao diện người dùng nên không cần SSO. |
+| **4** | **Hiển thị dữ liệu (Dashboard)** | **Grafana** | **OAuth2 / OIDC** | **Rất dễ.** Tích hợp sẵn Generic OAuth. Cấu hình trực tiếp trong file `grafana.ini` kết nối tới Authentik Provider. Hỗ trợ tự động đồng bộ Nhóm/Vai trò (Group/Role mapping). |
+| | | **Kibana** | OIDC / SAML | *(Giống phần ELK Stack ở trên)*. |
+| | | **Jaeger UI** | Không hỗ trợ trực tiếp | *(Giống phần Jaeger ở trên)*. |
+| **5** | **Định tuyến cảnh báo & On-call** | **OneUptime** | **OIDC / SAML** | **Dễ.** Hỗ trợ cấu hình tích hợp OIDC/SAML trực tiếp trong giao diện Enterprise Settings để kết nối thẳng tới Authentik làm nguồn xác thực tập trung. |
+| **6** | **Quản lý Ngân sách lỗi (Error Budget)** | **Sloth** | Không áp dụng (No UI) | **Không cần thiết.** Hoạt động hoàn toàn theo mô hình **SLO-as-Code** qua file YAML. Chạy ngầm bằng CLI để sinh Prometheus Rules, không có giao diện tương tác nên không cần SSO. |
+| **7** | **Tự động hóa vận hành** | **Rundeck** / **PagerDuty Runbook Automation** | **OIDC / SAML** | **Dễ đến Trung bình.** Bản Open Source được bảo vệ tối ưu nhất thông qua Traefik Forward Auth. Bản thương mại hỗ trợ native OIDC kết nối trực tiếp với Authentik. |
+| | | **Ansible Semaphore** | **OIDC** | **Rất dễ.** Giao diện WebUI gọn nhẹ cho Ansible, tích hợp sẵn Generic OIDC Provider trong file cấu hình để map trực tiếp với Authentik chỉ với vài dòng khai báo. |
+| **8** | **Diễn tập phá hoại (Chaos Engineering)**| **Chaos Mesh** | Không hỗ trợ trực tiếp (Dùng Gateway) | **Bảo vệ qua Traefik.** Do Chaos Mesh Dashboard sử dụng cơ chế Token của K8s, cách tối ưu và đồng bộ nhất là bọc trang quản trị này sau lớp **Traefik Forward Auth Middleware** của Authentik. |
+| | | **Litmus (Chaos)** | **OAuth2 / OIDC** | **Dễ.** Từ phiên bản 2.0+ trở đi, kiến trúc Litmus Portal hỗ trợ cấu hình native OAuth2 để kết nối trực tiếp với hệ thống Authentik Provider trong phần Authentication. |
+
+Phụ bản Technology Catalog, đi kèm đánh giá chi tiết khả năng tích hợp SSO với **Keycloak** cho từng công cụ:
 
 | STT   | Phân nhóm công nghệ (Domain) | Công cụ (Tools) | Giao thức hỗ trợ Keycloak | Mức độ phức tạp & Đánh giá tích hợp Keycloak |
 | :--- | :--- | :--- | :--- | :--- |
@@ -79,29 +98,11 @@ Mục tiêu của SRE là thu thập mọi dữ liệu từ hệ thống, đưa 
 | **8** | **Diễn tập phá hoại (Chaos Engineering)**| **Chaos Mesh** | **OIDC / K8s OIDC** | **Trung bình.** Sử dụng cơ chế Token của Kubernetes. Có thể cấu hình cụm K8s dùng Keycloak làm OIDC Provider để đồng bộ, hoặc dùng OpenID Connect Proxy cho Chaos Mesh Dashboard. |
 | | | **Litmus (Chaos)** | **OAuth2 / OIDC** | **Dễ.** Từ bản 2.0+ trở đi, kiến trúc Litmus Portal đã hỗ trợ tích hợp sẵn giao thức OAuth2 để kết nối trực tiếp với Keycloak trong phần Authentication. |
 
-Technology Catalog, kèm đánh giá chi tiết khả năng tích hợp SSO với Authentik IdP cho từng công cụ:
-
-| STT | Phân nhóm công nghệ (Domain) | Công cụ (Tools) | Giao thức hỗ trợ Authentik | Cơ chế tích hợp & Đánh giá với Authentik/Traefik |
-| :--- | :--- | :--- | :--- | :--- |
-| **1** | **Thu thập Metrics & Giám sát** | **Prometheus** | Không hỗ trợ trực tiếp (Dùng Gateway) | **Bảo vệ qua Traefik.** Bản thân Prometheus không có Auth. Sử dụng **Traefik Forward Auth Middleware** kết nối với Authentik làm chốt chặn xác thực trước khi cho phép vào UI. |
-| **2** | **Quản lý Nhật ký (Logs)** | **ELK Stack** *(Elasticsearch, Fluentd, Kibana)* | **OIDC / SAML** | **Dễ (Dùng OpenSearch) - Khó (Dùng Elastic thuần).** Kibana hỗ trợ OIDC với Authentik. Khuyến khích dùng nhánh mã nguồn mở **OpenSearch/OpenSearch Dashboards** để tích hợp OIDC hoàn toàn miễn phí. Fluentd chạy ngầm không cần UI. |
-| **3** | **Dấu vết luồng dữ liệu (Tracing)** | **Jaeger** | Không hỗ trợ trực tiếp (Dùng Gateway) | **Bảo vệ qua Traefik.** Jaeger UI không có bộ máy xác thực riêng. Tương tự Prometheus, Jaeger UI được bọc an toàn phía sau **Traefik + Authentik Forward Auth**. |
-| | | **OpenTelemetry (Collector)** | Không áp dụng (No UI) | **Không cần thiết.** Hoạt động hoàn toàn ở backend để thu thập và phân phối dữ liệu (Data ingestion), không có giao diện người dùng nên không cần SSO. |
-| **4** | **Hiển thị dữ liệu (Dashboard)** | **Grafana** | **OAuth2 / OIDC** | **Rất dễ.** Tích hợp sẵn Generic OAuth. Cấu hình trực tiếp trong file `grafana.ini` kết nối tới Authentik Provider. Hỗ trợ tự động đồng bộ Nhóm/Vai trò (Group/Role mapping). |
-| | | **Kibana** | OIDC / SAML | *(Giống phần ELK Stack ở trên)*. |
-| | | **Jaeger UI** | Không hỗ trợ trực tiếp | *(Giống phần Jaeger ở trên)*. |
-| **5** | **Định tuyến cảnh báo & On-call** | **OneUptime** | **OIDC / SAML** | **Dễ.** Hỗ trợ cấu hình tích hợp OIDC/SAML trực tiếp trong giao diện Enterprise Settings để kết nối thẳng tới Authentik làm nguồn xác thực tập trung. |
-| **6** | **Quản lý Ngân sách lỗi (Error Budget)** | **Sloth** | Không áp dụng (No UI) | **Không cần thiết.** Hoạt động hoàn toàn theo mô hình **SLO-as-Code** qua file YAML. Chạy ngầm bằng CLI để sinh Prometheus Rules, không có giao diện tương tác nên không cần SSO. |
-| **7** | **Tự động hóa vận hành** | **Rundeck** / **PagerDuty Runbook Automation** | **OIDC / SAML** | **Dễ đến Trung bình.** Bản Open Source được bảo vệ tối ưu nhất thông qua Traefik Forward Auth. Bản thương mại hỗ trợ native OIDC kết nối trực tiếp với Authentik. |
-| | | **Ansible Semaphore** | **OIDC** | **Rất dễ.** Giao diện WebUI gọn nhẹ cho Ansible, tích hợp sẵn Generic OIDC Provider trong file cấu hình để map trực tiếp với Authentik chỉ với vài dòng khai báo. |
-| **8** | **Diễn tập phá hoại (Chaos Engineering)**| **Chaos Mesh** | Không hỗ trợ trực tiếp (Dùng Gateway) | **Bảo vệ qua Traefik.** Do Chaos Mesh Dashboard sử dụng cơ chế Token của K8s, cách tối ưu và đồng bộ nhất là bọc trang quản trị này sau lớp **Traefik Forward Auth Middleware** của Authentik. |
-| | | **Litmus (Chaos)** | **OAuth2 / OIDC** | **Dễ.** Từ phiên bản 2.0+ trở đi, kiến trúc Litmus Portal hỗ trợ cấu hình native OAuth2 để kết nối trực tiếp với hệ thống Authentik Provider trong phần Authentication. |
-
 ### 4. Kiến trúc đề xuất
 
-#### Kiến trúc vận hành
+#### Kiến trúc tích hợp quan sát
 
-Sơ đồ này mô tả vòng lặp giám sát: Hệ thống chạy thật sinh ra dữ liệu -> Công cụ SRE thu thập và phân tích dựa trên SLO -> Gửi cảnh báo đúng người -> SRE viết mã tự động sửa lỗi để tối ưu hệ thống.
+Sơ đồ này mô tả vòng lặp quan sát của kĩ sư SRE: Hệ thống chạy thật sinh ra dữ liệu -> Công cụ SRE thu thập và phân tích dựa trên SLO -> Gửi cảnh báo đúng người -> SRE viết mã tự động sửa lỗi để tối ưu hệ thống.
 
 ```mermaid
 graph TD
@@ -137,12 +138,12 @@ graph TD
 
     %% Lớp phản hồi và xử lý sự cố
     subgraph Response_Action ["Luồng Xử lý & Tối ưu"]
-        SRE_OnCall([Kỹ sư SRE trực])
         Runbook[Automation Scripts <br> Tự động sửa lỗi / Auto-scale]
+        SRE_OnCall([Kỹ sư SRE trực])
     end
 
-    AlertManager -->|Hệ thống gặp sự cố nghiêm trọng| SRE_OnCall
     AlertManager -->|Sự cố nhỏ, đã có kịch bản| Runbook
+    AlertManager -->|Hệ thống gặp sự cố nghiêm trọng| SRE_OnCall
     Runbook -->|Tác động sửa lỗi trực tiếp| K8s_Cluster_origin[Cụm Kubernetes]
     SRE_OnCall -->|Phân tích Post-mortem & Tối ưu code| App_origin[Ứng dụng / Microservices]
 
@@ -172,6 +173,7 @@ graph TD
 
     %% Nhóm hỗ trợ OIDC/OAuth2 trực tiếp (Native)
     subgraph Native_SSO ["Nhóm cấu hình OIDC trực tiếp"]
+        direction TD
         Grafana[Grafana Dashboard]
         OneUptime[OneUptime Portal]
         Semaphore[Ansible Semaphore]
@@ -431,7 +433,7 @@ cần:
 
 ### IdP
 
-Bảng so sánh 1 số Identity Provider (IdP) phổ biến, có thể sẽ chọn **Authentik**:
+Bảng so sánh 1 số Identity Provider (IdP) phổ biến, ưu tiên **Authentik** vì đầy đủ tính năng, cân bằng, dễ triển khai và tích hợp với các công cụ DevOps/Platform Engineer:
 
 | Feature / Protocol | Authentik | Keycloak | Authelia | Pocket ID |
 | :--- | :--- | :--- | :--- | :--- |
@@ -444,3 +446,26 @@ Bảng so sánh 1 số Identity Provider (IdP) phổ biến, có thể sẽ ch�
 | **Core Architecture** | Python / Go | Java (JVM) | Go | Go / Passkey-first |
 | **Resource Footprint** | Moderate | High (JVM tuning needed) | Very Lightweight | Ultra-lightweight |
 | **Đánh giá chung** | Dễ triển khai, dễ tích hợp, nhẹ nhàng, hỗ trợ nhiều giao thức, phù hợp doanh nghiệp nhỏ | Đầy đủ tính năng, mạnh mẽ nhưng nặng nề, cần tuning JVM | Nhẹ nhàng, dễ triển khai, nhưng hạn chế tính năng nâng cao, phù hợp home lab | Siêu nhẹ, tập trung vào Passkey-first, nhưng ít tính năng nâng cao |
+
+### Auth proxy with Forward Auth
+
+**Traefik** and **Nginx** natively support forward/external authentication via specific built-in configurations, whereas **Kong** does not have a native, out-of-the-box forward auth handler and requires a custom or community plugin.
+
+
+| Giải pháp | Tính khả dụng OIDC / OAuth2 (Open-source) | Khả năng Forward Auth (Open-source) | Load Balancing & HTTPS (Open-source) | Điểm trừ về mặt Enterprise ⚠️ | Đánh giá chung cho Open-source |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Apache APISIX** | **Xuất sắc** (Sẵn plugin `openid-connect`) | **Có sẵn** (Plugin `forward-auth`) | Rất mạnh, thuật toán EWMA thông minh, SSL động qua API | 🎉 **Không có** (Full tính năng ở bản Free) | 👑 **Khuyên dùng nhất** |
+| **Envoy Proxy** | **Có sẵn** (Bộ lọc mã hóa gốc) | **Có sẵn** (Bộ lọc `ext_authz`) | Đầy đủ thuật toán nâng cao, mTLS mạnh mẽ | 🎉 **Không có** (Dự án thuộc CNCF) | **Rất tốt** (Nhưng cấu hình rất khó) |
+| **Istio** | **Có sẵn** (`RequestAuthentication`) | **Có sẵn** (`MeshConfig.ExtensionProvider`) | Kế thừa Envoy, tự động mã hóa mTLS nội bộ mesh | 🎉 **Không có** (Dự án thuộc CNCF) | **Tốt** (Chuyên dụng cho Kubernetes) |
+| **Traefik** | ⚠️ **Điểm trừ** (Chỉ có ở bản Enterprise, bản Free phải dùng plugin ngoài) | **Có sẵn** (`ForwardAuth` Middleware) | Tự động phát hiện Service, tự động cấp SSL Let's Encrypt | Khóa tính năng OIDC gốc ở bản trả phí. | **Khá** (Phù hợp nếu dùng Forward Auth thay vì OIDC trực tiếp) |
+| **Caddy** | ⚠️ **Hạn chế** (Phải tự build thêm plugin ngoài `caddy-security`) | ⚠️ **Hạn chế** (Phải tự build thêm plugin ngoài) | Thuật toán cơ bản, tự động cấp SSL tốt nhất | Không ép mua Enterprise nhưng hệ sinh thái plugin bị phân mảnh. | **Trung bình - Khá** (Hợp cho dự án nhỏ) |
+| **Nginx** | ❌ **Điểm trừ nặng** (Không có, bản Free phải đổi sang OpenResty + Lua) | **Có sẵn** (`ngx_http_auth_request_module`) | Thiếu Active Health Check (tính năng này bị khóa ở bản Plus) | Khóa OIDC và Active Health Check vào bản **Nginx Plus** đắt đỏ. | 📉 **Kém** (Bản Free bị cắt giảm tính năng cốt lõi) |
+| **Kong Gateway**| ❌ **Điểm trừ nặng** (Không có, phải dùng plugin cộng đồng bên thứ 3) | ❌ **Không có** (Phải tự viết Lua script hoặc plugin ngoài) | Cân bằng tải tốt, hỗ trợ Active Health Check ở bản Free | Khóa chặt OIDC và các plugin bảo mật chính chủ vào bản **Enterprise**. | 📉 **Kém** (Phụ thuộc lớn vào plugin ngoài để bảo mật) |
+| **HAProxy** | ❌ **Không có** (Phải tự viết kịch bản Lua phức tạp) | **Có sẵn** (Cấu hình qua SPOE rất phức tạp) | **Vua hiệu năng**, thuật toán chuyên sâu, Health Check chi tiết | Bản Free đầy đủ hiệu năng nhưng thiếu công cụ quản trị (bản Enterprise có GUI). | **Trung bình** (Chỉ mạnh về hạ tầng, kém về tiện ích Auth) |
+
+🔍 Lựa chọn:
+- Nếu bạn muốn một **API Gateway truyền thống** chạy trên Docker/VM, đầy đủ tính năng Auth/OIDC/Forward Auth mà không tốn một xu: Chọn **Apache APISIX**.
+- Nếu bạn đang chạy hệ thống **Kubernetes microservices**: Chọn **Istio** hoặc **Envoy**.
+- Nếu bạn chỉ cần cơ chế **Forward Auth** (ủy quyền xác thực hoàn toàn cho một con Auth proxy khác như Authentik, Authelia) và muốn tự động cấu hình SSL nhanh: Chọn **Traefik**.
+
+🎯 Chọn **Traefik** kết hợp với **Authentik** là một giải pháp cân bằng giữa **tính năng, hiệu năng và chi phí** cho doanh nghiệp vừa và nhỏ.

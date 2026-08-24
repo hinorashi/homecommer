@@ -266,25 +266,53 @@ Kết hợp giữa Phát triển (Development) và Vận hành (Operations) nh�
 
 ### 2. Checklist
 
-#### Nhóm Phát triển & Tích hợp (Continuous Integration - CI)
+Mỗi tiêu chí chỉ được đánh dấu **Đạt** khi có đủ:
+- số đo đạt ngưỡng hoặc cải thiện bền vững so với baseline
+- owner rõ ràng
+- bằng chứng lưu trữ được
 
-- **Quản lý phiên bản tập trung**: 100% mã nguồn, cấu hình hệ thống và script hạ tầng được quản lý trên Git (GitLab, GitHub, Bitbucket).
-- **Nhánh code ngắn hạn (Trunk-Based Development)**: Lập trình viên merge code vào nhánh chính thường xuyên (ít nhất một lần mỗi ngày), tránh việc ôm nhánh riêng quá lâu gây xung đột (Merge Hell).
-- **Build và Test tự động**: Mỗi khi có mã nguồn mới được đẩy lên Git, hệ thống CI tự động kích hoạt quá trình build và chạy bộ kiểm thử tự động (Unit test, Integration test) mà không cần con người bấm nút.
+và được review theo chu kỳ.
 
-#### Nhóm Triển khai & Vận hành (Continuous Delivery/Deployment - CD)
+Không đặt một ngưỡng DORA giống nhau cho mọi team. DORA khuyến nghị đo theo từng ứng dụng/dịch vụ, dùng xu hướng để cải tiến, không dùng để xếp hạng hay tạo động lực "chạy số" giữa các team.
 
-- **Triển khai bằng một nút bấm (hoặc hoàn toàn tự động)**: Việc đẩy sản phẩm lên môi trường Staging hoặc Production được thực hiện tự động qua pipeline, không có ai gõ lệnh deploy thủ công trên server.
-- **Chiến lược deploy không gián đoạn**: Doanh nghiệp áp dụng thành thạo các kỹ thuật triển khai như Blue-Green hoặc Canary Deployment giúp người dùng không cảm thấy hệ thống bị downtime khi cập nhật phiên bản mới.
-- **Quản lý cấu hình tập trung**: Các thông tin nhạy cảm (Secret, API Key) và cấu hình môi trường được tách biệt hoàn toàn khỏi mã nguồn, quản lý tự động qua Vault, Consul hoặc Config Map.
+| Nhóm | Tiêu chí đo được | Ngưỡng Đạt đề xuất | Bằng chứng bắt buộc | Owner / chu kỳ review |
+| :--- | :--- | :--- | :--- | :--- |
+| Version control | **Coverage as code** | 100% mã nguồn, pipeline, cấu hình deploy và IaC của production được version control; thay đổi production có pull request/commit truy vết được | Repository inventory; branch protection; audit sample change-to-deploy | Tech Lead + Platform / hàng quý |
+| CI | **CI trigger và canonical artifact** | 100% pull request/main commit kích hoạt pipeline; artifact có version bất biến, SBOM/provenance theo chính sách công ty | Pipeline definition; build history; artifact registry; release metadata | Tech Lead / hàng tháng |
+| CI | **Build health và feedback time** | Main branch xanh >= 95% thời gian; P50 feedback cho test nhanh <= 10 phút; build lỗi được fix hoặc revert ưu tiên cao | CI dashboard; build failure log; revert history | Delivery Team / hàng tuần |
+| Development flow | **Trunk-based development** | <= 3 active branch/repository; >= 90% branch merge trong <= 1 ngày; không có code freeze định kỳ | SCM analytics; branch age report; release calendar | Tech Lead / hàng tháng |
+| Testing | **Automated quality gates** | 100% thay đổi production chạy unit + test phù hợp theo rủi ro; test failure phải actionable; flaky-test rate được theo dõi và có backlog xử lý | Pipeline gate; test report; flaky-test register | Dev + QA / hàng tháng |
+| Testing | **Test feedback and defect escape** | P50 test feedback <= 10 phút với test nhanh; tỷ lệ lỗi phát hiện sau production giảm theo quý hoặc có kế hoạch khắc phục rõ ràng | Test dashboard; defect source report; quality backlog | Tech Lead + QA / hàng quý |
+| Security | **Shift-left security** | 100% pipeline production có secret scan, SCA, SAST và image/IaC scan khi phù hợp; critical finding phải block hoặc có exception hết hạn | Scan configuration; policy-as-code; exception register | Security Champion + DevOps / hàng tháng |
+| CD | **Deployment automation** | >= 95% production deployment đi qua pipeline/GitOps; không dùng SSH/manual command trừ emergency procedure có log | CD/GitOps history; change record; break-glass log | DevOps + Service Owner / hàng tháng |
+| CD | **Safe release and rollback** | Tier 0/1 có rollback đã kiểm thử; thay đổi rủi ro cao có canary/blue-green hoặc equivalent; rollback/forward-fix path được diễn tập ít nhất 2 lần/năm | Deployment definition; release strategy; drill evidence | Service Owner + SRE / theo release và hàng quý |
+| Configuration | **Secrets and environment configuration** | 0 secret xác nhận còn hiệu lực trong source control; secret/config được inject qua hệ thống quản lý tập trung; access dùng least privilege | Secret scan report; vault/IAM policy; rotation evidence | Security + Platform / hàng tháng |
+| IaC | **Infrastructure delivery** | 100% thay đổi hạ tầng production đi qua IaC review + plan; drift được phát hiện và xử lý/ngoại lệ hóa có thời hạn | IaC repository; plan/apply log; drift report | Platform + Service Owner / hàng tháng |
+| Database | **Database change safety** | Schema/data migration versioned, reviewable, có rollback/forward-compatible strategy; migration rủi ro được kiểm thử trước production | Migration repository; pipeline stage; rollout plan | Tech Lead + DBA/Platform / mỗi release |
+| Flow | **Value-stream visibility** | Có dashboard từ commit đến production, thể hiện queue time và handoff; top bottleneck có improvement item được review | Value-stream map; delivery dashboard; improvement backlog | Engineering Manager / hàng quý |
+| DORA | **Deployment frequency** | Đo theo service; mục tiêu là cadence phù hợp nhu cầu sản phẩm và cải thiện so với baseline, không áp KPI chung theo ngày/tuần | Deployment history; service-level trend | Delivery Team / hàng tháng |
+| DORA | **Change lead time** | Đo commit-to-production theo percentile (P50/P90); P90 giảm hoặc ổn định trong ngưỡng SLO delivery đã thống nhất | SCM + CD analytics; trend dashboard | Delivery Team / hàng tháng |
+| DORA | **Change fail rate** | Tỷ lệ deployment cần rollback/hotfix/khắc phục ngay được đo; giảm theo quý hoặc có reliability backlog được ưu tiên | Deployment-to-incident correlation; rollback/hotfix log | Delivery Team + SRE / hàng tháng |
+| DORA | **Failed deployment recovery time** | Đo thời gian từ deployment thất bại đến khi service hoạt động bình thường; theo dõi P50/P90 và cải thiện qua các quý | Incident record; deploy metadata; recovery dashboard | Delivery Team + SRE / hàng tháng |
+| DORA | **Deployment rework rate** | Đo tỷ lệ deploy ngoài kế hoạch do incident production; có review nguyên nhân và action giảm rework | Release calendar; incident tags; postmortem action log | Engineering Manager / hàng quý |
 
-#### Nhóm Chỉ số hiệu năng (DORA Metrics)
+#### Công thức và dashboard tối thiểu
 
-Doanh nghiệp đạt chuẩn DevOps thành công phải đo lường và tối ưu được 4 chỉ số DORA cốt lõi sau:
-- **Tần suất triển khai (Deployment Frequency)**: Doanh nghiệp có khả năng deploy code mới lên Production định kỳ theo ngày hoặc theo tuần (thay vì theo quý/năm).
-- **Thời gian hoàn thành thay đổi (Lead Time for Changes)**: Thời gian từ lúc code được commit thành công cho đến khi nó chạy trên Production chỉ mất vài giờ hoặc dưới một ngày.
-- **Tỷ lệ thất bại khi thay đổi (Change Failure Rate)**: Tỷ lệ các bản deploy gây ra lỗi trên Production phải ở mức thấp (dưới 15%).
-- **Thời gian phục hồi dịch vụ (Time to Restore Service - MTTR)**: Khi có sự cố xảy ra do deploy bản mới, hệ thống có thể rollback (quay về phiên bản cũ) hoặc fix lỗi chỉ trong vòng vài phút.
+- **Deployment frequency** = số deployment production thành công / khoảng thời gian, theo từng service.
+- **Change lead time** = thời điểm deployment production - thời điểm commit được đưa vào deployment; báo cáo P50 và P90.
+- **Change fail rate** = deployment cần rollback, hotfix hoặc can thiệp khẩn cấp / tổng deployment.
+- **Failed deployment recovery time** = thời điểm service phục hồi - thời điểm deployment lỗi được phát hiện; báo cáo P50 và P90.
+- **Deployment rework rate** = deployment ngoài kế hoạch do incident / tổng deployment.
+- **Flaky-test rate** = test fail nhưng pass khi chạy lại không đổi code / tổng lần chạy test.
+- Dashboard tối thiểu phải drill-down được từ metric -> deployment -> commit/PR -> pipeline -> incident hoặc rollback liên quan.
+
+#### Nguyên tắc áp dụng và nguồn
+
+- **Đo outcome theo service, không dùng DORA để xếp hạng con người/team**: DORA hiện dùng 5 metrics gồm change lead time, deployment frequency, failed deployment recovery time, change fail rate và deployment rework rate. Metrics được dùng để nhìn xu hướng cải tiến ở cấp ứng dụng/dịch vụ; so sánh các hệ thống khác bối cảnh có thể gây hiểu sai. [DORA - Software delivery performance metrics](https://dora.dev/guides/dora-metrics-four-keys/)
+- **Continuous delivery là phát hành on-demand, an toàn và bền vững**: không đồng nghĩa chỉ tăng tần suất deploy. Cần kết hợp test automation, deployment automation, trunk-based development, security, observability và thay đổi kiến trúc/quy trình khi có bottleneck. [DORA - Continuous delivery](https://dora.dev/capabilities/continuous-delivery/)
+- **Trunk-based development giảm chi phí integration**: DORA đề xuất <= 3 branch active, merge ít nhất mỗi ngày, tránh code freeze; build hỏng cần được fix hoặc revert ngay để giữ main xanh. [DORA - Trunk-based development](https://dora.dev/capabilities/trunk-based-development/)
+- **Test automation phải nhanh và đáng tin**: DORA đề xuất feedback test nhanh trong dưới 10 phút; test failure nên thể hiện lỗi thật, không dung thứ flaky test, và developer là người chịu trách nhiệm chính với test suite. [DORA - Test automation](https://dora.dev/capabilities/test-automation/)
+- **DevOps là tập năng lực kỹ thuật, quy trình và văn hóa**: Google Cloud tổng hợp các capability DORA gồm CI/CD, deployment automation, observability, security shift-left, value-stream visibility và learning culture. [Google Cloud - DevOps capabilities](https://docs.cloud.google.com/architecture/devops)
 
 ### 3. Công cụ cốt lõi
 

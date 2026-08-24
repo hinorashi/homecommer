@@ -393,21 +393,25 @@ Chuyển dịch từ tư duy "hỗ trợ kỹ thuật" sang tư duy "cung cấp 
 
 #### People
 
-- **Tư duy Quản lý Sản phẩm (Product Mindset)**: Đội ngũ Platform phải coi nền tảng mình làm ra là một sản phẩm thương mại. Họ cần khảo sát nhu cầu, làm tài liệu (Docs), định nghĩa lộ trình (Roadmap) và "bán" nó cho lập trình viên trong công ty.
-- **Kỹ sư Nền tảng (Platform Engineers)**: Có năng lực kết hợp giữa lập trình hệ thống (Go, Python), hạ tầng (Kubernetes, Cloud) và thiết kế giao diện (UI/UX) cho cổng thông tin nội bộ (_có thể tận dụng AI_).
-- **Khách hàng nội bộ (Developers)**: Sẵn sàng chuyển sang mô hình tự phục vụ, chủ động thu nhận ý kiến để cải tiến nền tảng thay vì chỉ đạo đội vận hành làm hộ.
+- **Tư duy Quản lý Sản phẩm (Product Mindset)**: Đội ngũ Platform phải coi nền tảng mình làm ra là một sản phẩm thương mại. Họ cần khảo sát nhu cầu (developer research), làm tài liệu (Docs), định nghĩa lộ trình (Roadmap) và "bán" nó cho lập trình viên trong công ty. Tránh tình trạng Platform chỉ là tập hợp tool hạ tầng do team tự đề ra.
+- **Kỹ sư Nền tảng (Platform Engineers)**: Có năng lực kết hợp giữa lập trình hệ thống (Go, Python...), hạ tầng (Kubernetes, Cloud...) và thiết kế giao diện (UI/UX) cho cổng thông tin nội bộ (_có thể tận dụng AI_). Tuy nhiên lưu ý là DevEx có thể qua portal, API, CLI, SDK, template hoặc docs, không nhất thiết phải qua giao diện UI.
+- **Developer Experience Partnership**: Sẵn sàng chuyển sang mô hình tự phục vụ, chủ động thu nhận ý kiến để cải tiến nền tảng thay vì chỉ đạo đội vận hành làm hộ. Developer là khách hàng nội bộ và đối tác phản hồi. Platform team công bố service catalog, owner, documentation, support model và platform SLO để tạo team interface rõ ràng.
+- **Platform Reliability Ownership**: Platform team chịu trách nhiệm reliability, security posture và khả năng vận hành của chính platform; tránh tạo một dependency tập trung không có SLO hoặc disaster recovery.
 
 #### Process
 
-- **Tự phục vụ hoàn toàn (Self-Service)**: Lập trình viên có thể tự tạo mới một service, cấp phát database, hoặc cấu hình domain qua giao diện/API mà không cần tạo ticket chờ duyệt.
-- **Con đường vàng (Golden Paths)**: Định nghĩa sẵn các quy trình chuẩn, an toàn và tối ưu nhất cho từng loại dự án. Lập trình viên chỉ cần đi theo con đường này là tự động đạt chuẩn bảo mật và vận hành của công ty.
-- **Giảm tải nhận thức (Cognitive Load Reduction)**: Quy trình phải giấu đi sự phức tạp của hạ tầng (như cấu hình mạng, bảo mật chuyên sâu) để lập trình viên chỉ tập trung vào việc viết code logic.
+- **Tự phục vụ (Self-Service by Default, Governed Exceptions)**: Các use case chuẩn, lặp lại và rủi ro thấp được self-service qua portal/API/CLI. Các thay đổi nhạy cảm như production access, public network hoặc dữ liệu nhạy cảm đi qua approval workflow có audit thay vì ticket thủ công không tạo giá trị.
+- **Con đường vàng (Golden Paths và Governed Escape Hatches)**: Golden path là lựa chọn dễ nhất, an toàn nhất và được hỗ trợ tốt nhất cho use case phổ biến. Workload đặc thù có thể dùng escape hatch có kiểm soát, exception được ghi nhận, time-bound và review định kỳ.
+- **Giảm tải nhận thức (Cognitive Load Reduction, with right level of Abstraction)**: Giấu đi sự phức tạp của hạ tầng (như cấu hình mạng, bảo mật chuyên sâu) để giảm cognitive load không cần thiết nhưng vẫn cung cấp đủ context về reliability, security và cost để team ra quyết định đúng; không đơn thuần che giấu mọi chi tiết hạ tầng.
+- **Feedback-to-Backlog**: Thu thập friction, support demand, usage/adoption metrics và feedback định tính; ưu tiên platform backlog theo tác động đến developer flow thay vì theo tool mới.
 
 #### Technology
 
-- **Nền tảng Phát triển Nội bộ (IDP - Internal Developer Platform)**: Một hệ thống trung tâm kết nối mọi công cụ hạ tầng phía sau thành một giao diện duy nhất.
-- **Trừu tượng hóa Hạ tầng (Infrastructure Abstraction)**: Đóng gói các tài nguyên hạ tầng phức tạp thành các khối (Modules) dễ sử dụng.
-- **Quản lý cấu hình tự động**: Tự động đồng bộ hóa trạng thái mong muốn từ IDP xuống các môi trường thực tế thông qua GitOps.
+- **Nền tảng Phát triển Nội bộ (IDP - Internal Developer Platform) - IDP đa kênh (Portal/API/CLI)**: Một hệ thống trung tâm kết nối mọi công cụ hạ tầng phía sau thành một giao diện duy nhất, tích hợp service catalog, templates, docs, workflow và self-service APIs.
+- **Infrastructure Abstraction và Golden Templates**: Đóng gói tài nguyên phức tạp thành các module/template dễ sử dụng và có version, owner, lifecycle và interface rõ ràng; template mặc định tích hợp CI/CD, observability, security và ownership metadata.
+- **Policy-as-Code, IAM và Secrets**: Guardrail được thực thi tự động ở provision/deploy/runtime; tích hợp identity, least privilege, secrets management và exception workflow có audit.
+- **GitOps và Desired State**: Đồng bộ trạng thái mong muốn từ platform xuống môi trường thực tế qua GitOps/IaC, có policy check, drift detection và rollback/forward strategy.
+- **Platform Observability và Product Analytics**: Platform có SLO, dashboard availability/latency, audit log, adoption analytics, self-service success rate và cost visibility/FinOps tagging.
 
 ### 2. Checklist
 

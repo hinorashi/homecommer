@@ -351,197 +351,225 @@ Toolchains:
 ### 5) MB Ageas Life (MBAL)
 Period: 2021/07 – 2026/05
 
+Role focus: DevOps Engineer / Platform Engineer / SRE-minded cloud operations with strong ownership on platform reliability, security, automation, and cost governance.
+
 #### 2021/07 – 2022/06
 Role: DevOps Engineer
 
 Project: DevOps Platform Initialization
 
-- Goal: Establish a cloud-based DevOps platform following DevOps best practices.
+- Goal: Build the foundational cloud-native DevOps platform for the enterprise, including CI/CD, container orchestration, GitOps readiness, and centralized developer services.
 - Team size: 1
 - Partner: AWS
 
 Responsibilities:
-- Discussed with CIO, architecture team, development team, and security team to design the platform.
-- Chose AWS as the cloud provider and worked with finance and partner teams to set up the AWS account.
-- Used EKS as the foundation and deployed GitLab as the central version control system.
-- Deployed Keycloak for identity and access management and SSO.
-- Built the initial CI/CD workflow with GitLab and EKS.
-- Supported new projects across their full software lifecycle.
+- Designed and established the core platform architecture together with CIO, architecture, development, and security teams.
+- Evaluated and selected AWS EKS as the foundation for container orchestration and cloud-native workloads.
+- Built the initial GitLab-based delivery platform and standardized CI/CD workflows for new projects.
+- Deployed Keycloak for SSO and centralized IAM for internal users, including in-house and outsourced teams.
+- Set up Nexus for artifact management, Terraform/CloudFormation-aligned IaC foundations, and internal package governance.
+- Implemented observability and service visibility using Prometheus, Grafana, EFK, CoreDNS, ExternalDNS, and Kubernetes ingress integration.
+- Enabled a platform operating model for teams to onboard applications into the new lifecycle with less manual effort.
 
-Technologies used:
-- AWS
-- Kubernetes
-- GitLab
-- Keycloak
-- Nexus
-- Prometheus Stack
-- EFK Stack
-- CoreDNS
-- External-DNS
-- AWS Load Balancer Controller
-- EFS/EBS CSI Controller
-- Kong Ingress Controller
+Toolchain & technologies:
+- Cloud: AWS
+- Orchestration: Kubernetes (EKS), CoreDNS, ExternalDNS
+- Source control & CI: GitLab, GitLab CI/CD
+- Identity: Keycloak, SSO, IAM
+- Repository / packages: Nexus
+- Observability: Prometheus, Grafana, EFK stack
+- Ingress / networking: Kong Ingress Controller, AWS LB Controller
+- Storage: EFS, EBS CSI
+- Platform foundation: Helm, Kubernetes-native deployment patterns
 
 #### 2022/06 – 2022/12
 Role: DevOps Lead
 
 Project: GitOps Adoption
 
-- Goal: Adopt GitOps and migrate existing projects into the DevOps platform.
+- Goal: Transition platform operations from imperative deployment toward GitOps-driven delivery and enforce standardized deployment process across teams.
 - Team size: 2
 - Partner: None
 
 Responsibilities:
-- Deployed ArgoCD for GitOps workflows.
-- Migrated DevOps tools into GitOps flow.
-- Created internal process for introducing code changes through GitOps.
-- Designed separate CI/CD flows for code repositories and config repositories.
-- Presented knowledge-sharing sessions to development teams.
-- Discussed migration of on-prem projects to AWS and promoted GitOps adoption.
-- Integrated SonarQube for code quality and SAST.
-- Defined process flows approved by change advisory board (CAB).
+- Designed and implemented ArgoCD adoption for platform tools and application delivery workflows.
+- Standardized repo separation between application code repositories and GitOps/configuration repositories.
+- Created delivery and change-management process aligned with CAB and platform governance requirements.
+- Reduced manual operations and improved reproducibility through declarative configuration management.
+- Integrated SonarQube for code quality, security scanning, and SAST in the pipeline.
+- Shared GitOps patterns and operational practices with engineering teams to help them migrate to cloud-native delivery.
+- Supported migration of legacy on-prem projects into the AWS cloud and helped onboard dev leads into the new process.
 
-Technologies used:
-- Existing DevOps platform
-- ArgoCD
-- Helm
-- Kustomize
-- SonarQube
+Toolchain & technologies:
+- GitOps: ArgoCD
+- Kubernetes packaging: Helm, Kustomize
+- Quality / security: SonarQube, SAST
+- Platform operations: GitLab CI/CD, Kubernetes
+- Cloud: AWS
+- Change control: CAB workflow and governance process
 
 #### 2023/01 – 2023/06
 Role: DevOps Lead
 
 Project: AWS Cost Optimization and Control Tower
 
+- Goal: Improve cloud cost governance and implement enterprise landing zone controls for secure, consistent AWS adoption.
 - Team size: 3
 - Partner: AWS, OSAM, CMC TS
 
 Responsibilities:
-- Reported monthly cost usage and bill growth to CIO and governance team.
-- Chose OSAM as a vendor for AWS cost optimization.
-- Worked with security and compliance teams on auditing needs.
-- Chose CMC TS as vendor for AWS Control Tower solution.
+- Reported monthly cloud spend and identified cost drivers to CIO and governance stakeholders.
+- Evaluated and selected OSAM for AWS cost optimization and cost governance support.
+- Worked with security and compliance teams to define enterprise security baseline requirements.
+- Partnered with CMC TS to evaluate AWS Control Tower and Landing Zone design for standardized account setup and guardrails.
+- Improved operational discipline around cost accountability, tagging strategy, and cloud platform governance.
 
-Technologies used:
-- AWS Control Tower
-- Landing Zone
-- QuickSight
+Toolchain & technologies:
+- Cloud governance: AWS Control Tower, AWS Landing Zone
+- Cost visibility: AWS Cost Explorer, QuickSight
+- Security & governance: AWS account structure, guardrails, audit alignment
+- Platform mindset: cost-aware architecture, cloud guardrails, policy adoption
 
 #### 2023/06 – 2023/12
-Role: DevOps Engineer
+Role: DevOps Engineer / SRE-minded Infrastructure Engineer
 
 Project: AWS DX
 
+- Goal: Improve network and connectivity reliability between enterprise environments and AWS, ensuring stable hybrid connectivity for critical services.
 - Team size: 3
 - Partner: AWS
 
 Responsibilities:
-- Worked on S2S and DX connectivity.
-- Managed PRTG and Zabbix monitoring.
+- Supported AWS Direct Connect and Site-to-Site (S2S) VPN connectivity for secure network integration.
+- Designed and validated connectivity patterns for production-grade hybrid architecture.
+- Monitored network and system health using PRTG and Zabbix to maintain service availability.
+- Improved operational visibility for infrastructure and connectivity incidents.
+- Ensured environment readiness for future workload migration and platform expansion.
 
-Technologies used:
-- AWS CloudFormation
-- AWS Direct Connect
-- S2S VPN
-- Kubernetes
+Toolchain & technologies:
+- Cloud networking: AWS Direct Connect, S2S VPN, AWS CloudFormation
+- Monitoring: PRTG, Zabbix
+- Orchestration: Kubernetes
+- Automation: AWS infrastructure provisioning via IaC patterns
 
 #### 2024/01 – 2024/06
 Role: DevOps Lead
 
 Project: DevSecOps
 
-- Goal: Strengthen security for CI/CD, Kubernetes, and AWS.
+- Goal: Strengthen secure-by-default engineering practices in CI/CD, Kubernetes, and AWS operations.
 - Team size: 3
 - Partner: AWS
 
 Responsibilities:
-- Integrated container scanning into CI/CD workflows with AWS ECR and Trivy.
-- Deployed Trivy as a CRD and provided dashboard visibility to dev and security teams.
-- Integrated DAST into CI/CD using OWASP ZAP, Burp Suite, and Acunetix.
-- Studied and deployed Falco for cloud and Kubernetes threat detection.
+- Integrated container security scanning into delivery pipelines with AWS ECR and Trivy.
+- Designed and deployed Trivy as a cluster-level scanning mechanism and made findings visible to engineering and security teams via Grafana dashboards.
+- Integrated DAST testing into release pipelines using OWASP ZAP, Burp Suite, and Acunetix.
+- Improved security visibility in the SDLC and reduced exposure of vulnerable container artifacts.
+- Evaluated Falco for cloud and Kubernetes threat detection and built a stronger runtime security posture.
+- Promoted a security-first engineering mindset with shift-left scanning and continuous validation.
 
-Technologies used:
-- AWS ECR
-- Aqua Security Trivy
-- OWASP ZAP
-- Burp Suite
-- Acunetix
-- Falco
+Toolchain & technologies:
+- Container registry / scanning: AWS ECR, Aqua Trivy
+- DAST: OWASP ZAP, Burp Suite, Acunetix
+- Runtime security: Falco
+- Observability: Grafana
+- DevSecOps workflow: CI/CD and Kubernetes security controls
 
 #### 2024/06 – 2024/12
 Role: DevOps Lead
 
-Project: Hybrid Cloud
+Project: Hybrid Cloud Platform
 
-- Goal: Use a dedicated on-prem zone to bridge with AWS.
+- Goal: Establish a secure hybrid-cloud platform bridging on-prem infrastructure and AWS by standardizing platform services and deployment patterns.
 - Team size: 4
 - Partner: None
 
 Responsibilities:
-- Discussed VM sizing with architecture and infrastructure teams.
-- Designed the on-prem Kubernetes architecture and aligned with cloud-managed equivalents.
-- Integrated with existing on-prem security solutions and managed trade-offs.
-- Adjusted CI/CD flows and deployment processes.
-- Migrated non-production environments (DEV, UAT) to the new on-prem platform.
+- Worked with architecture and infrastructure teams to plan VM sizing and capacity design for on-prem virtualization infrastructure.
+- Designed a Kubernetes architecture for the on-prem environment and aligned it with AWS-managed patterns while removing platform lock-in risk.
+- Evaluated and selected open-source components to replace cloud-specific dependencies where needed.
+- Integrated the platform with existing on-prem security controls and enforced pragmatic trade-offs between security and flexibility.
+- Adjusted CI/CD workflows and deployment standards to fit the hybrid model.
+- Migrated non-production environments (DEV/UAT) to the new platform and prepared the groundwork for partial production rollout.
 
-Technologies used:
-- Kubespray
-- Harbor
-- Longhorn
-- Calico
-- CoreDNS
-- Kong Ingress Controller
-- Nginx (external LB)
+Toolchain & technologies:
+- Kubernetes deployment: Kubespray
+- Container registry: Harbor
+- Storage: Longhorn
+- Networking: Calico, CoreDNS, Kong Ingress Controller
+- Load balancing: Nginx (external LB)
+- Hybrid platform design: on-prem virtualization, Kubernetes cluster operations, platform standardization
 
 #### 2025/01 – 2025/06
-Role: DevOps Lead
+Role: DevOps Lead / Platform Engineer
 
 Project: Enhance DevOps Platform
 
-- Goal: Build a self-service IDP and evolve toward Platform Engineering.
+- Goal: Raise the platform from infrastructure provisioning to self-service internal developer enablement and Platform Engineering maturity.
 - Team size: 4
 - Partner: None
 
 Responsibilities:
-- Converted deployable resources into infrastructure-as-code using CloudFormation and Helm.
-- Built a DevOps wiki for internal knowledge sharing using Docusaurus.
-- Deployed Backstage as a developer portal and integrated it with the platform.
-- Developed Watchtower to track Kubernetes changes and notify managers and CAB.
-- Developed a System Catalog to detect drift between managed and retired projects.
+- Converted reusable deployment resources into infrastructure-as-code using CloudFormation and Helm.
+- Standardized internal engineering templates to improve platform consistency and reduce operational variance.
+- Built a central DevOps wiki using Docusaurus to scale knowledge sharing across teams and projects.
+- Deployed Backstage as an internal Developer Portal to improve service discovery, onboarding, and developer experience.
+- Built Watchtower to track Kubernetes configuration drift and change events and send alerts to managers and CAB.
+- Built a System Catalog to detect drift between managed projects and retired or dangling resources.
+- Focused on internal developer productivity, platform usability, and service ownership maturity.
 
-Technologies used:
-- Docusaurus
-- Kubernetes
+Toolchain & technologies:
+- Developer portal / docs: Backstage, Docusaurus
+- IaC / automation: CloudFormation, Helm
+- Kubernetes platform: EKS/Kubernetes
+- Observability / governance: Watchtower, service catalog patterns, drift detection
+- Platform engineering mindset: self-service, standardization, developer experience
 
 #### 2025/06 – 2025/12
 Role: DevOps Engineer
 
 Project: Core Transformation Preparation
 
+- Goal: Prepare the target platform and operational model for a major enterprise core transformation initiative.
 - Team size: 4
 - Partner: eBaoTech
 
 Responsibilities:
-- Discussed with manager and project stakeholders for transformation planning.
+- Collaborated with management and stakeholders to align infrastructure and platform requirements for transformation.
+- Reviewed architecture gaps, dependencies, and platform readiness requirements before transition.
+- Helped define operational patterns for the future-state environment and ensure engineering readiness.
 
-Technologies used:
-- AWS
-- Kubernetes
+Toolchain & technologies:
+- Cloud: AWS
+- Orchestration: Kubernetes
+- Platform focus: transformation readiness, dependency mapping, service modernization support
 
 #### 2026/01 – 2026/05
-Role: DevOps Engineer
+Role: DevOps Engineer / Cloud Platform Engineer
 
 Project: Core Transformation
 
+- Goal: Support enterprise-wide core transformation through platform enablement, cloud operations, and transformation-ready engineering practices.
 - Team size: 1
 - Partner: AWS
 
 Responsibilities:
-- Worked on core transformation initiatives.
+- Supported transformation activities by enabling the target platform architecture and operational baseline.
+- Worked closely with cloud and platform teams to ensure delivery readiness, environment consistency, and operational continuity.
+- Applied platform engineering principles to reduce friction, improve automation, and strengthen reliability during transformation.
 
-Technologies used:
-- AWS
-- Kubernetes
+Toolchain & technologies:
+- Cloud: AWS
+- Orchestration: Kubernetes
+- Platform engineering: automation, environment consistency, operational resilience, transformation enablement
+
+### Platform engineering mindset across MBAL
+- Built platform services from the ground up instead of only deploying applications.
+- Focused on automation, standardization, guardrails, observability, and self-service capability.
+- Applied GitOps, IaC, Kubernetes, cloud governance, and security-by-default principles.
+- Balanced cost, reliability, compliance, and developer experience for enterprise platforms.
+- Worked across product, security, governance, and infrastructure teams to implement sustainable operating models.
 
 ---
 

@@ -269,27 +269,46 @@ Các công cụ cốt lõi của DevOps:
 - **Tích hợp & Triển khai liên tục (CI/CD)**: Jenkins, **GitLab CI**, GitHub Actions, **ArgoCD** (GitOps).
 - **Đóng gói (Containerization)**: **Docker**, Podman.
 - **Hạ tầng dạng mã (IaC) & Cấu hình**: Terraform, OpenTofu, Ansible, **CloudFormation**.
-- **Quản lý bảo mật (DevSecOps)**: **SonarQube** (Quét code), Snyk, **Trivy** (Quét lỗ hổng container).
+- **Quản lý Artifact & Kho thư viện (Repository)**: **Sonatype Nexus OSS**, **Harbor Registry**, JFrog Artifactory.
+- **Quản lý bảo mật & An toàn thư viện (DevSecOps/SCA)**: **SonarQube** (Quét code), **OWASP Dependency-Check** (Quét thư viện/License), Snyk, **Trivy** (Quét lỗ hổng container).
+- **Quản lý lỗ hổng tập trung (Vulnerability Management)**: **DefectDojo**, Kenna Security.
+- **Quản lý cấu hình & Bí mật (Secret Management)**: **HashiCorp Vault**, AWS Secrets Manager.
+
+**Technology Catalog**:
+
+| STT | Phân nhóm công nghệ (Domain) | Công cụ (Tools) | Giao thức hỗ trợ Authentik | Cơ chế tích hợp & Đánh giá với Authentik/Traefik |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | **Quản lý mã nguồn & CI Pipeline** | **GitLab (Self-hosted)** | **OIDC / OAuth2** | **Rất dễ.** GitLab hỗ trợ cấu hình mã nguồn mở kết nối trực tiếp với Authentik qua OIDC. Giúp quản lý code và chạy CI runner an toàn. |
+| **2** | **Quản lý Kho mã nguồn và Thư viện** | **Sonatype Nexus OSS** | **SAML / OIDC / Proxy Auth** | **Trung bình.** Phiên bản Nexus OSS (Miễn phí) hỗ trợ native xác thực SAML hoặc qua Header-based Auth. Bạn có thể dùng **Traefik Forward Auth** để bọc giao diện quản trị của Nexus, hoặc cấu hình SAML trực tiếp với Authentik. |
+| **3** | **Quản lý An toàn Thư viện (SCA)** | **OWASP Dependency-Check** | Không áp dụng (No UI) | **Không cần thiết.** Đây là công cụ dạng CLI / Plugin chạy trực tiếp trong CI pipeline của GitLab để quét các file định nghĩa dependency (như `pom.xml`, `package.json`). Nó không có UI độc lập nên không cần cấu hình SSO. |
+| **4** | **Quản lý Lỗ hổng tập trung** | **DefectDojo** | **OIDC / Social Auth** | **Dễ.** Nhằm mục đích hứng và hiển thị tập trung các file báo cáo (JSON/XML) xuất ra từ **Dependency-Check**. Hỗ trợ native OIDC kết nối thẳng với Authentik để kỹ sư DevOps/Security đăng nhập theo dõi. |
+| **5** | **Quản lý chất lượng & Bảo mật** | **SonarQube** | **OIDC / SAML** | **Dễ đến Trung bình.** Bản Community cần cấu hình qua plugin hoặc bọc Traefik Proxy. Các phiên bản cao hơn hỗ trợ cấu hình OIDC trực tiếp với Authentik rất mượt mà. |
+| **6** | **Quản lý Artifact & Image** | **Harbor Registry** | **OIDC** | **Dễ.** Harbor là nơi lưu trữ Docker Image tập trung, hỗ trợ native OIDC với Authentik. Có tính năng quét mã độc tự động (Trivy). |
+| **7** | **Triển khai tự động (CD Engine)** | **ArgoCD** | **OIDC / OAuth2** | **Rất dễ.** ArgoCD hỗ trợ tích hợp sâu với Authentik OIDC. Cho phép ánh xạ (map) Group từ Authentik vào phân quyền RBAC (Admin/Viewer) của từng dự án trong ArgoCD. |
+| **8** | **Hạ tầng dạng mã (IaC)** | **Terraform** / **OpenTofu** | Không áp dụng (No UI) | **Không cần thiết.** Hoạt động hoàn toàn dưới dạng CLI hoặc chạy ngầm trong CI pipeline để khởi tạo tài nguyên hạ tầng. |
+| **9** | **Quản lý cấu hình & Bí mật** | **HashiCorp Vault** | **OIDC / JWT** | **Dễ.** Vault hỗ trợ phương thức xác thực OIDC. Kỹ sư DevOps có thể đăng nhập vào giao diện Vault UI thông qua Authentik để quản lý mật mã, API Key. |
 
 ### 4. Kiến trúc tổng thể đề xuất
 
-Sơ đồ này mô tả luồng tự động hóa khép kín từ máy của lập trình viên qua các bước kiểm thử, bảo mật cho đến khi triển khai lên môi trường chạy thật.
+#### Kiến trúc luồng CI/CD
+
+Sơ đồ này mô tả tóm tắt luồng tự động hóa khép kín từ máy của lập trình viên qua các bước kiểm thử, bảo mật cho đến khi triển khai lên môi trường chạy thật.
 
 ```mermaid
-graph LR
+graph TD
     %% Định nghĩa các thành phần
-    Dev([Developer]) -->|1. Commit & Push Code| Git[Git Repository <br> GitHub / GitLab]
+    Dev([Developer]) -->|1. Commit & Push Code| Git[Git Repository <br>GitLab]
     
     subgraph CI_Pipeline ["Luồng Tích hợp Liên tục (CI)"]
-        Git -->|2. Kích hoạt Webhook| CI_Engine[CI Engine <br> GitHub Actions / GitLab CI]
-        CI_Engine -->|3a. Kiểm tra mã nguồn| Linter[SonarQube <br> Code Quality / Security]
-        CI_Engine -->|3b. Đóng gói & Quét| DockerBuild[Docker Build <br> & Trivy Scan]
+        Git -->|2. Kích hoạt Webhook| CI_Engine[CI Engine <br>GitLab CI]
+        CI_Engine -->|3a. Kiểm tra mã nguồn| Linter[SonarQube <br> Code Quality / Code Security]
+        CI_Engine -->|3b. Đóng gói & Quét| DockerBuild[Docker Build <br> & Trivy Container Scan]
     end
 
     DockerBuild -->|4. Đẩy Image sạch| Registry[Container Registry <br> Docker Hub / AWS ECR]
 
     subgraph CD_Pipeline ["Luồng Triển khai Liên tục (CD)"]
-        Registry -->|5. Phát hiện Image mới| GitOps[GitOps Engine <br> ArgoCD / FluxCD]
+        Registry -->|5. Phát hiện Image mới| GitOps[GitOps Engine <br> ArgoCD]
         IaC[Terraform / Code hạ tầng] -->|Quản lý cấu hình| GitOps
         GitOps -->|6. Tự động đồng bộ hóa| Infra[Hạ tầng Đích <br> Kubernetes / Cloud]
     end

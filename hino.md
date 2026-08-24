@@ -20,12 +20,15 @@
 ### Objective
 
 #### Short-term goals
-- Improve professional knowledge and apply DevOps effectively in daily work.
+- Deepen expertise in Platform Engineering, Kubernetes, cloud-native platform operations, and developer enablement.
+- Design and operate reliable, secure, and self-service internal platforms that improve delivery speed and engineering productivity.
+- Strengthen automation, observability, GitOps, and infrastructure-as-code practices in day-to-day operations.
 
 #### Long-term goals
-- Consolidate my career path and advance in my professional role.
-- Gain trust from leaders and colleagues.
-- Create more value for myself, the people around me, the community, and society.
+- Grow into a senior Platform Engineer / Platform Lead role with ownership of enterprise cloud and on-prem platform strategy.
+- Build scalable internal developer platforms that improve developer experience, standardization, and operational excellence.
+- Earn trust from leaders, engineering teams, and stakeholders by delivering secure, resilient, and cost-effective platform services.
+- Contribute to the broader engineering community by sharing platform best practices, automation patterns, and DevOps/Platform Engineering knowledge.
 
 ### Education
 
@@ -37,59 +40,71 @@
 
 ### Professional Summary
 
-- Experienced in developing, deploying, and operating applications and services.
-- Skilled in Java, Maven, Git, Linux, microservices, and containerization.
-- Experienced DevOps engineer with Kubernetes, AWS, containers, CI/CD, IaC, and GitOps.
-- Cooperative and able to create a strong team-oriented environment.
-- Quick to adapt to new environments and able to coordinate work effectively.
+- Platform-focused engineer with hands-on experience in DevOps, cloud-native infrastructure, Kubernetes operations, CI/CD, and internal developer platform enablement.
+- Strong background in building and operating enterprise platforms across AWS, on-prem environments, hybrid cloud models, and containerized workloads.
+- Experienced in GitOps, infrastructure-as-code, observability, security integration, and platform standardization for engineering teams.
+- Skilled in Kubernetes platform design, deployment automation, networking, storage, service routing, and operational reliability.
+- Collaborative and adaptable leader with experience working across architecture, security, infrastructure, and application teams in complex transformation programs.
 - Cloud-native and open-source advocate.
 
-### Software Development Skills
+### Core Technical Skills
 
-- Backend: Java, Spring ecosystem, RESTful APIs, OpenAPI, SOLID, 12-factor app principles
-- Database: MySQL, PostgreSQL
-- Testing: JUnit, Mockito, AssertJ
-- Security: SSO, OIDC, OAuth2, OWASP secure coding
-- Other: Git, Maven, UML, C4 Model
+- Backend development: Java, Spring Boot, RESTful APIs, microservices, application design, TDD/BDD basics
+- Databases: MySQL, PostgreSQL, OracleDB, SQL Server, Flyway-based migration practices
+- Source control & build tooling: Git, Git Flow, Maven, CI pipeline setup
+- Security fundamentals: SSO, OAuth2, OIDC, TLS/SSL, certificate management, secure coding awareness
+- Linux and system operations: Ubuntu, CentOS, RHEL, bash scripting, services, networking, troubleshooting
 
-### DevOps Knowledge & Toolchains
+### DevOps & Platform Engineering Skills
 
-#### OS and Terminal
-- Linux: Ubuntu, CentOS, RHEL, Alpine
-- Bash scripting, filesystem, process and service management
-- Text processing: grep, awk, sed
-- Networking tools: netstat, dig, netcat
-- Process monitoring: ps, top, lsof
-
-#### Networking, Security & Protocols
-- OSI model, TCP/IP, CIDR, subnetting
-- Email: Postfix, Dovecot, GoDaddy
-- SSL: OpenSSL, Let's Encrypt
-- SSH, VPN, DNS
-
-#### Web servers & API
-- Apache, Tomcat, Nginx
-- API Gateway: Kong, Tyk
+#### Infrastructure & cloud operations
+- AWS platform setup and operations: EKS, Route53, EC2, EFS/EBS, IAM, AWS account governance, networking basics
+- On-prem Kubernetes architecture and operations: cluster setup, dependency planning, service routing, storage, ingress, load balancing
+- Hybrid cloud and connectivity: Site-to-Site VPN, Direct Connect, network troubleshooting, secure private connectivity
+- Virtualization and infrastructure basics: VM sizing, platform planning, capacity discussion with infrastructure teams
 
 #### CI/CD & automation
-- Jenkins, GitLab CI, GitHub Actions
-- Git repositories: GitHub, GitLab, Bitbucket
+- GitLab CI/CD design and optimization
+- GitOps adoption with ArgoCD
+- Helm and Kustomize for delivery automation
+- Container image lifecycle: build, tag, scan, store, deploy
+- Infrastructure as Code mindset using CloudFormation, Helm, and deployment templates
 
 #### Containerization & orchestration
-- Docker, Podman
-- Docker Swarm, Kubernetes
+- Docker, Docker Compose, Docker Swarm, Kubernetes
+- Kubernetes dependencies: ingress controllers, storage provisioners, DNS, service exposure, cluster operations
+- Container registry management: Harbor, JFrog Artifactory, image lifecycle governance
+- Persistent storage patterns: Longhorn CSI, EBS/EFS integration
 
-#### Cloud & infrastructure
-- AWS, Azure, DigitalOcean
-- Cloud-native storage: GlusterFS, MinIO
-- Service proxy: Nginx, HAProxy
+#### Observability, reliability & SRE mindset
+- Monitoring stack: Prometheus, Grafana, Zabbix, PRTG
+- Logging stack: EFK/ELK, centralized log visibility
+- Kubernetes drift tracking and change visibility
+- Incident and service health monitoring
+- Reliability and change management thinking for production operations
 
-#### Monitoring, logging & observability
-- EFK stack
-- Prometheus, Grafana, Metricbeat
+#### Security & compliance
+- DevSecOps integration: Trivy, OWASP ZAP, Burp Suite, Acunetix, Falco
+- Container and application security scanning in CI/CD
+- Access control and internal identity management with Keycloak
+- TLS certificate generation and renewal with Let's Encrypt
+- Platform guardrails and cloud governance awareness
 
-#### Project management
+#### Platform engineering foundations
+- Developer platform enablement and internal service onboarding
+- Internal documentation and knowledge sharing via wiki/portal patterns
+- Standardized engineering workflows and platform service abstraction
+- Self-service patterns, platform usability, and team enablement
+- Change advisory and platform governance practices
+
+#### Tooling & platform stack
+- GitLab, GitHub, Bitbucket, Nexus
 - Jira, Confluence
+- NGINX, Kong, Tyk, HAProxy
+- Apache Tomcat, Nginx web server
+- Docker, Podman, Kubernetes, Helm, ArgoCD, Harbor
+- Prometheus, Grafana, EFK, Zabbix, PRTG
+- AWS, Azure, DigitalOcean
 
 ---
 
@@ -527,49 +542,62 @@ Toolchain & technologies:
 - Platform engineering mindset: self-service, standardization, developer experience
 
 #### 2025/06 – 2025/12
-Role: DevOps Engineer
+Role: DevOps Lead / Core Transformation Tech Lead
 
 Project: Core Transformation Preparation
 
-- Goal: Prepare the target platform and operational model for a major enterprise core transformation initiative.
+- Goal: Prepare the platform foundation for the new insurance core solution from eBaoTech, with a strategic decision to host the new platform on private on-prem infrastructure instead of AWS-managed public cloud.
 - Team size: 4
-- Partner: eBaoTech
+- Partner: eBaoTech, MB
 
 Responsibilities:
-- Collaborated with management and stakeholders to align infrastructure and platform requirements for transformation.
-- Reviewed architecture gaps, dependencies, and platform readiness requirements before transition.
-- Helped define operational patterns for the future-state environment and ensure engineering readiness.
+- Defined the future-state platform architecture and operating model for the new insurance core to fit MB's internal standards and governance.
+- Led platform preparation work to replace the initial AWS-first recommendation with a private on-prem hosting model managed by MB.
+- Evaluated and aligned the architecture against enterprise constraints such as security, governance, cost control, network isolation, and operational ownership.
+- Worked closely with eBaoTech as the solution provider to understand the application and deployment requirements of the new core platform.
+- Assessed gaps between the vendor-suggested cloud pattern and MB's desired operating model, then designed the equivalent on-prem platform foundation.
+- Prepared infrastructure and delivery patterns for feature development, release workflows, and container-based application hosting.
+- Built the platform readiness plan for new team onboarding, support model, and release process for the transformation phase.
 
 Toolchain & technologies:
-- Cloud: AWS
-- Orchestration: Kubernetes
-- Platform focus: transformation readiness, dependency mapping, service modernization support
+- Platform architecture: private on-prem Kubernetes, AWS-aligned design adaptation
+- Container registry: JFrog Artifactory (initial preparation phase), later migrated to Harbor for full self-management
+- Kubernetes storage: Longhorn CSI
+- Load balancing: NGINX as on-prem load balancer replacing AWS ELB pattern
+- Network integration: Site-to-Site VPN connectivity to eBaoTech for feature development and image delivery
+- CI/CD and delivery: Git-based build pipelines, image publishing to Harbor, deployment to on-prem Kubernetes
+- Cloud-to-on-prem adaptation: AWS design principles translated into MB private infrastructure
+- Platform focus: dependency mapping, service modernization support, transformation readiness
 
 #### 2026/01 – 2026/05
-Role: DevOps Engineer / Cloud Platform Engineer
+Role: DevOps Lead / Core Transformation Tech Lead
 
 Project: Core Transformation
 
-- Goal: Support enterprise-wide core transformation through platform enablement, cloud operations, and transformation-ready engineering practices.
-- Team size: 1
-- Partner: AWS
+- Goal: Deliver the operational platform foundation for the new insurance core on MB-managed private infrastructure, enabling eBaoTech-driven development and deployment while maintaining enterprise governance, stable network connectivity, and production-ready Kubernetes operations.
+- Team size: 4
+- Partner: eBaoTech, MB
 
 Responsibilities:
-- Supported transformation activities by enabling the target platform architecture and operational baseline.
-- Worked closely with cloud and platform teams to ensure delivery readiness, environment consistency, and operational continuity.
-- Applied platform engineering principles to reduce friction, improve automation, and strengthen reliability during transformation.
+- Set up the new Site-to-Site VPN connection to eBaoTech for secure feature development and platform integration.
+- Established the on-prem Kubernetes platform and all required dependencies to support the new insurance core workloads.
+- Set up the container registry strategy, replacing JFrog Artifactory with Harbor as the long-term internal registry managed by MB.
+- Built the image delivery flow from eBaoTech to the internal Harbor registry and then to on-prem Kubernetes clusters.
+- Configured NGINX-based on-prem load balancing as the replacement for AWS ELB patterns in the private environment.
+- Implemented Longhorn-based CSI storage for the Kubernetes platform to support persistent workloads and stateful services.
+- Designed and supported the deployment pipeline for application images from Harbor into the new on-prem cluster.
+- Worked with platform, security, and application teams to ensure environment consistency, release readiness, and operational continuity.
+- Applied platform engineering principles to reduce friction, standardize deployment processes, and increase reliability during the core transformation rollout.
 
 Toolchain & technologies:
-- Cloud: AWS
-- Orchestration: Kubernetes
+- Network: Site-to-Site VPN to eBaoTech
+- Kubernetes platform: Kubernetes on-prem, cluster dependencies, ingress and service routing
+- Container registry: Harbor, JFrog Artifactory (preparation phase)
+- Storage: Longhorn CSI
+- Load balancing: NGINX
+- CI/CD image flow: build from eBaoTech, push Docker images to Harbor, deploy to on-prem Kubernetes
+- Delivery model: private on-prem hosting, AWS-inspired architecture adapted to MB environment
 - Platform engineering: automation, environment consistency, operational resilience, transformation enablement
-
-### Platform engineering mindset across MBAL
-- Built platform services from the ground up instead of only deploying applications.
-- Focused on automation, standardization, guardrails, observability, and self-service capability.
-- Applied GitOps, IaC, Kubernetes, cloud governance, and security-by-default principles.
-- Balanced cost, reliability, compliance, and developer experience for enterprise platforms.
-- Worked across product, security, governance, and infrastructure teams to implement sustainable operating models.
 
 ---
 

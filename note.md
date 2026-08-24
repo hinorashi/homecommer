@@ -1,4 +1,4 @@
-# SRE & DevOps & Platform Engineer
+﻿# SRE & DevOps & Platform Engineer
 
 - **SRE**: **Availability/Reliability**: Đảm bảo hệ thống luôn sẵn sàng và chạy ổn định.
 - **DevOps**: **Velocity** - Tăng tốc độ bàn giao phần mềm.
@@ -6,28 +6,30 @@
 
 ## I. SRE
 
-Tập trung hoàn toàn vào **độ tin cậy**, **hiệu năng** và **tính sẵn sàng** của hệ thống production.
+Tập trung chủ yếu vào **độ tin cậy**, **hiệu năng**, **tính sẵn sàng** và khả năng vận hành bền vững của hệ thống production. SRE cân bằng reliability với tốc độ thay đổi bằng SLO, error budget, capacity planning và automation.
 
 ### 1. PPT
 
 #### People
 
 - **Blameless Culture**: Khi xảy ra sự cố, doanh nghiệp tập trung tìm nguyên nhân hệ thống thay vì quy trách nhiệm cá nhân.
-- **Hybrid Engineers**: SysOps xài dc tool và code dc, 50% thủ công, 50% tự động hóa.
+- **Hybrid Engineers**: (Nôm na là SysOps xài dc tool) Có năng lực cả software engineering và systems engineering để thiết kế, vận hành, và tự động hóa hệ thống. Toil phải dưới 50% để tối thiểu một nửa thời gian dành cho engineering thực hiện cải tiến lâu dài.
 - **Shared Responsibility**: SysOps và Dev cùng tham gia sửa lỗi, cùng chịu trách nhiệm về uptime, cùng tham gia thiết kế hệ thống chịu lỗi.
+- **Service Owner**: Chịu trách nhiệm về SLO, production readiness, reliability backlog và các quyết định trade-off của dịch vụ.
+- **Incident Commander**: Điều phối Sev1/Sev2, phân công vai trò, duy trì timeline và truyền thông; không nhất thiết là người trực tiếp debug.
 
 #### Process
 
 - **Định nghĩa độ tin cậy bằng số liệu**: Mọi dịch vụ phải được đo lường bằng ngôn ngữ của người dùng (_Hệ thống có chạy không? Chạy nhanh không?_).
 - **Quy trình On-call rõ ràng**: Có lịch trực, phân cấp xử lý (Escalation) và quy định thời gian phản hồi sự cố cụ thể. Hướng tới quy trình Incident Response chuẩn mực.
 - **Quản lý Ngân sách lỗi (Error Budget)**: Quy trình đưa ra quyết định dựa trên dữ liệu: Nếu còn ngân sách lỗi -> tiếp tục deploy tính năng mới; nếu hết ngân sách lỗi -> dừng deploy, tập trung sửa lỗi hệ thống.
-- **Diễn tập sự cố (Chaos Engineering)**: Doanh nghiệp chủ động tổ chức các buổi diễn tập phá hoại hệ thống (GameDay) trên môi trường thử nghiệm hoặc chạy thử các kịch bản sập nguồn để kiểm tra độ bền bỉ của hệ thống.
+- **Diễn tập sự cố (Chaos Engineering)**: Doanh nghiệp chủ động tổ chức các buổi diễn tập phá hoại hệ thống (GameDay) trên môi trường thử nghiệm hoặc chạy thử các kịch bản sập nguồn để kiểm tra độ bền bỉ của hệ thống. Một DR exercise hoặc chaos experiment cần có hypothesis, blast radius, success criteria, rollback plan và action items. Không áp dụng chaos engineering máy móc cho mọi service.
 
 #### Technology
 
-- **Hệ thống Quan sát toàn diện (Observability)**: Công cụ thu thập đủ 3 trụ cột: Metrics (Chỉ số), Logs (Nhật ký), và Traces (Dấu vết luồng dữ liệu).
+- **Hệ thống Quan sát toàn diện (Observability)**: Công cụ thu thập đủ 3 trụ cột: Metrics (Chỉ số), Logs (Nhật ký), và Traces (Dấu vết luồng dữ liệu), và dashboard theo four golden signals: latency, traffic, errors, saturation.
 - **Hệ thống Cảnh báo chủ động (Alerting)**: Công cụ tự động phân loại cảnh báo. Chỉ gửi cảnh báo đến kỹ sư trực khi sự cố đó thực sự ảnh hưởng đến trải nghiệm khách hàng (*đã hoặc sắp vi phạm SLO*). Cần tránh tình trạng kỹ sư bị "ngập" trong các cảnh báo rác (_Alert Fatigue - cảnh báo lặp đi lặp lại nhưng không cần hành động ngay_).
-- **Tự động hóa vận hành**: Các công cụ tự động phát hiện, tự động mở rộng (Auto-scaling) hoặc tự phục hồi (Self-healing) khi có sự cố nhỏ.
+- **Tự động hóa vận hành (có guardrail)**: Các công cụ tự động phát hiện, tự động mở rộng (Auto-scaling) hoặc tự phục hồi (Self-healing) khi có sự cố nhỏ. Tuy nhiên chỉ áp dụng cho tình huống lặp lại, xác định được và an toàn, yêu cầu có logging, giới hạn tác động và cơ chế rollback.
 
 ### 2. Checklist
 
@@ -76,7 +78,7 @@ Các ngưỡng bên dưới là điểm bắt đầu; cần hiệu chỉnh theo 
 
 ### 3. Công cụ cốt lõi
 
-Mục tiêu của SRE là thu thập mọi dữ liệu từ hệ thống, đưa ra cảnh báo chính xác để đảm bảo thời gian hoạt động (Uptime) cao nhất và tự động hóa việc cứu hộ (_bôi đậm là recommended_):
+Mục tiêu của SRE là thu thập mọi dữ liệu từ hệ thống (_hoặc chỉ cần đủ để đo đc SLO, capacity planning_), đưa ra cảnh báo chính xác để đảm bảo thời gian hoạt động (Uptime) cao nhất (_theo SLA/kỳ vọng của khách hàng_) và tự động hóa việc cứu hộ (_bôi đậm là recommended_):
  
 - **Thu thập Metrics & Giám sát**: **Prometheus**, Datadog, VictoriaMetrics.
 - **Quản lý Nhật ký (Logs)**: **EFK Stack** (Elasticsearch, Fluentd, Kibana), Grafana Loki.

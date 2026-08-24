@@ -258,20 +258,23 @@ Kết hợp giữa Phát triển (Development) và Vận hành (Operations) nh�
 #### People
 
 - **Văn hóa cộng tác (Collaboration)**: Phá bỏ tư duy "silo" (thân ai nấy lo). Dev và Ops cùng chia sẻ mục tiêu chung là sự thành công của sản phẩm, thay vì Dev chỉ muốn đẩy tính năng mới còn Ops chỉ muốn giữ hệ thống đứng yên để ổn định.
-- **Tư duy sở hữu chung (Shared Ownership)**: Lập trình viên chịu trách nhiệm cho mã nguồn của mình ngay cả khi nó đã chạy trên Production. Áp dụng triệt để tư duy "Bạn viết ra nó, bạn vận hành nó" (You build it, you run it).
-- **Học hỏi liên tục (Continuous Learning)**: Khuyến khích thử nghiệm, chấp nhận thất bại sớm (Fail fast, learn faster) để cải tiến liên tục quy trình triển khai.
+- **Tư duy sở hữu chung (Shared Ownership)**: Team sản phẩm chịu trách nhiệm cho code của mình ngay cả khi đã chạy trên production. Tuy nhiên SRE, Platform và Security cung cấp paved road, guardrail, tooling và chuyên môn; không áp dụng máy móc tư duy "You build it, you run it" của AWS 2006.
+- **Team autonomy trong guardrail**: Team có quyền deploy on-demand, rollback/forward-fix, xem telemetry và cải tiến bottleneck delivery của service mình trong phạm vi policy đã thỏa thuận.
+- **Học hỏi liên tục dựa trên dữ liệu (Continuous Learning)**: Cải tiến từ feedback CI/CD, production telemetry, incident, DORA metrics và retrospective. Thử nghiệm nhỏ, có guardrail; không coi lỗi production là điều đương nhiên để "fail fast, learn faster".
 
 #### Process
 
 - **Chuyển dịch về bên trái (Shift-Left)**: Đưa các yếu tố như kiểm thử (Testing), bảo mật (Security) và kiểm tra cấu hình vào ngay từ những giai đoạn đầu tiên của quá trình viết code, thay vì đợi đến cuối quy trình.
 - **Chia nhỏ gói phát hành (Small Releases)**: Thay vì gom tính năng thành các bản cập nhật lớn vài tháng một lần, quy trình DevOps chia nhỏ các tính năng để release hàng ngày hoặc hàng tuần, giảm thiểu rủi ro lỗi diện rộng.
-- **Phản hồi nhanh (Feedback Loops)**: Thiết lập các kênh phản hồi tự động từ hệ thống giám sát quay ngược lại cho đội ngũ phát triển ngay khi có lỗi xảy ra ở bất kỳ công đoạn nào.
+- **Progressive delivery theo rủi ro**: Đối với các thay đổi có rủi ro cao, dùng feature flag, canary, blue-green hoặc chiến lược tương đương, với tiêu chí promote/rollback dựa trên SLO và telemetry.
+- **Phản hồi nhanh (Feedback Loops)**: Thiết lập các kênh phản hồi tự động từ hệ thống giám sát quay ngược lại cho đội ngũ phát triển ngay khi có lỗi xảy ra ở bất kỳ công đoạn nào. Thông tin trong feedback cần đầy đủ thông tin hoặc có sẵn liên kết commit/PR -> pipeline -> deployment -> telemetry/incident để các team có thể hành động ngay.
 
 #### Technology
 
-- **Tự động hóa tối đa (Automation)**: Loại bỏ hầu hết các thao tác thủ công từ build, test, đóng gói cho đến triển khai.
-- **Hạ tầng dạng mã (Infrastructure as Code - IaC)**: Toàn bộ tài nguyên mạng, server, database phải được định nghĩa bằng mã nguồn và quản lý phiên bản qua Git.
-- **Tính đồng nhất môi trường**: Đảm bảo môi trường Local (máy của Dev), Staging (thử nghiệm) và Production (chạy thật) phải giống hệt nhau về mặt cấu hình nhờ công nghệ Container.
+- **Tự động hóa tối đa có kiểm soát (Automation with Control)**: Loại bỏ hầu hết các thao tác thủ công từ build, test, đóng gói cho đến triển khai, tuy nhiên cần được versioned, reviewable và reproducible, nhất là trên môi trường production. Các manual/break-glass action phải có audit log.
+- **Hạ tầng dạng mã (Infrastructure as Code - IaC)**: Toàn bộ tài nguyên mạng, server, database phải được định nghĩa bằng mã nguồn và quản lý phiên bản qua Git, có plan/dry-run, drift detection và rollback/forward strategy.
+- **Nhất quán môi trường có chủ đích**: Local, staging và production dùng cùng artifact, configuration contract, dependency interface và cách thức provision. Không bắt buộc giống hệt quy mô, dữ liệu, topology hay security boundary của production.
+- **Observability cho release**: Gắn deployment marker/version vào metrics, logs, traces và dashboard để liên hệ thay đổi với SLO, incident và quyết định rollback.
 
 ### 2. Checklist
 
@@ -315,7 +318,7 @@ Không đặt một ngưỡng DORA giống nhau cho mọi team. DORA khuyến ng
 - **Flaky-test rate** = test fail nhưng pass khi chạy lại không đổi code / tổng lần chạy test.
 - Dashboard tối thiểu phải drill-down được từ metric -> deployment -> commit/PR -> pipeline -> incident hoặc rollback liên quan.
 
-#### Nguyên tắc áp dụng và nguồn
+#### Nguyên tắc áp dụng và nguồn thông tin
 
 - **Đo outcome theo service, không dùng DORA để xếp hạng con người/team**: DORA hiện dùng 5 metrics gồm change lead time, deployment frequency, failed deployment recovery time, change fail rate và deployment rework rate. Metrics được dùng để nhìn xu hướng cải tiến ở cấp ứng dụng/dịch vụ; so sánh các hệ thống khác bối cảnh có thể gây hiểu sai. [DORA - Software delivery performance metrics](https://dora.dev/guides/dora-metrics-four-keys/)
 - **Continuous delivery là phát hành on-demand, an toàn và bền vững**: không đồng nghĩa chỉ tăng tần suất deploy. Cần kết hợp test automation, deployment automation, trunk-based development, security, observability và thay đổi kiến trúc/quy trình khi có bottleneck. [DORA - Continuous delivery](https://dora.dev/capabilities/continuous-delivery/)
@@ -550,3 +553,31 @@ Bảng so sánh 1 số Identity Provider (IdP) phổ biến, ưu tiên **Authent
 - Nếu bạn chỉ cần cơ chế **Forward Auth** (ủy quyền xác thực hoàn toàn cho một con Auth proxy khác như Authentik, Authelia) và muốn tự động cấu hình SSL nhanh: Chọn **Traefik**.
 
 🎯 Chọn **Traefik** kết hợp với **Authentik** là một giải pháp cân bằng giữa **tính năng, hiệu năng và chi phí** cho doanh nghiệp vừa và nhỏ.
+
+### Nguyên tắc "You build it, you run it"
+
+**"You build it, you run it"** là nguyên tắc cốt lõi trong văn hóa DevOps, do Werner Vogels (CTO Amazon) đưa ra năm 2006. Nguyên tắc này yêu cầu nhóm phát triển phần mềm phải **tự vận hành, theo dõi, trực sự cố và bảo trì dịch vụ** do chính họ tạo ra trong suốt vòng đời sản phẩm.
+
+Lợi ích và Thách thức:
+- **Nâng cao chất lượng**: Lập trình viên viết code cẩn thận hơn khi biết chính họ phải xử lý lỗi phát sinh lúc nửa đêm.
+- **Xóa bỏ rào cản**: Không còn tình trạng bàn giao (handoff) căng thẳng giữa nhóm phát triển (Dev) và nhóm vận hành (Ops).
+- **Gánh nặng nhận thức**: Gây áp lực lớn (cognitive load) cho nhân sự nếu hạ tầng quá phức tạp và thiếu công cụ tự động hóa hỗ trợ.
+
+Yếu tố để triển khai thành công:
+- **Thiết kế hệ thống**: Tối ưu hóa tính quan sát (observability), ghi log và giám sát tốt.
+- **Tự động hóa**: Dùng CI/CD và nền tảng nội bộ để giảm bớt thao tác thủ công cho người phát triển.
+- **Trách nhiệm chung**: Chia sẻ lịch trực sự cố đều đặn trong toàn bộ thành viên của nhóm.
+
+### Nguyên tắc "Fail fast, learn faster"
+
+**"Fail fast, learn faster"** in DevOps means catching errors early through automation and small experiments, treating mistakes as safe lessons, and fixing processes instantly to build better software without fear.
+
+Ý nghĩa cốt lõi:
+- **Fail fast (Thất bại nhanh)**: Phát hiện lỗi hoặc sự cố ngay từ khâu viết mã, kiểm thử tự động (CI/CD) thay vì để lỗi lọt xuống các bước sau hoặc đến tay người dùng.
+- **Learn faster (Học hỏi nhanh hơn)**: Phân tích nguyên nhân gốc rễ (root cause) ngay sau khi sự cố xảy ra để vá lỗi và cập nhật quy trình, không lặp lại sai lầm cũ.
+
+Core Practices:
+- **Automate tests**: Use CI/CD pipelines to run unit and integration tests so bad code blocks before reaching production.
+- **Shift left**: Move security and quality checks to the start of development.
+- **Small changes**: Release tiny updates so when something breaks, the blast radius stays small.
+- **Fast feedback**: Use continuous monitoring to spot performance drops or bugs within minutes.

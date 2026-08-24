@@ -78,22 +78,39 @@ Các ngưỡng bên dưới là điểm bắt đầu; cần hiệu chỉnh theo 
 
 ### 3. Công cụ cốt lõi
 
-Mục tiêu của SRE là thu thập mọi dữ liệu từ hệ thống (_hoặc chỉ cần đủ để đo đc SLO, capacity planning_), đưa ra cảnh báo chính xác để đảm bảo thời gian hoạt động (Uptime) cao nhất (_theo SLA/kỳ vọng của khách hàng_) và tự động hóa việc cứu hộ (_bôi đậm là recommended_):
- 
+Mục tiêu của SRE là thu thập mọi dữ liệu từ hệ thống (_hoặc chỉ cần đủ để đo đc SLO, capacity planning_), đưa ra cảnh báo chính xác để đảm bảo thời gian hoạt động (Uptime) cao nhất (_theo SLA/kỳ vọng của khách hàng_) và tự động hóa việc cứu hộ.
+
+#### Nguyên tắc chọn tool
+
+Tham khảo các nguyên tắc sau:
+- Chọn theo **capability**, không theo số lượng sản phẩm hoặc tên vendor.
+- Mỗi capability chỉ có một **primary standard**; không triển khai hai logging stack hay hai on-call platform mặc định.
+- SSO chỉ giải quyết **Authentication (AuthN)**. Mọi tool vẫn cần **Authorization (AuthZ)**, group-to-role mapping, audit log, service account và break-glass access.
+
+Sơ lược các tool phổ biến (_bôi đậm là recommended_):
 - **Thu thập Metrics & Giám sát**: **Prometheus**, Datadog, VictoriaMetrics.
 - **Quản lý Nhật ký (Logs)**: **EFK Stack** (Elasticsearch, Fluentd, Kibana), Grafana Loki.
-- **Truy vết luồng dữ liệu (Tracing)**: **Jaeger**, **OpenTelemetry** (tiêu chuẩn chung để thu thập dữ liệu).
+- **Truy vết luồng dữ liệu (Tracing)**: **Jaeger**.
+- **Thu thập dữ liệu**: **OpenTelemetry Collector**.
 - **Hiển thị dữ liệu (Dashboard)**: **Grafana**, Kibana.
 - **Định tuyến cảnh báo & Trực luân phiên (On-call)**: PagerDuty, Opsgenie, Better Stack, Grafana On-call, **OneUptime**.
 - **Error Budget & SLO Management**: Sloth.
 - **Tự động hóa vận hành (Self-healing)**: **Ansible**, OpenTofu, Rundeck, Semaphore, Rundeck.
 - **Diễn tập phá hoại (Chaos Engineering)**: Gremlin, **Chaos Mesh**, **Chaos Monkey**.
 
-**Technology Catalog**, kèm đánh giá chi tiết khả năng tích hợp SSO với **Authentik** làm IdP cho từng công cụ:
+#### Technology Catalog
+
+Baseline cho toolchain:
+- **Telemetry**: OpenTelemetry Collector + Prometheus + một backend logs + Jaeger/Tempo + Grafana.
+- **SLO**: Sloth trong GitOps, dashboard SLO/error budget trên Grafana, alert multiwindow multi-burn-rate qua Alertmanager/on-call platform.
+- **Access**: Authentik hoặc Keycloak là IdP trung tâm; dùng OIDC native khi tool hỗ trợ, reverse proxy/forward-auth cho UI chỉ hỗ trợ proxy; phân quyền và audit cấu hình trong từng tool/Kubernetes.
+- **Automation**: Rundeck cho runbook có kiểm soát; Ansible cho configuration; OpenTofu/Terraform cho provisioning. Không cho phép automation có quyền rộng mà thiếu approval, log hoặc rollback.
+
+Dưới đây là **danh mục công nghệ**, kèm đánh giá chi tiết khả năng tích hợp SSO với **Authentik** làm IdP cho từng công cụ:
 
 | STT | Phân nhóm công nghệ (Domain) | Công cụ (Tools) | Giao thức hỗ trợ Authentik | Cơ chế tích hợp & Đánh giá với Authentik/Traefik |
 | :--- | :--- | :--- | :--- | :--- |
-| **1** | **Thu thập Metrics & Giám sát** | **Prometheus** | Không hỗ trợ trực tiếp (Dùng Gateway) | **Bảo vệ qua Traefik.** Bản thân Prometheus không có Auth. Sử dụng **Traefik Forward Auth Middleware** kết nối với Authentik làm chốt chặn xác thực trước khi cho phép vào UI. |
+| **1** | **Thu thập Metrics & Giám sát** | **Prometheus** | Không hỗ trợ trực tiếp (Dùng Gateway) | **Bảo vệ qua Traefik.** Bản thân Prometheus chỉ hỗ trợ TLS và Basic Auth. Sử dụng **Traefik Forward Auth Middleware** kết nối với Authentik làm chốt chặn xác thực trước khi cho phép vào UI. Kết hợp thêm Thanos để lưu trữ long-term |
 | **2** | **Quản lý Nhật ký (Logs)** | **EFK Stack** *(Elasticsearch, Fluentd, Kibana)* | **OIDC / SAML** | **Dễ (Dùng OpenSearch) - Khó (Dùng Elastic thuần).** Kibana hỗ trợ OIDC với Authentik. Khuyến khích dùng nhánh mã nguồn mở **OpenSearch/OpenSearch Dashboards** để tích hợp OIDC hoàn toàn miễn phí. Fluentd chạy ngầm không cần UI. |
 | **3** | **Dấu vết luồng dữ liệu (Tracing)** | **Jaeger** | Không hỗ trợ trực tiếp (Dùng Gateway) | **Bảo vệ qua Traefik.** Jaeger UI không có bộ máy xác thực riêng. Tương tự Prometheus, Jaeger UI được bọc an toàn phía sau **Traefik + Authentik Forward Auth**. |
 | | | **OpenTelemetry (Collector)** | Không áp dụng (No UI) | **Không cần thiết.** Hoạt động hoàn toàn ở backend để thu thập và phân phối dữ liệu (Data ingestion), không có giao diện người dùng nên không cần SSO. |
@@ -107,23 +124,13 @@ Mục tiêu của SRE là thu thập mọi dữ liệu từ hệ thống (_hoặ
 | **8** | **Diễn tập phá hoại (Chaos Engineering)**| **Chaos Mesh** | Không hỗ trợ trực tiếp (Dùng Gateway) | **Bảo vệ qua Traefik.** Do Chaos Mesh Dashboard sử dụng cơ chế Token của K8s, cách tối ưu và đồng bộ nhất là bọc trang quản trị này sau lớp **Traefik Forward Auth Middleware** của Authentik. |
 | | | **Litmus (Chaos)** | **OAuth2 / OIDC** | **Dễ.** Từ phiên bản 2.0+ trở đi, kiến trúc Litmus Portal hỗ trợ cấu hình native OAuth2 để kết nối trực tiếp với hệ thống Authentik Provider trong phần Authentication. |
 
-Phụ bản Technology Catalog, đi kèm đánh giá chi tiết khả năng tích hợp SSO với **Keycloak** cho từng công cụ:
+#### Verification trước khi production
 
-| STT   | Phân nhóm công nghệ (Domain) | Công cụ (Tools) | Giao thức hỗ trợ Keycloak | Mức độ phức tạp & Đánh giá tích hợp Keycloak |
-| :--- | :--- | :--- | :--- | :--- |
-| **1** | **Thu thập Metrics & Giám sát** | **Prometheus** | Không hỗ trợ trực tiếp (Cần Proxy) | **Trung bình.** Không có sẵn cơ chế Auth. Cần bọc sau **OAuth2 Proxy** hoặc API Gateway/Ingress có Forward Auth để xác thực qua Keycloak trước khi vào UI. |
-| **2** | **Quản lý Nhật ký (Logs)** | **EFK Stack** *(Elasticsearch, Fluentd, Kibana)* | **OIDC / SAML** | **Dễ đến Khó.** Kibana/Elasticsearch hỗ trợ native OIDC với Keycloak, nhưng yêu cầu bản thương mại (License) hoặc phải chuyển sang nhánh mã nguồn mở **OpenSearch**/**OpenSearch Dashboards**. |
-| **3** | **Truy vết luồng dữ liệu (Tracing)** | **Jaeger** | Không hỗ trợ trực tiếp (Cần Proxy) | **Trung bình.** Jaeger UI không có bộ máy xác thực riêng. Giải pháp tốt nhất là đặt Jaeger UI phía sau một **OAuth2 Proxy** kết nối Keycloak. |
-| | | **OpenTelemetry (Collector)** | Không áp dụng (No UI) | |
-| **4** | **Hiển thị dữ liệu (Dashboard)** | **Grafana** | **OAuth2 / OIDC** | **Rất dễ.** Tích hợp sẵn Generic OAuth. Cấu hình nhanh qua file `grafana.ini`. Hỗ trợ tự động map Group/Role từ Keycloak sang Admin/Editor/Viewer. |
-| | | **Kibana** | OIDC / SAML | *(Giống phần ELK Stack ở trên)*. |
-| | | **Jaeger UI** | Không hỗ trợ trực tiếp | *(Giống phần Jaeger ở trên)*. |
-| **5** | **Định tuyến cảnh báo & On-call** | **OneUptime** | **OIDC / SAML** | **Dễ.** Nền tảng All-in-one hiện đại, hỗ trợ cấu hình SSO trực tiếp trong phần Enterprise Settings để kỹ sư On-call đăng nhập tập trung. |
-| **6** | **Quản lý Ngân sách lỗi (Error Budget)** | **Sloth** | Không áp dụng (No UI) | **Không cần thiết.** Định nghĩa SLO dưới dạng mã (SLO-as-Code) qua file YAML và chạy ngầm bằng CLI, xem qua Grafana. |
-| **7** | **Tự động hóa vận hành** | **Rundeck** / **PagerDuty Runbook Automation** | **OIDC / SAML** | **Dễ đến Trung bình.** Bản Open Source của Rundeck cần bọc qua OAuth2 Proxy hoặc cấu hình Jaas Header. Bản thương mại hỗ trợ native OIDC/SAML rất mạnh. |
-| | | **Ansible Semaphore** | **OIDC** | **Rất dễ.** Giao diện WebUI gọn nhẹ cho Ansible, hỗ trợ tích hợp sẵn Generic OIDC Provider trong file cấu hình để map với Keycloak. |
-| **8** | **Diễn tập phá hoại (Chaos Engineering)**| **Chaos Mesh** | **OIDC / K8s OIDC** | **Trung bình.** Sử dụng cơ chế Token của Kubernetes. Có thể cấu hình cụm K8s dùng Keycloak làm OIDC Provider để đồng bộ, hoặc dùng OpenID Connect Proxy cho Chaos Mesh Dashboard. |
-| | | **Litmus (Chaos)** | **OAuth2 / OIDC** | **Dễ.** Từ bản 2.0+ trở đi, kiến trúc Litmus Portal đã hỗ trợ tích hợp sẵn giao thức OAuth2 để kết nối trực tiếp với Keycloak trong phần Authentication. |
+- Xác minh edition, version và license hỗ trợ OIDC/SAML, RBAC, audit log, SCIM/provisioning nếu cần.
+- Test OIDC end-to-end: TLS, redirect URI giới hạn, PKCE khi phù hợp, group claim, role mapping, logout và session expiry.
+- Test AuthZ cho user thường, operator, admin, service account và break-glass theo least privilege.
+- Kiểm tra audit trail cho login, thay đổi policy, truy vấn dữ liệu nhạy cảm, chạy automation và chaos experiment.
+- Xác nhận retention, backup/restore, HA, RTO/RPO và chi phí vận hành của dữ liệu telemetry.
 
 ### 4. Kiến trúc đề xuất
 

@@ -31,23 +31,48 @@ Tập trung hoàn toàn vào **độ tin cậy**, **hiệu năng** và **tính s
 
 ### 2. Checklist
 
-#### Nhóm chỉ số đo lường (Metrics & Goals)
+Mỗi tiêu chí chỉ được đánh dấu **Đạt** khi có đủ:
+- số đo đạt ngưỡng
+- owner rõ ràng
+- bằng chứng lưu trữ được
 
-- **Đã xác định SLI (Service Level Indicators)**: Có các chỉ số đo lường cụ thể cho từng dịch vụ quan trọng (_ví dụ: Tỷ lệ request thành công, thời gian phản hồi phản hồi dưới 200ms_).
-- **Đã cam kết SLO (Service Level Objectives)**: Có mục tiêu cụ thể bằng số cho SLI (_ví dụ: Độ khả dụng đạt 99.9% trong tháng_) và được các bên (Dev, SRE, Product) đồng thuận.
-- **Đã áp dụng Error Budget (Ngân sách lỗi)**: Có cơ chế tự động theo dõi lượng ngân sách lỗi còn lại và có chính sách hành động rõ ràng khi hết ngân sách.
+và được review theo chu kỳ.
 
-#### Nhóm quản lý sự cố (Incident Management)
+Các ngưỡng bên dưới là điểm bắt đầu; cần hiệu chỉnh theo service tier, mức độ rủi ro và cam kết với khách hàng.
 
-- **Quy trình On-call minh bạch**: Có lịch trực tự động (qua PagerDuty, Opsgenie, v.v.), kỹ sư trực có toàn quyền xử lý để giảm thiểu thời gian gián đoạn hệ thống (MTTR).
-- **Họp rút kinh nghiệm không đổ lỗi (Blameless Post-mortem)**: 100% các sự cố nghiêm trọng (Severity 1, 2) đều có tài liệu phân tích nguyên nhân gốc rễ (RCA), hành động khắc phục và KHÔNG quy trách nhiệm cá nhân.
-- **Làm sạch Cảnh báo (Alert Fatigue Prevention)**: Không còn tình trạng kỹ sư bị "ngập" trong các cảnh báo rác (_cảnh báo lặp đi lặp lại nhưng không cần hành động ngay_).
+| Nhóm | Tiêu chí đo được | Ngưỡng Đạt đề xuất | Bằng chứng bắt buộc | Owner / chu kỳ review |
+| :--- | :--- | :--- | :--- | :--- |
+| SLO | **Coverage SLI/SLO** cho dịch vụ Tier 0/1 | 100% service có 1-3 SLI hướng người dùng, SLO, cửa sổ đo và truy vấn đo lường đã được Product, Dev, SRE phê duyệt | SLO spec-as-code; dashboard; link query; danh sách service catalog | Service Owner / hàng quý và khi thay đổi kiến trúc |
+| SLO | **SLO compliance** | Tỷ lệ kỳ đo đạt SLO >= 95%; mọi breach có ticket hoặc postmortem theo ngưỡng severity | Báo cáo SLO theo tháng; ticket/postmortem liên kết | Service Owner + SRE / hàng tháng |
+| Error budget | **Error budget policy** | 100% Tier 0/1 hiển thị budget còn lại; policy quy định rõ: budget khỏe, cảnh báo, cạn budget; cạn budget phải hạn chế thay đổi rủi ro và ưu tiên reliability work | Dashboard burn rate; policy versioned; quyết định release có dấu vết | Product + Engineering + SRE / hàng tuần |
+| Alerting | **Page quality** | 100% paging alert có runbook, service owner, severity, escalation; trang pager chỉ dành cho sự kiện khẩn cấp và actionable | Alert inventory; runbook link; cấu hình routing/escalation | SRE / hàng tháng |
+| Alerting | **Alert-to-incident ratio** | Mục tiêu <= 1.5 page cho 1 incident; alert lặp hoặc không actionable phải có ticket loại bỏ/tự động hóa | Báo cáo page, grouped incident, backlog alert hygiene | SRE / hàng tháng |
+| Alerting | **Burn-rate protection** | Tier 0/1 dùng multiwindow multi-burn-rate hoặc chiến lược tương đương; có phân tách page và ticket | Alert rules-as-code; kết quả test alert; dashboard budget | SRE / hàng quý hoặc sau SLO thay đổi |
+| Incident | **Incident response** | 100% Sev1/Sev2 có Incident Commander, timeline, kênh giao tiếp, và thời điểm acknowledge/mitigate được ghi nhận | Incident record; log paging/chat; timeline | Incident Commander / sau mỗi sự cố |
+| Incident | **Response objectives** | Ack và mitigation target được định nghĩa theo tier; ví dụ Tier 0: acknowledge <= 5 phút, bắt đầu mitigation <= 15 phút | On-call policy; báo cáo percentile acknowledge/mitigate | SRE Manager / hàng tháng |
+| Learning | **Blameless postmortem** | 100% Sev1/Sev2 có postmortem được review trong <= 3 ngày làm việc; action items có owner, due date và trạng thái | Postmortem repository; review record; action tracker | Service Owner / hàng tháng |
+| Learning | **Action closure** | >= 90% action item quá hạn được xử lý hoặc có exception được phê duyệt; incident lặp phải có phân tích nguyên nhân hệ thống | Action dashboard; exception record; recurrence report | Engineering Manager / hàng quý |
+| On-call | **On-call sustainability** | Mỗi shift có primary/secondary hoặc escalation tương đương; median incident <= 1/shift; không engineer nào on-call quá 25% thời gian trong một quý nếu mô hình staffing cho phép | Lịch trực; báo cáo incidents/shift; workload report | SRE Manager / hàng quý |
+| Toil | **Toil ratio** | Toil trung bình < 50% thời gian SRE trong 2 quý liên tiếp; mọi nguồn toil lớn có backlog automation hoặc kế hoạch loại bỏ | Time survey; toil register; automation backlog | SRE Manager / hàng quý |
+| Resilience | **Recovery automation** | Các lỗi lặp, xác định được và an toàn có runbook automation; tỷ lệ xử lý tự động được đo thay vì chỉ tuyên bố "self-healing" | Runbook-as-code; execution log; automation success rate | SRE + Platform / hàng quý |
+| Resilience | **GameDay / DR exercise** | Tier 0: ít nhất 2 lần/năm; Tier 1: ít nhất 1 lần/năm; mỗi bài diễn tập có hypothesis, success criteria, kết quả và action items | Kịch bản; biên bản; action tracker; RTO/RPO result | Service Owner + SRE / theo lịch tier |
 
-#### Nhóm vận hành & Kỹ thuật (Engineering & Operations)
+#### Công thức và dashboard tối thiểu
 
-- **Kiểm soát Toil (Công việc thủ công, lặp lại)**: Thời gian làm các việc thủ công (_như tạo tài khoản, restart server bằng tay_) của đội SRE chiếm **dưới 50%**. Thời gian còn lại dùng để viết code tự động hóa.
-- **Hạ tầng tự phục hồi (Self-healing)**: Hệ thống có khả năng tự động cách ly lỗi, tự động restart hoặc tăng quy mô tài nguyên khi tải cao mà không cần con người can thiệp.
-- **Diễn tập sự cố (Chaos Engineering)**: Doanh nghiệp chủ động tổ chức các buổi diễn tập phá hoại hệ thống (GameDay) trên môi trường thử nghiệm hoặc chạy thử các kịch bản sập nguồn để kiểm tra độ bền bỉ của hệ thống.
+- **SLO compliance** = số cửa sổ đo đạt SLO / tổng số cửa sổ đo.
+- **Error budget remaining** = $1 - \frac{bad\ events}{allowed\ bad\ events}$.
+- **Alert-to-incident ratio** = tổng page / tổng incident đã nhóm theo nguyên nhân.
+- **Toil ratio** = giờ toil / tổng giờ làm việc của SRE.
+- **Postmortem action closure** = action item hoàn tất đúng hạn / tổng action item đến hạn.
+
+#### Nguyên tắc áp dụng và nguồn
+
+- **SLO trước, alert sau**: Google định nghĩa SLI là thước đo định lượng; SLO phải nêu rõ cách đo và điều kiện áp dụng. Error budget là cơ chế cân bằng reliability với tốc độ release. [Google SRE Book - Service Level Objectives](https://sre.google/sre-book/service-level-objectives/)
+- **Pager chỉ dành cho triệu chứng khẩn cấp, actionable, ảnh hưởng người dùng**: Google khuyến nghị alert có tín hiệu cao, noise thấp; page cần hành động khẩn cấp, không phải chỉ vì "có gì đó bất thường". [Google SRE Book - Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
+- **Burn-rate alerting thay vì alert theo ngưỡng thô**: Google SRE Workbook khuyến nghị multiwindow, multi-burn-rate; các điểm bắt đầu điển hình là page ở 2% budget/1 giờ và 5%/6 giờ, ticket ở 10%/3 ngày, nhưng phải tune theo service. [Google SRE Workbook - Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)
+- **Postmortem là cơ chế học tập, không đổ lỗi**: postmortem cần trigger định nghĩa trước, được review, có action phòng ngừa và chia sẻ kiến thức. [Google SRE Book - Postmortem Culture](https://sre.google/sre-book/postmortem-culture/)
+- **Giảm toil bằng engineering**: Google dùng mục tiêu toil dưới 50% để tối thiểu một nửa thời gian SRE dành cho engineering tạo giá trị lâu dài. [Google SRE Book - Eliminating Toil](https://sre.google/sre-book/eliminating-toil/)
+- **Bảo vệ sức khỏe on-call**: Google đánh giá workload qua tỷ lệ thời gian on-call và số incident mỗi shift; đây là guardrail để tránh overload và burnout. [Google SRE Book - Being On-Call](https://sre.google/sre-book/being-on-call/)
 
 ### 3. Công cụ cốt lõi
 

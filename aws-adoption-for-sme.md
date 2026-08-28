@@ -61,68 +61,69 @@ Ký hiệu: **●** = dùng trong Basic, **◐** = dùng một phần/đơn gi�
 
 ### 4.1 Lớp Infra & Network
 
-| Dịch vụ | Basic | Full-fledged | Ghi chú / khuyến nghị |
-| :--- | :---: | :---: | :--- |
-| Amazon VPC | ● | ● | Nền tảng bắt buộc |
-| Site-to-Site VPN | ● | ◐ (backup path) | Basic: kết nối chính. Full: giữ làm kênh dự phòng cho Direct Connect |
-| AWS Direct Connect | ○ | ● | AWS khuyến nghị cho production traffic ổn định, latency thấp |
-| NAT Gateway | ● (1-2 AZ) | ● (Multi-AZ) | Basic dùng 1-2 để cân bằng chi phí/HA |
-| Transit Gateway | ○ | ● | Cần khi có nhiều VPC/account (Full-fledged multi-account) |
-| Elastic Load Balancing (ALB/NLB) | ● | ● | ALB cho HTTP(S), NLB nếu cần TCP/latency thấp |
-| Amazon Route 53 | ● | ● | DNS + health check, hybrid routing |
-| AWS Global Accelerator | ○ | ○ (tùy chọn) | Chỉ cần khi multi-region/latency toàn cầu là ưu tiên |
+| Dịch vụ | Ý nghĩa / Mô tả | Basic | Full-fledged | Ghi chú / khuyến nghị |
+| :--- | :--- | :---: | :---: | :--- |
+| Amazon VPC | Mạng riêng ảo cách ly, nền tảng cho toàn bộ hạ tầng network trên AWS | ● | ● | Nền tảng bắt buộc |
+| Internet Gateway | Cổng kết nối VPC ra Internet, bắt buộc để expose ứng dụng công khai | ● | ● | Gắn cho ALB internet-facing phục vụ người dùng cuối |
+| Site-to-Site VPN | Kênh mã hóa qua Internet kết nối on-prem với VPC | ● | ◐ (backup path) | Basic: kết nối chính. Full: giữ làm kênh dự phòng cho Direct Connect |
+| AWS Direct Connect | Kết nối mạng riêng, chuyên dụng từ data center lên AWS, băng thông ổn định | ○ | ● | AWS khuyến nghị cho production traffic ổn định, latency thấp |
+| NAT Gateway | Cho phép resource trong subnet private ra Internet (outbound) một chiều | ● (1-2 AZ) | ● (Multi-AZ) | Basic dùng 1-2 để cân bằng chi phí/HA |
+| Transit Gateway | Hub trung tâm kết nối nhiều VPC/mạng on-prem qua một điểm | ○ | ● | Cần khi có nhiều VPC/account (Full-fledged multi-account) |
+| Elastic Load Balancing (ALB/NLB) | Phân phối traffic đến nhiều target, chịu lỗi và scale ngang; ALB là cổng expose ứng dụng ra Internet | ● | ● | ALB cho HTTP(S) internet-facing, NLB nếu cần TCP/latency thấp |
+| Amazon Route 53 | DNS quản lý domain, định tuyến public/hybrid và health check | ● | ● | DNS public cho tên miền expose ra Internet |
+| AWS Global Accelerator | Định tuyến traffic người dùng đến điểm gần nhất qua mạng lõi AWS | ○ | ○ (tùy chọn) | Chỉ cần khi multi-region/latency toàn cầu là ưu tiên |
 
 ### 4.2 Lớp Security
 
-| Dịch vụ | Basic | Full-fledged | Ghi chú / khuyến nghị |
-| :--- | :---: | :---: | :--- |
-| AWS IAM (role, policy least-privilege) | ● | ● | Bắt buộc, nền tảng AuthZ |
-| AWS KMS | ● | ● | Basic: key mặc định; Full: CMK riêng theo domain/service |
-| AWS Certificate Manager | ● | ● | TLS miễn phí cho ALB/CloudFront |
-| AWS Secrets Manager | ● | ● | Thay thế hardcode secret trong config |
-| Amazon GuardDuty | ● | ● | Chi phí thấp, nên bật ngay từ Basic (AWS khuyến nghị baseline) |
-| AWS Security Hub | ○ | ● | Tổng hợp finding từ GuardDuty/Config/Inspector |
-| AWS WAF | ○ | ● | Bảo vệ ALB/CloudFront khỏi OWASP Top 10 |
-| AWS Network Firewall | ○ | ● | Kiểm soát lưu lượng VPC-to-VPC/Internet mức sâu hơn |
-| AWS Shield (Standard/Advanced) | Standard (free) | Standard, cân nhắc Advanced | Shield Advanced chỉ cần khi rủi ro DDoS cao |
-| Amazon Inspector | ○ | ● | Quét lỗ hổng image/EC2 tự động |
-| Amazon Macie | ○ | ○ (tùy chọn) | Chỉ cần khi có dữ liệu nhạy cảm trong S3 |
+| Dịch vụ | Ý nghĩa / Mô tả | Basic | Full-fledged | Ghi chú / khuyến nghị |
+| :--- | :--- | :---: | :---: | :--- |
+| AWS IAM (role, policy least-privilege) | Quản lý danh tính và phân quyền truy cập tài nguyên AWS | ● | ● | Bắt buộc, nền tảng AuthZ |
+| AWS KMS | Tạo và quản lý khóa mã hóa dữ liệu | ● | ● | Basic: key mặc định; Full: CMK riêng theo domain/service |
+| AWS Certificate Manager | Cấp và quản lý chứng chỉ TLS/SSL miễn phí | ● | ● | TLS cho ALB/CloudFront internet-facing |
+| AWS Secrets Manager | Lưu trữ và luân chuyển bí mật (mật khẩu, API key) an toàn | ● | ● | Thay thế hardcode secret trong config |
+| Amazon GuardDuty | Phát hiện mối đe dọa/hành vi bất thường bằng machine learning | ● | ● | Chi phí thấp, nên bật ngay từ Basic (AWS khuyến nghị baseline) |
+| AWS Security Hub | Tổng hợp và ưu tiên hóa cảnh báo bảo mật từ nhiều dịch vụ | ○ | ● | Tổng hợp finding từ GuardDuty/Config/Inspector |
+| AWS WAF | Chặn tấn công tầng ứng dụng web (SQLi, XSS, bot) theo OWASP Top 10 | ◐ (ruleset cơ bản cho ALB internet-facing) | ● | Basic bắt buộc cân nhắc vì ALB expose trực tiếp ra Internet; Full-fledged dùng managed rule group đầy đủ |
+| AWS Network Firewall | Kiểm soát lưu lượng mạng theo rule tập trung ở tầng VPC | ○ | ● | Kiểm soát lưu lượng VPC-to-VPC/Internet mức sâu hơn |
+| AWS Shield (Standard/Advanced) | Bảo vệ chống tấn công DDoS | Standard (free, tự động cho ALB) | Standard, cân nhắc Advanced | Shield Advanced chỉ cần khi rủi ro DDoS cao |
+| Amazon Inspector | Tự động quét lỗ hổng bảo mật trên EC2/container image | ○ | ● | Quét lỗ hổng image/EC2 tự động |
+| Amazon Macie | Phát hiện dữ liệu nhạy cảm (PII) trong S3 | ○ | ○ (tùy chọn) | Chỉ cần khi có dữ liệu nhạy cảm trong S3 |
 
 ### 4.3 Lớp Platform & Governance
 
-| Dịch vụ | Basic | Full-fledged | Ghi chú / khuyến nghị |
-| :--- | :---: | :---: | :--- |
-| AWS Organizations / Control Tower | ○ | ● | Multi-account landing zone — nền tảng governance cấp doanh nghiệp |
-| AWS Service Catalog | ○ | ● | Chuẩn hóa self-service provisioning theo golden path |
-| AWS Config | ◐ (vài rule cơ bản) | ● (rule đầy đủ + conformance pack) | Compliance-as-code |
-| AWS CloudTrail | ● | ● (org trail) | Audit log bắt buộc mọi mức |
-| Amazon CloudWatch (Logs/Metrics/Alarms) | ● | ● | Baseline observability |
-| Amazon Managed Prometheus/Grafana (AMP/AMG) | ○ | ● | Khớp stack Prometheus/Grafana hiện có on-prem, khuyến nghị cộng đồng |
-| AWS Backup | ◐ (RDS/EFS cơ bản) | ● (cross-region) | Chính sách backup/restore tập trung |
-| AWS Budgets / Cost Explorer | ● | ● | Kiểm soát chi phí ngay từ Basic |
-| AWS Systems Manager | ● | ● | Patch, Session Manager (thay SSH/bastion) |
-| Savings Plans for Compute | ◐ (đánh giá sau pilot) | ● | Cam kết 1 năm no-upfront cho EC2/Fargate sau khi tải thực tế ổn định, giảm ~20-30% chi phí compute |
-| AWS Support Plan | Developer/Business | Business/Enterprise | Basic dùng Business tối thiểu để có case bảo mật ưu tiên; Full-fledged nâng theo SLA cần thiết |
-| Amazon QuickSight | ○ | ○ (tùy chọn) | Chỉ cần khi có nhu cầu BI/dashboard kinh doanh riêng ngoài CloudWatch |
+| Dịch vụ | Ý nghĩa / Mô tả | Basic | Full-fledged | Ghi chú / khuyến nghị |
+| :--- | :--- | :---: | :---: | :--- |
+| AWS Organizations / Control Tower | Quản lý nhiều tài khoản AWS theo chuẩn landing zone tập trung | ○ | ● | Multi-account landing zone — nền tảng governance cấp doanh nghiệp |
+| AWS Service Catalog | Chuẩn hóa danh mục sản phẩm hạ tầng cho self-service provisioning | ○ | ● | Chuẩn hóa self-service provisioning theo golden path |
+| AWS Config | Ghi nhận và đánh giá compliance cấu hình tài nguyên theo thời gian | ◐ (vài rule cơ bản) | ● (rule đầy đủ + conformance pack) | Compliance-as-code |
+| AWS CloudTrail | Ghi log mọi lệnh gọi API để audit và điều tra sự cố | ● | ● (org trail) | Audit log bắt buộc mọi mức |
+| Amazon CloudWatch (Logs/Metrics/Alarms) | Thu thập log/metric, dựng dashboard và cảnh báo | ● | ● | Baseline observability |
+| Amazon Managed Prometheus/Grafana (AMP/AMG) | Prometheus/Grafana được AWS vận hành, không cần tự quản lý hạ tầng | ○ | ● | Khớp stack Prometheus/Grafana hiện có on-prem, khuyến nghị cộng đồng |
+| AWS Backup | Tự động hóa chính sách sao lưu/khôi phục tập trung | ◐ (RDS/EFS cơ bản) | ● (cross-region) | Chính sách backup/restore tập trung |
+| AWS Budgets / Cost Explorer | Theo dõi, cảnh báo và phân tích chi phí sử dụng | ● | ● | Kiểm soát chi phí ngay từ Basic |
+| AWS Systems Manager | Quản lý vá lỗi, truy cập từ xa an toàn không cần SSH/bastion | ● | ● | Patch, Session Manager (thay SSH/bastion) |
+| Savings Plans for Compute | Cam kết mức sử dụng để đổi lấy giá compute thấp hơn | ◐ (đánh giá sau pilot) | ● | Cam kết 1 năm no-upfront cho EC2/Fargate sau khi tải thực tế ổn định, giảm ~20-30% chi phí compute |
+| AWS Support Plan | Gói hỗ trợ kỹ thuật từ AWS theo SLA cam kết | Developer/Business | Business/Enterprise | Basic dùng Business tối thiểu để có case bảo mật ưu tiên; Full-fledged nâng theo SLA cần thiết |
+| Amazon QuickSight | Dựng dashboard phân tích dữ liệu kinh doanh (BI) | ○ | ○ (tùy chọn) | Chỉ cần khi có nhu cầu BI/dashboard kinh doanh riêng ngoài CloudWatch |
 
 ### 4.4 Lớp Application
 
-| Dịch vụ | Basic | Full-fledged | Ghi chú / khuyến nghị |
-| :--- | :---: | :---: | :--- |
-| Amazon EKS | ● | ● | Khớp kinh nghiệm K8s on-prem hiện có, dễ vận hành song song |
-| Amazon ECR | ● | ● | Container registry, tích hợp scan image |
-| Amazon EC2 (worker node) | ● | ● | Cân nhắc Graviton (m6g/m7g) để tối ưu chi phí |
-| AWS Fargate | ◐ (tùy chọn) | ◐ (workload phù hợp) | Giảm vận hành node cho service ít traffic/burst |
-| Amazon RDS | ● (dùng cho DB riêng từng microservice, xem 4.5) | ● (Multi-AZ, tách nhóm theo domain) | DB core vẫn ở on-prem; RDS chỉ phục vụ dữ liệu riêng của microservice trên AWS |
-| Amazon ElastiCache | ○ | ● | Cache/session tier khi mở rộng |
-| Amazon S3 | ● | ● | Static asset, backup, log archive |
-| Amazon EFS | ◐ | ● | Shared storage cho workload cần ReadWriteMany |
-| Application Load Balancer + Ingress (ALB Controller/NGINX) | ● | ● | Ingress cho EKS |
-| Amazon API Gateway | ◐ (tùy chọn, cho API expose ra đối tác) | ● | Quản lý API tập trung khi số microservice public API tăng |
-| Amazon MSK (Managed Kafka) | ○ | ● | Event streaming giữa các microservice khi kiến trúc event-driven trưởng thành hơn |
-| AWS Transfer Family | ○ | ◐ (tùy chọn) | Chỉ cần khi có tích hợp SFTP/FTPS với đối tác |
-| Amazon SES | ◐ (tùy chọn, chi phí thấp) | ● | Gửi email giao dịch/thông báo hệ thống |
-| Amazon CloudFront | ○ | ○ (tùy chọn) | Khi cần CDN cho static asset/API cache toàn cầu |
+| Dịch vụ | Ý nghĩa / Mô tả | Basic | Full-fledged | Ghi chú / khuyến nghị |
+| :--- | :--- | :---: | :---: | :--- |
+| Amazon EKS | Kubernetes được AWS quản lý, giảm gánh nặng vận hành control plane | ● | ● | Khớp kinh nghiệm K8s on-prem hiện có, dễ vận hành song song |
+| Amazon ECR | Kho lưu trữ container image riêng tư, tích hợp quét lỗ hổng | ● | ● | Container registry, tích hợp scan image |
+| Amazon EC2 (worker node) | Máy chủ ảo, đơn vị compute nền tảng cho worker node EKS | ● | ● | Cân nhắc Graviton (m6g/m7g) để tối ưu chi phí |
+| AWS Fargate | Chạy container serverless, không cần quản lý node | ◐ (tùy chọn) | ◐ (workload phù hợp) | Giảm vận hành node cho service ít traffic/burst |
+| Amazon RDS | Cơ sở dữ liệu quan hệ được quản lý (backup, patch, failover tự động) | ● (dùng cho DB riêng từng microservice, xem 4.5) | ● (Multi-AZ, tách nhóm theo domain) | DB core vẫn ở on-prem; RDS chỉ phục vụ dữ liệu riêng của microservice trên AWS |
+| Amazon ElastiCache | Cache in-memory tăng tốc truy vấn, giảm tải cho RDS | ○ | ● | Cache/session tier khi mở rộng |
+| Amazon S3 | Lưu trữ object bền vững, chi phí thấp | ● | ● | Static asset, backup, log archive |
+| Amazon EFS | Hệ thống file dùng chung, mount đồng thời nhiều instance/pod | ◐ | ● | Shared storage cho workload cần ReadWriteMany |
+| Application Load Balancer + Ingress (ALB Controller/NGINX) | Định tuyến HTTP(S) vào cluster EKS; là cổng chính expose ứng dụng ra Internet | ● | ● | Cấu hình internet-facing, kết hợp Internet Gateway + WAF (xem 4.1/4.2) |
+| Amazon API Gateway | Cổng vào tập trung cho REST/WebSocket API, tích hợp auth/throttling | ◐ (tùy chọn, cho API expose ra đối tác) | ● | Quản lý API tập trung khi số microservice public API tăng |
+| Amazon MSK (Managed Kafka) | Nền tảng Kafka quản lý cho streaming dữ liệu thời gian thực | ○ | ● | Event streaming giữa các microservice khi kiến trúc event-driven trưởng thành hơn |
+| AWS Transfer Family | Truyền file SFTP/FTPS an toàn, tích hợp thẳng với S3 | ○ | ◐ (tùy chọn) | Chỉ cần khi có tích hợp SFTP/FTPS với đối tác |
+| Amazon SES | Gửi email giao dịch/thông báo số lượng lớn | ◐ (tùy chọn, chi phí thấp) | ● | Gửi email giao dịch/thông báo hệ thống |
+| Amazon CloudFront | CDN phân phối nội dung tĩnh/động gần người dùng, kèm Shield tự động | ○ | ○ (tùy chọn) | Khi cần CDN + bảo vệ biên cho ứng dụng expose ra Internet |
 
 ### 4.5 Chiến Lược Database Cho Microservice (RDS)
 
@@ -146,7 +147,13 @@ Ký hiệu: **●** = dùng trong Basic, **◐** = dùng một phần/đơn gi�
 ### 5.1 Kiến trúc tổng thể hybrid (Basic)
 
 ```mermaid
+---
+config:
+  layout: dagre
+---
 flowchart LR
+  Internet(["Internet / End Users"])
+
   subgraph OnPrem ["On-Premise (hiện hữu)"]
     direction TB
     OP_K8s[Kubernetes Cluster\n~8-12 node]
@@ -161,14 +168,16 @@ flowchart LR
   subgraph AWS_Basic ["AWS ap-southeast-1 (Basic)"]
     direction TB
     subgraph Net ["Infra & Network"]
+      IGW[Internet Gateway]
       VGW[Virtual Private Gateway]
       NAT[NAT Gateway]
-      ALB[Application Load Balancer]
+      ALB[ALB - internet-facing]
     end
     subgraph Sec ["Security (tối giản)"]
       IAM[IAM Roles]
       KMS[KMS Default Key]
       GD[GuardDuty]
+      WAF[AWS WAF - ruleset cơ bản]
     end
     subgraph Plat ["Platform & Governance (tối giản)"]
       CW[CloudWatch]
@@ -181,7 +190,9 @@ flowchart LR
       RDS[(RDS - 4 instance\nDB riêng microservice)]
       S3[(S3 - assets/backup)]
     end
-    VGW --> ALB --> EKS
+    Internet --> IGW --> ALB
+    WAF -.->|Bảo vệ| ALB
+    ALB --> EKS
     EKS --> ECR
     EKS --> RDS
     EKS --> S3
@@ -190,18 +201,30 @@ flowchart LR
 
   OP_K8s <-->|Kênh riêng tư| VPN
   VPN <--> VGW
-  EKS -.->|Gọi ngược DB core qua VPN| OP_DB
+  VGW -.->|Route riêng tư| EKS
+  EKS -.->|Truy vấn vào DB core qua VPN| OP_DB
 
   classDef onprem fill:#2c3e50,stroke:#1a252f,color:#fff;
-  classDef aws fill:#e67e22,stroke:#d35400,color:#fff;
+  classDef internet fill:#3498db,stroke:#2471a3,color:#fff;
+  classDef netlayer fill:#16a085,stroke:#0e6655,color:#fff;
+  classDef seclayer fill:#e74c3c,stroke:#a93226,color:#fff;
+  classDef platlayer fill:#f39c12,stroke:#b9770e,color:#fff;
+  classDef applayer fill:#9b59b6,stroke:#7d3c98,color:#fff;
   class OP_K8s,OP_NonK8s,OP_DB onprem;
-  class EKS,ECR,RDS,S3,ALB,VGW,NAT,IAM,KMS,GD,CW,CT,Budgets aws;
+  class Internet internet;
+  class IGW,VGW,NAT,ALB netlayer;
+  class IAM,KMS,GD,WAF seclayer;
+  class CW,CT,Budgets platlayer;
+  class EKS,ECR,RDS,S3 applayer;
 ```
 
 ### 5.2 Kiến trúc tổng thể hybrid (Full-fledged — Success Picture)
 
 ```mermaid
+%%{ init: { "layout": "elk" } }%%
 flowchart LR
+  Internet(["Internet / End Users"])
+
   subgraph OnPrem ["On-Premise"]
     direction TB
     OP_K8s[Kubernetes Cluster]
@@ -214,11 +237,12 @@ flowchart LR
   subgraph LZ ["AWS Landing Zone (Control Tower / Organizations)"]
     direction TB
     subgraph NetF ["Infra & Network"]
+      IGWf[Internet Gateway]
+      CDN[CloudFront - tùy chọn]
       TGW[Transit Gateway]
-      VGW2[Virtual Private Gateway]
       NATm[NAT Gateway Multi-AZ]
-      ALBm[ALB / NLB]
-      R53[Route 53]
+      ALBm[ALB / NLB - internet-facing]
+      R53[Route 53 - public + hybrid]
     end
     subgraph SecF ["Security"]
       IAMf[IAM + SCP]
@@ -244,6 +268,8 @@ flowchart LR
       MSKf[MSK - event streaming]
       APIGWf[API Gateway]
     end
+    Internet --> IGWf --> NFW --> CDN --> WAF --> ALBm --> AppF
+    R53 --> CDN
     TGW --> NetF
     NetF --> AppF
     AppF --> RDSf
@@ -258,22 +284,34 @@ flowchart LR
   end
 
   OP_K8s <--> DX
-  DX <--> VGW2
+  DX <--> TGW
   RDSf -.->|Replication| RDSdr
   S3f -.->|Cross-region replication| S3dr
 
   classDef onprem fill:#2c3e50,stroke:#1a252f,color:#fff;
-  classDef aws fill:#9b59b6,stroke:#8e44ad,color:#fff;
   classDef dr fill:#7f8c8d,stroke:#666,color:#fff;
+  classDef internet fill:#3498db,stroke:#2471a3,color:#fff;
+  classDef netlayer fill:#16a085,stroke:#0e6655,color:#fff;
+  classDef seclayer fill:#e74c3c,stroke:#a93226,color:#fff;
+  classDef platlayer fill:#f39c12,stroke:#b9770e,color:#fff;
+  classDef applayer fill:#9b59b6,stroke:#7d3c98,color:#fff;
   class OP_K8s,OP_NonK8s,OP_DB onprem;
-  class EKSf,RDSf,ECf,S3f,EFSf,MSKf,APIGWf,TGW,VGW2,NATm,ALBm,R53,IAMf,KMSf,GDf,SHf,WAF,NFW,Insp,Config,SC,AMPG,Backup aws;
+  class Internet internet;
+  class IGWf,CDN,TGW,NATm,ALBm,R53 netlayer;
+  class IAMf,KMSf,GDf,SHf,WAF,NFW,Insp seclayer;
+  class Config,SC,AMPG,Backup platlayer;
+  class EKSf,RDSf,ECf,S3f,EFSf,MSKf,APIGWf applayer;
   class RDSdr,S3dr dr;
 ```
 
 ### 5.3 Ghi chú kiến trúc theo lớp
 
-- **Infra & Network**: Basic dùng 1 VPC đơn giản, VPN 2 tunnel, NAT 1-2 AZ. Full-fledged chuyển sang Direct Connect (giữ VPN làm backup), Transit Gateway khi có nhiều VPC/account.
-- **Security**: Basic bật các dịch vụ chi phí thấp nhưng hiệu quả cao (IAM, KMS, GuardDuty). Full-fledged bổ sung WAF, Network Firewall, Security Hub, Inspector để đạt baseline production.
+- **Màu sắc nhất quán theo lớp** (áp dụng cho cả 2 sơ đồ Basic và Full-fledged): Infra & Network (xanh lá đậm), Security (đỏ), Platform & Governance (cam), Application (tím), On-Premise (xám than), Internet (xanh dương), DR (xám nhạt) — giúp đối chiếu trực quan cùng một lớp giữa hai kịch bản.
+- **Đường đi traffic từ Internet**: `Internet → Internet Gateway → Network Firewall (kiểm tra lưu lượng tầng mạng L3/L4) → CloudFront (tùy chọn) → WAF (lọc tầng ứng dụng L7, OWASP Top 10) → ALB → Application`. Network Firewall kiểm soát trước ở biên VPC, WAF lọc sâu hơn ở tầng ứng dụng ngay trước ALB — đúng nguyên tắc defense-in-depth nhiều lớp.
+- **Kết nối on-prem qua Transit Gateway (Full-fledged)**: Direct Connect/VPN backup gắn trực tiếp vào **Transit Gateway** (qua Direct Connect Gateway attachment) thay vì Virtual Private Gateway riêng lẻ — cho phép một điểm kết nối on-prem dùng chung cho nhiều VPC/account trong Landing Zone, đúng vai trò hub của Transit Gateway.
+- **Internet exposure**: song song với kênh VPN/Direct Connect nối on-prem, ứng dụng còn được expose ra Internet qua **Internet Gateway + ALB internet-facing**, có **AWS WAF** (ruleset cơ bản ngay từ Basic) và **Shield Standard** bảo vệ mặc định. Full-fledged bổ sung **Network Firewall** ở biên VPC và **CloudFront** (tùy chọn) làm lớp edge/CDN phía trước ALB.
+- **Infra & Network**: Basic dùng 1 VPC đơn giản, VPN 2 tunnel, NAT 1-2 AZ, cộng thêm Internet Gateway cho lối vào công khai. Full-fledged chuyển hẳn sang Direct Connect qua Transit Gateway (giữ VPN làm backup), phục vụ nhiều VPC/account.
+- **Security**: Basic bật các dịch vụ chi phí thấp nhưng hiệu quả cao (IAM, KMS, GuardDuty, WAF ruleset cơ bản vì đã expose Internet). Full-fledged bổ sung Network Firewall, Security Hub, Inspector để đạt baseline production.
 - **Platform & Governance**: Basic dùng single-account, CloudWatch/CloudTrail cơ bản. Full-fledged chuyển sang multi-account (Control Tower), Config conformance pack, Managed Prometheus/Grafana để khớp stack quan sát on-prem hiện có.
 - **Application**: Lớp được đầu tư nhiều nhất ở Basic — EKS làm nền, giữ nguyên mô hình container hóa đã quen thuộc. Full-fledged mở rộng RDS Multi-AZ, ElastiCache, multi-environment, DR pilot light.
 
@@ -291,22 +329,23 @@ flowchart LR
 | **Subtotal Network** | | **~222** |
 | Security | GuardDuty | 25 |
 | Security | Secrets Manager + KMS | 10 |
-| **Subtotal Security** | | **~35** |
+| Security | AWS WAF (ruleset cơ bản cho ALB internet-facing) | 26 |
+| **Subtotal Security** | | **~61** |
 | Platform & Governance | CloudWatch Logs/Metrics | 35 |
 | Platform & Governance | AWS Config (rule cơ bản) | 20 |
 | Platform & Governance | AWS Backup + ECR | 18 |
 | **Subtotal Governance** | | **~73** |
 | Application | EKS Control Plane | 73 |
 | Application | EC2 worker node (6 x m5.xlarge) | 906 |
-| Application | ALB (1-2) | 60 |
+| Application | ALB (1-2, internet-facing) | 60 |
 | Application | RDS - 4 instance Single-AZ cho 20 microservice DB (xem 4.5) | 396 |
 | Application | ElastiCache (cache.t3.medium) | 50 |
 | Application | S3 + EFS | 20 |
 | **Subtotal Application** | | **~1,505** |
-| **Tổng chi phí AWS (indicative)** | | **~1,835** |
-| AWS Business Support (~10%, tối thiểu 100) | | 184 |
-| **Tổng cộng** | | **~2,019** |
-| Dư địa so với ngân sách 4,000 | | **~1,981 (buffer/contingency/scale-up)** |
+| **Tổng chi phí AWS (indicative)** | | **~1,861** |
+| AWS Business Support (~10%, tối thiểu 100) | | 186 |
+| **Tổng cộng** | | **~2,047** |
+| Dư địa so với ngân sách 4,000 | | **~1,953 (buffer/contingency/scale-up)** |
 
 ### 6.2 Kịch bản Full-fledged (Success Picture)
 
@@ -349,7 +388,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  Basic["Basic\n~2,020 USD/tháng\nVPN + single account\nApplication-first"] -->|mở rộng dần theo tải thực tế và ROI| Full["Full-fledged\n~6,960 USD/tháng\nDirect Connect + multi-account\nFull security & HA"]
+  Basic["Basic\n~2,050 USD/tháng\nVPN + single account\nApplication-first"] -->|mở rộng dần theo tải thực tế và ROI| Full["Full-fledged\n~6,960 USD/tháng\nDirect Connect + multi-account\nFull security & HA"]
 ```
 
 - Chênh lệch chủ yếu đến từ: Direct Connect, Network Firewall, RDS Multi-AZ (20 microservice DB), MSK, số lượng worker node, và DR region.
@@ -365,6 +404,7 @@ flowchart LR
 ## 7) Lộ Trình Triển Khai
 
 ```mermaid
+%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#2c3e50', 'lineColor': '#2c3e50', 'tertiaryColor': '#f4f4f4', 'cScale0': '#2c3e50', 'cScaleLabel0': '#ffffff', 'cScale1': '#1f6f8b', 'cScaleLabel1': '#ffffff', 'cScale2': '#8e44ad', 'cScaleLabel2': '#ffffff', 'cScale3': '#b9770e', 'cScaleLabel3': '#ffffff' } } }%%
 timeline
   title Roadmap: Hybrid Cloud Pilot -> Success Picture
   0-1 tháng : Chuẩn bị nền tảng

@@ -51,7 +51,7 @@ Tài liệu đề xuất mô hình **Hybrid Cloud (AWS Cloud Adoption)** cho h�
 
 - **Một kiến trúc, hai mức đầu tư**: Basic và Full-fledged dùng chung một khung kiến trúc 4 lớp, khác nhau ở mức độ HA/automation/số dịch vụ managed — giúp nâng cấp dần thay vì làm lại.
 - **Application-first cho Basic**: các lớp Network/Security/Governance chỉ ở mức đủ an toàn tối thiểu; ngân sách ưu tiên cho compute/application để có hệ thống chạy thật, đo lường được.
-- **Well-Architected Framework** làm khung tham chiếu xuyên suốt (Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability).
+- **Well-Architected Framework** làm khung tham chiếu xuyên suốt (Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability — ưu tiên dịch vụ managed/serverless và instance Graviton (ARM) để giảm cả chi phí lẫn mức tiêu thụ năng lượng trên mỗi đơn vị workload).
 - **Loose coupling qua VPN**: service trên AWS gọi ngược on-prem qua kết nối riêng tư, không expose trực tiếp ra Internet cho lưu lượng nội bộ.
 - **Không lock-in sớm**: ưu tiên container hóa (EKS) và IaC (Terraform/CloudFormation) để giữ khả năng di chuyển ngược lại on-prem nếu cần.
 
@@ -72,6 +72,7 @@ Ký hiệu: **●** = dùng trong Basic, **◐** = dùng một phần/đơn gi�
 | Elastic Load Balancing (ALB/NLB) | Phân phối traffic đến nhiều target, chịu lỗi và scale ngang; ALB là cổng expose ứng dụng ra Internet | ● | ● | ALB cho HTTP(S) internet-facing, NLB nếu cần TCP/latency thấp |
 | Amazon Route 53 | DNS quản lý domain, định tuyến public/hybrid và health check | ● | ● | DNS public cho tên miền expose ra Internet |
 | AWS Global Accelerator | Định tuyến traffic người dùng đến điểm gần nhất qua mạng lõi AWS | ○ | ○ (tùy chọn) | Chỉ cần khi multi-region/latency toàn cầu là ưu tiên |
+| VPC Endpoints (Gateway: S3; Interface: ECR, CloudWatch Logs) | Đường riêng tư tới dịch vụ AWS mà không đi qua NAT Gateway/Internet | ◐ (S3 Gateway miễn phí; ECR/CloudWatch Interface tùy chọn) | ● | Giảm chi phí data-processing qua NAT khi EKS pull image ECR và ghi log CloudWatch liên tục |
 
 ### 4.2 Lớp Security
 
@@ -315,6 +316,15 @@ flowchart LR
 - **Platform & Governance**: Basic dùng single-account, CloudWatch/CloudTrail cơ bản. Full-fledged chuyển sang multi-account (Control Tower), Config conformance pack, Managed Prometheus/Grafana để khớp stack quan sát on-prem hiện có.
 - **Application**: Lớp được đầu tư nhiều nhất ở Basic — EKS làm nền, giữ nguyên mô hình container hóa đã quen thuộc. Full-fledged mở rộng RDS Multi-AZ, ElastiCache, multi-environment, DR pilot light.
 
+### 5.4 CI/CD Và Chiến Lược Triển Khai
+
+- **SDLC automation**: dùng GitLab CI/CD hoặc GitHub Actions hiện có của đội (khớp kinh nghiệm sẵn có) để build/scan image, push lên ECR, sau đó GitOps (ArgoCD) đồng bộ manifest xuống EKS — mọi thay đổi hạ tầng/ứng dụng đều truy vết được từ Git.
+- **Chiến lược rollout theo tier**:
+  - **Basic**: rolling update mặc định của Kubernetes Deployment — đơn giản, đủ an toàn cho pilot quy mô nhỏ.
+  - **Full-fledged**: chuyển sang **blue/green** hoặc **canary** (ví dụ 5% → 25% → 100% traffic qua weighted target group/Ingress) với rollback tự động khi CloudWatch alarm hoặc SLO burn-rate vượt ngưỡng.
+- **Quản lý cấu hình**: secrets qua Secrets Manager/External Secrets Operator, không hardcode trong manifest hay image; cấu hình môi trường qua ConfigMap/SSM Parameter Store.
+- **Testing gate trước khi lên production**: unit/integration test → quét bảo mật image (ECR scan/Inspector) → staging smoke test → rollout theo chiến lược ở trên, có bước xác nhận (approval) thủ công cho Full-fledged.
+
 ## 6) Dự Toán Chi Phí
 
 > Lưu ý: các con số dưới đây là **ước tính ở mức lập kế hoạch** (planning-level), dựa trên giả định ở mục 2, giá on-demand khu vực `ap-southeast-1`. Cần xác nhận lại bằng AWS Pricing Calculator/Cost Explorer và sizing thực tế trước khi phê duyệt ngân sách chính thức. Reserved Instance/Savings Plan có thể giảm thêm 20-40% cho phần compute.
@@ -326,7 +336,8 @@ flowchart LR
 | Infra & Network | NAT Gateway (2x, HA) | 116 |
 | Infra & Network | Site-to-Site VPN + data transfer | 76 |
 | Infra & Network | Route 53 + data transfer khác | 30 |
-| **Subtotal Network** | | **~222** |
+| Infra & Network | VPC Endpoints (S3 Gateway miễn phí + ECR/CloudWatch Interface) | 15 |
+| **Subtotal Network** | | **~237** |
 | Security | GuardDuty | 25 |
 | Security | Secrets Manager + KMS | 10 |
 | Security | AWS WAF (ruleset cơ bản cho ALB internet-facing) | 26 |
@@ -336,16 +347,16 @@ flowchart LR
 | Platform & Governance | AWS Backup + ECR | 18 |
 | **Subtotal Governance** | | **~73** |
 | Application | EKS Control Plane | 73 |
-| Application | EC2 worker node (6 x m5.xlarge) | 906 |
+| Application | EC2 worker node (6 x m6g.xlarge, Graviton) | 725 |
 | Application | ALB (1-2, internet-facing) | 60 |
 | Application | RDS - 4 instance Single-AZ cho 20 microservice DB (xem 4.5) | 396 |
 | Application | ElastiCache (cache.t3.medium) | 50 |
 | Application | S3 + EFS | 20 |
-| **Subtotal Application** | | **~1,505** |
-| **Tổng chi phí AWS (indicative)** | | **~1,861** |
-| AWS Business Support (~10%, tối thiểu 100) | | 186 |
-| **Tổng cộng** | | **~2,047** |
-| Dư địa so với ngân sách 4,000 | | **~1,953 (buffer/contingency/scale-up)** |
+| **Subtotal Application** | | **~1,324** |
+| **Tổng chi phí AWS (indicative)** | | **~1,695** |
+| AWS Business Support (~10%, tối thiểu 100) | | 170 |
+| **Tổng cộng** | | **~1,865** |
+| Dư địa so với ngân sách 4,000 | | **~2,135 (buffer/contingency/scale-up)** |
 
 ### 6.2 Kịch bản Full-fledged (Success Picture)
 
@@ -357,7 +368,8 @@ flowchart LR
 | Infra & Network | VPN backup path | 56 |
 | Infra & Network | Data transfer (~3TB) | 270 |
 | Infra & Network | Route 53 | 10 |
-| **Subtotal Network** | | **~780** |
+| Infra & Network | VPC Endpoints (S3 Gateway + ECR/CloudWatch Interface, Multi-AZ) | 30 |
+| **Subtotal Network** | | **~810** |
 | Security | GuardDuty + Security Hub | 80 |
 | Security | AWS WAF | 30 |
 | Security | AWS Network Firewall | 400 |
@@ -369,7 +381,7 @@ flowchart LR
 | Platform & Governance | AWS Backup (cross-region) | 50 |
 | **Subtotal Governance** | | **~255** |
 | Application | EKS Control Plane (prod + stage) | 146 |
-| Application | EC2 worker node (12 x m5.xlarge, mix RI/Savings Plan khuyến nghị) | 1,812 |
+| Application | EC2 worker node (12 x m6g.xlarge, Graviton, mix RI/Savings Plan khuyến nghị) | 1,450 |
 | Application | RDS Multi-AZ - 4 cluster cho 20 microservice DB (xem 4.5) | 1,340 |
 | Application | ElastiCache Multi-AZ | 274 |
 | Application | ALB (multi-env) | 90 |
@@ -379,20 +391,21 @@ flowchart LR
 | Application | Amazon MSK (3-broker, event streaming) | 600 |
 | Application | API Gateway | 20 |
 | Application | Amazon SES | 10 |
-| **Subtotal Application** | | **~4,707** |
-| **Tổng chi phí AWS (indicative)** | | **~6,329** |
-| AWS Business Support (~10%) | | 633 |
-| **Tổng cộng** | | **~6,962** |
+| **Subtotal Application** | | **~4,345** |
+| **Tổng chi phí AWS (indicative)** | | **~5,997** |
+| AWS Business Support (~10%) | | 600 |
+| **Tổng cộng** | | **~6,597** |
 
 ### 6.3 So sánh và lộ trình nâng cấp chi phí
 
 ```mermaid
 flowchart LR
-  Basic["Basic\n~2,050 USD/tháng\nVPN + single account\nApplication-first"] -->|mở rộng dần theo tải thực tế và ROI| Full["Full-fledged\n~6,960 USD/tháng\nDirect Connect + multi-account\nFull security & HA"]
+  Basic["Basic\n~1,870 USD/tháng\nVPN + single account\nApplication-first + Graviton"] -->|mở rộng dần theo tải thực tế và ROI| Full["Full-fledged\n~6,600 USD/tháng\nDirect Connect + multi-account\nFull security & HA + Graviton"]
 ```
 
 - Chênh lệch chủ yếu đến từ: Direct Connect, Network Firewall, RDS Multi-AZ (20 microservice DB), MSK, số lượng worker node, và DR region.
-- Khuyến nghị: chạy Basic 2-3 tháng để đo tải thực tế (traffic, CPU/memory, chi phí data transfer) trước khi quyết định thời điểm và mức độ nâng cấp sang Full-fledged, tránh đầu tư dư thừa.
+- Khuyến nghị: chạy Basic 2-3 tháng để đo tải thực tế (traffic, CPU/memory, chi phí data transfer) trước khi quyết định thời điểm và mức độ nâng cấp sang Full-fledged, **tránh đầu tư dư thừa**.
+- **Graviton (ARM, m6g)** đã được áp dụng thay x86 (m5) trong cả hai kịch bản ở bảng trên — giảm ~20% chi phí EC2 worker node, đúng khuyến nghị Performance Efficiency/Cost Optimization/Sustainability trong mục 4.4 và 3. Cần xác nhận toolchain build image hỗ trợ multi-arch (arm64) trước khi áp dụng.
 
 ### 6.4 Cơ Sở Tính Toán Và Độ Tin Cậy Số Liệu
 
@@ -431,6 +444,7 @@ timeline
 | Chọn sai service pilot (quá phụ thuộc DB on-prem) | Không đo được lợi ích thật của hybrid | Ưu tiên chọn service ít trạng thái, latency-tolerant cho pilot |
 | Thiếu kỹ năng vận hành multi-cloud | Chậm tiến độ, sự cố vận hành | Tận dụng kinh nghiệm K8s/observability on-prem sẵn có (Prometheus/Grafana/EFK), map 1-1 sang AWS tương đương (AMP/AMG) |
 | Chưa rà soát compliance dữ liệu cá nhân | Rủi ro pháp lý khi lên Full-fledged | Rà soát Nghị định 13/2023 và quy định ngành trước khi mở rộng phạm vi dữ liệu |
+| RDS Single-AZ ở Basic không tự failover (xem 4.5) | Downtime khi instance lỗi; mất dữ liệu tối đa bằng chu kỳ backup | Định nghĩa rõ mục tiêu **RPO ≤ 24h** (theo lịch AWS Backup hàng ngày) và **RTO ≤ 4h** (restore thủ công) cho Basic; nâng lên Multi-AZ ở nhóm RDS quan trọng khi RTO/RPO này không còn chấp nhận được |
 
 ## 9) Success Picture (Definition Of Done)
 

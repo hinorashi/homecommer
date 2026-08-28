@@ -11,7 +11,7 @@ Tài liệu đề xuất mô hình **Hybrid Cloud (AWS Cloud Adoption)** cho h�
 ## Mục Lục
 
 1. Tóm tắt điều hành
-2. Bối cảnh và giả định
+2. Hiện trạng on-prem (giả định)
 3. Nguyên tắc thiết kế và cách tiếp cận
 4. AWS Service Catalog
 5. Kiến trúc AWS đề xuất
@@ -28,32 +28,24 @@ Tài liệu đề xuất mô hình **Hybrid Cloud (AWS Cloud Adoption)** cho h�
 - Kết nối on-prem <-> AWS: **Site-to-Site VPN** ở giai đoạn Basic; nâng cấp lên **Direct Connect** ở Full-fledged khi cần băng thông ổn định hơn.
 - Ngân sách tham khảo Basic: **~4,000 USD/tháng** (ước tính thực tế thấp hơn, còn dư địa cho contingency/support).
 
-## 2) Bối Cảnh Và Giả Định
-
-Vì chưa có số liệu traffic/tài nguyên chi tiết, con giả lập các thông số sau làm cơ sở tính toán — **cần đối chiếu lại với số liệu thật trước khi chốt ngân sách**.
-
-### 2.1 Hiện trạng on-prem (giả định)
+## 2) Hiện Trạng On-Prem (Giả Định)
 
 | Hạng mục | Giả định |
 | :--- | :--- |
 | Tổng số server | ~30 server (vật lý/VM) |
 | Kubernetes | 1 cụm K8s, ước lượng 8-12 node (mix control-plane + worker) |
 | Non-Kubernetes | ~18-22 server chạy service truyền thống, batch job, DB, legacy app |
-| Người dùng | ~100,000 user đăng ký |
-| DAU (Daily Active User) | ước lượng 10,000-15,000 (10-15% tổng user) |
-| Traffic đỉnh (peak) | ước lượng 300-600 request/giây, phân bổ không đều theo khung giờ |
-| Dữ liệu | vài trăm GB đến ~1TB, tăng dần |
+| Người dùng | ~10,000 user đăng ký |
+| DAU (Daily Active User) | ước lượng 1,000-1,500 (10-15% tổng user) |
+| Traffic đỉnh (peak) | ước lượng 50-80 request/giây, phân bổ không đều theo khung giờ |
+| Dữ liệu | vài chục đến vài trăm GB, tăng dần |
 | Ngôn ngữ/công nghệ | Java, Node.js, Golang, Python — kiến trúc microservice hỗn hợp |
+| Số lượng microservice | ~20 service |
+| Region AWS dự kiến | `ap-southeast-1` (Singapore) |
+| Kết nối hybrid | Site-to-Site VPN |
+| Phạm vi hybrid thử nghiệm | Chọn một tập con service chạy trên AWS EKS; **DB core (system of record)** giữ nguyên on-prem; **DB riêng của từng microservice** dùng RDS trên AWS (xem mục 4.5) |
 
-### 2.2 Phạm vi hybrid thử nghiệm
-
-- Không di dời toàn bộ Hệ thống X sang AWS ngay. Chọn **một tập con service** (ví dụ: API gateway/BFF, 2-4 core service ít trạng thái, 1 worker xử lý bất đồng bộ) để chạy trên AWS EKS, phần còn lại (đặc biệt là cơ sở dữ liệu chính) vẫn ở on-prem.
-- AWS đóng vai trò **compute mở rộng (burst/extension)**, on-prem giữ vai trò **hệ thống lõi (system of record)** — đúng bản chất hybrid, giảm rủi ro khi thử nghiệm.
-
-### 2.3 Ràng buộc khác
-
-- Region: `ap-southeast-1` (Singapore).
-- Chưa có yêu cầu compliance/data residency đặc biệt tại thời điểm này — cần rà soát lại nếu dữ liệu người dùng VN có quy định riêng (Nghị định 13/2023 về bảo vệ dữ liệu cá nhân) trước khi lên Full-fledged.
+> Số liệu trên là giả định lập kế hoạch, cần đối chiếu số liệu thật khi triển khai chính thức. Chưa có yêu cầu compliance/data residency đặc biệt tại thời điểm này — cần rà soát Nghị định 13/2023 khi mở rộng phạm vi dữ liệu ở Full-fledged.
 
 ## 3) Nguyên Tắc Thiết Kế Và Cách Tiếp Cận
 
@@ -109,6 +101,9 @@ Ký hiệu: **●** = dùng trong Basic, **◐** = dùng một phần/đơn gi�
 | AWS Backup | ◐ (RDS/EFS cơ bản) | ● (cross-region) | Chính sách backup/restore tập trung |
 | AWS Budgets / Cost Explorer | ● | ● | Kiểm soát chi phí ngay từ Basic |
 | AWS Systems Manager | ● | ● | Patch, Session Manager (thay SSH/bastion) |
+| Savings Plans for Compute | ◐ (đánh giá sau pilot) | ● | Cam kết 1 năm no-upfront cho EC2/Fargate sau khi tải thực tế ổn định, giảm ~20-30% chi phí compute |
+| AWS Support Plan | Developer/Business | Business/Enterprise | Basic dùng Business tối thiểu để có case bảo mật ưu tiên; Full-fledged nâng theo SLA cần thiết |
+| Amazon QuickSight | ○ | ○ (tùy chọn) | Chỉ cần khi có nhu cầu BI/dashboard kinh doanh riêng ngoài CloudWatch |
 
 ### 4.4 Lớp Application
 
@@ -118,12 +113,33 @@ Ký hiệu: **●** = dùng trong Basic, **◐** = dùng một phần/đơn gi�
 | Amazon ECR | ● | ● | Container registry, tích hợp scan image |
 | Amazon EC2 (worker node) | ● | ● | Cân nhắc Graviton (m6g/m7g) để tối ưu chi phí |
 | AWS Fargate | ◐ (tùy chọn) | ◐ (workload phù hợp) | Giảm vận hành node cho service ít traffic/burst |
-| Amazon RDS | ○ (Basic ưu tiên giữ DB on-prem) | ● (Multi-AZ) | Full-fledged: RDS Multi-AZ cho production database |
+| Amazon RDS | ● (dùng cho DB riêng từng microservice, xem 4.5) | ● (Multi-AZ, tách nhóm theo domain) | DB core vẫn ở on-prem; RDS chỉ phục vụ dữ liệu riêng của microservice trên AWS |
 | Amazon ElastiCache | ○ | ● | Cache/session tier khi mở rộng |
 | Amazon S3 | ● | ● | Static asset, backup, log archive |
 | Amazon EFS | ◐ | ● | Shared storage cho workload cần ReadWriteMany |
 | Application Load Balancer + Ingress (ALB Controller/NGINX) | ● | ● | Ingress cho EKS |
+| Amazon API Gateway | ◐ (tùy chọn, cho API expose ra đối tác) | ● | Quản lý API tập trung khi số microservice public API tăng |
+| Amazon MSK (Managed Kafka) | ○ | ● | Event streaming giữa các microservice khi kiến trúc event-driven trưởng thành hơn |
+| AWS Transfer Family | ○ | ◐ (tùy chọn) | Chỉ cần khi có tích hợp SFTP/FTPS với đối tác |
+| Amazon SES | ◐ (tùy chọn, chi phí thấp) | ● | Gửi email giao dịch/thông báo hệ thống |
 | Amazon CloudFront | ○ | ○ (tùy chọn) | Khi cần CDN cho static asset/API cache toàn cầu |
+
+### 4.5 Chiến Lược Database Cho Microservice (RDS)
+
+- Giả định Hệ thống X có **~20 microservice**. **DB core** (dữ liệu lõi, system of record dùng chung) tiếp tục nằm on-prem, không di chuyển.
+- Các microservice khi lên AWS áp dụng nguyên tắc **database-per-service**, nhưng để tối ưu chi phí ở quy mô thử nghiệm, nhóm nhiều DB logic (schema/database riêng) trên cùng một RDS instance theo domain/mức độ quan trọng, thay vì tạo 20 instance riêng lẻ.
+
+| Nhóm RDS | Domain / mức độ quan trọng | Số microservice | Basic (Single-AZ) | Full-fledged (Multi-AZ) |
+| :--- | :--- | :---: | :--- | :--- |
+| Group A | Core business - giao dịch (critical) | 4 | db.t3.large | db.r5.large |
+| Group B | Nghiệp vụ chính (core) | 6 | db.t3.large | db.r5.large |
+| Group C | Hỗ trợ (supporting) | 6 | db.t3.medium | db.t3.large |
+| Group D | Phụ trợ/ít traffic (auxiliary) | 4 | db.t3.medium | db.t3.large |
+| **Tổng** | | **20** | **4 RDS instance** | **4 RDS cluster Multi-AZ** |
+
+- Mỗi instance dùng PostgreSQL/MySQL theo stack hiện có của từng service, tách biệt bằng schema/database riêng; credential quản lý qua Secrets Manager, kết nối qua IAM DB Auth khi phù hợp.
+- Full-fledged: nhóm A/B nâng cấp Multi-AZ + instance lớn hơn do chịu tải giao dịch cao hơn; nhóm C/D vẫn Multi-AZ nhưng instance nhỏ hơn.
+- Khi traffic thực tế của một service vượt ngưỡng dùng chung, tách instance riêng cho service đó trước — tránh over-provision ngay từ đầu.
 
 ## 5) Kiến Trúc AWS Đề Xuất
 
@@ -162,22 +178,24 @@ flowchart LR
     subgraph App ["Application"]
       EKS[EKS Cluster\n4-6 worker node]
       ECR[ECR]
+      RDS[(RDS - 4 instance\nDB riêng microservice)]
       S3[(S3 - assets/backup)]
     end
     VGW --> ALB --> EKS
     EKS --> ECR
+    EKS --> RDS
     EKS --> S3
     NAT --> EKS
   end
 
   OP_K8s <-->|Kênh riêng tư| VPN
   VPN <--> VGW
-  EKS -.->|Gọi ngược DB qua VPN| OP_DB
+  EKS -.->|Gọi ngược DB core qua VPN| OP_DB
 
   classDef onprem fill:#2c3e50,stroke:#1a252f,color:#fff;
   classDef aws fill:#e67e22,stroke:#d35400,color:#fff;
   class OP_K8s,OP_NonK8s,OP_DB onprem;
-  class EKS,ECR,S3,ALB,VGW,NAT,IAM,KMS,GD,CW,CT,Budgets aws;
+  class EKS,ECR,RDS,S3,ALB,VGW,NAT,IAM,KMS,GD,CW,CT,Budgets aws;
 ```
 
 ### 5.2 Kiến trúc tổng thể hybrid (Full-fledged — Success Picture)
@@ -219,15 +237,19 @@ flowchart LR
     end
     subgraph AppF ["Application (multi-env)"]
       EKSf[EKS Cluster - prod/stage\nautoscaling]
-      RDSf[(RDS Multi-AZ)]
+      RDSf[(RDS Multi-AZ - 4 cluster\nDB riêng microservice)]
       ECf[(ElastiCache)]
       S3f[(S3 + lifecycle)]
       EFSf[(EFS Multi-AZ)]
+      MSKf[MSK - event streaming]
+      APIGWf[API Gateway]
     end
     TGW --> NetF
     NetF --> AppF
     AppF --> RDSf
     AppF --> ECf
+    AppF --> MSKf
+    APIGWf --> AppF
   end
 
   subgraph DR ["DR Region (pilot light)"]
@@ -244,7 +266,7 @@ flowchart LR
   classDef aws fill:#9b59b6,stroke:#8e44ad,color:#fff;
   classDef dr fill:#7f8c8d,stroke:#666,color:#fff;
   class OP_K8s,OP_NonK8s,OP_DB onprem;
-  class EKSf,RDSf,ECf,S3f,EFSf,TGW,VGW2,NATm,ALBm,R53,IAMf,KMSf,GDf,SHf,WAF,NFW,Insp,Config,SC,AMPG,Backup aws;
+  class EKSf,RDSf,ECf,S3f,EFSf,MSKf,APIGWf,TGW,VGW2,NATm,ALBm,R53,IAMf,KMSf,GDf,SHf,WAF,NFW,Insp,Config,SC,AMPG,Backup aws;
   class RDSdr,S3dr dr;
 ```
 
@@ -277,14 +299,14 @@ flowchart LR
 | Application | EKS Control Plane | 73 |
 | Application | EC2 worker node (6 x m5.xlarge) | 906 |
 | Application | ALB (1-2) | 60 |
-| Application | RDS db.t3.large single-AZ (cache/session, không phải DB chính) | 177 |
+| Application | RDS - 4 instance Single-AZ cho 20 microservice DB (xem 4.5) | 396 |
 | Application | ElastiCache (cache.t3.medium) | 50 |
 | Application | S3 + EFS | 20 |
-| **Subtotal Application** | | **~1,286** |
-| **Tổng chi phí AWS (indicative)** | | **~1,616** |
-| AWS Business Support (~10%, tối thiểu 100) | | 162 |
-| **Tổng cộng** | | **~1,780** |
-| Dư địa so với ngân sách 4,000 | | **~2,220 (buffer/contingency/scale-up)** |
+| **Subtotal Application** | | **~1,505** |
+| **Tổng chi phí AWS (indicative)** | | **~1,835** |
+| AWS Business Support (~10%, tối thiểu 100) | | 184 |
+| **Tổng cộng** | | **~2,019** |
+| Dư địa so với ngân sách 4,000 | | **~1,981 (buffer/contingency/scale-up)** |
 
 ### 6.2 Kịch bản Full-fledged (Success Picture)
 
@@ -309,26 +331,36 @@ flowchart LR
 | **Subtotal Governance** | | **~255** |
 | Application | EKS Control Plane (prod + stage) | 146 |
 | Application | EC2 worker node (12 x m5.xlarge, mix RI/Savings Plan khuyến nghị) | 1,812 |
-| Application | RDS Multi-AZ (db.r5.xlarge) + storage | 934 |
+| Application | RDS Multi-AZ - 4 cluster cho 20 microservice DB (xem 4.5) | 1,340 |
 | Application | ElastiCache Multi-AZ | 274 |
 | Application | ALB (multi-env) | 90 |
 | Application | S3 + EFS Multi-AZ | 65 |
 | Application | DR region (pilot light) | 200 |
 | Application | Observability data volume | 150 |
-| **Subtotal Application** | | **~3,671** |
-| **Tổng chi phí AWS (indicative)** | | **~5,293** |
-| AWS Business Support (~10%) | | 530 |
-| **Tổng cộng** | | **~5,823** |
+| Application | Amazon MSK (3-broker, event streaming) | 600 |
+| Application | API Gateway | 20 |
+| Application | Amazon SES | 10 |
+| **Subtotal Application** | | **~4,707** |
+| **Tổng chi phí AWS (indicative)** | | **~6,329** |
+| AWS Business Support (~10%) | | 633 |
+| **Tổng cộng** | | **~6,962** |
 
 ### 6.3 So sánh và lộ trình nâng cấp chi phí
 
 ```mermaid
 flowchart LR
-  Basic["Basic\n~1,800 USD/tháng\nVPN + single account\nApplication-first"] -->|mở rộng dần theo tải thực tế và ROI| Full["Full-fledged\n~5,800 USD/tháng\nDirect Connect + multi-account\nFull security & HA"]
+  Basic["Basic\n~2,020 USD/tháng\nVPN + single account\nApplication-first"] -->|mở rộng dần theo tải thực tế và ROI| Full["Full-fledged\n~6,960 USD/tháng\nDirect Connect + multi-account\nFull security & HA"]
 ```
 
-- Chênh lệch chủ yếu đến từ: Direct Connect, Network Firewall, RDS Multi-AZ, số lượng worker node, và DR region.
+- Chênh lệch chủ yếu đến từ: Direct Connect, Network Firewall, RDS Multi-AZ (20 microservice DB), MSK, số lượng worker node, và DR region.
 - Khuyến nghị: chạy Basic 2-3 tháng để đo tải thực tế (traffic, CPU/memory, chi phí data transfer) trước khi quyết định thời điểm và mức độ nâng cấp sang Full-fledged, tránh đầu tư dư thừa.
+
+### 6.4 Cơ Sở Tính Toán Và Độ Tin Cậy Số Liệu
+
+- **Cơ sở tính toán**: đơn giá on-demand tham khảo cho khu vực `ap-southeast-1`, theo instance family phổ biến (m5/m6g cho EC2, db.t3/db.r5 cho RDS), **chưa áp dụng** Reserved Instance/Savings Plan/Spot — đây là lý do Savings Plans được liệt kê ở mục 4.3 như một bước tối ưu sau khi tải ổn định.
+- **Độ tin cậy**: con không có quyền truy cập trực tiếp AWS Price List API hay AWS Pricing Calculator trong phiên làm việc này, nên toàn bộ con số là **ước tính thủ công dựa trên đơn giá công khai điển hình của AWS**, không phải trích xuất real-time. Mức tin cậy phù hợp cho **lập kế hoạch ngân sách sơ bộ (±20-30%)**, chưa phải báo giá chính thức.
+- Sai số lớn nhất thường đến từ: data transfer thực tế (phụ thuộc traffic đo được), số lượng NAT/ALB cần dùng, instance type chọn sau load test, và việc có mua Reserved/Savings Plan hay không.
+- **Có cần tạo link AWS Pricing Calculator không?** Có, nên tạo — nhưng con không thể tự sinh sẵn một link "Share estimate" hợp lệ vì công cụ đó yêu cầu thao tác trực tiếp trên `https://calculator.aws/` (thêm từng dịch vụ, chọn vùng, lưu estimate) và chỉ xuất ra link chia sẻ sau khi cấu hình xong trên giao diện thật; con không có khả năng vận hành trình duyệt để thao tác việc đó trong phiên này. Đề xuất: đội hạ tầng tự dựng estimate trên AWS Pricing Calculator theo đúng danh sách dịch vụ + instance type trong tài liệu này (mục 4 và 6.1/6.2), sau đó lưu link "Share estimate" vào mục 10 (Tham chiếu) để thay thế bảng ước tính thủ công làm số liệu chính thức.
 
 ## 7) Lộ Trình Triển Khai
 

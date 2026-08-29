@@ -4,7 +4,7 @@
 
 ## 1. Mục tiêu và điều kiện áp dụng
 
-Option này dùng mô hình **Hub-Spoke**: GitLab, ArgoCD, IdP/SSO, Prometheus/Grafana và OpenSearch/EFK tại on-premises là hub; AWS EKS là cluster đích và vùng compute mở rộng.
+Option này dùng mô hình **Hub-Spoke**: GitLab, ArgoCD, IdP/SSO, Prometheus/Grafana và OpenSearch/EFK tại on-premises là hub; AWS EKS là cluster đích và vùng compute mở rộng. Trong lộ trình tổng thể, đây là **phương án so sánh có giá trị** để định lượng lợi ích tái sử dụng, TCO và rủi ro phụ thuộc on-premises, không phải trạng thái đích thay cho Option 3.
 
 Chỉ chọn khi platform on-premises đã có:
 
@@ -122,9 +122,24 @@ flowchart LR
   EKS -. "Metrics remote_write" .-> Obs
   EKS -. "Logs via Fluent Bit" .-> Logs
   EKS -. "Private DB query" .-> CoreDB
+
+  classDef onprem fill:#2c3e50,stroke:#1a252f,color:#fff;
+  classDef internet fill:#3498db,stroke:#2471a3,color:#fff;
+  classDef network fill:#16a085,stroke:#0e6655,color:#fff;
+  classDef security fill:#e74c3c,stroke:#a93226,color:#fff;
+  classDef platform fill:#f39c12,stroke:#b9770e,color:#fff;
+  classDef application fill:#9b59b6,stroke:#7d3c98,color:#fff;
+  class User internet;
+  class Git,Argo,IdP,Obs,Logs,CoreDB onprem;
+  class R53,CF,ALB,DXGW,TGW,VPN network;
+  class WAF,NFW,Sec security;
+  class Trail,Backup platform;
+  class EKS,RDS,Cache,MSK application;
 ```
 
 Network Firewall kiểm tra traffic hybrid/egress qua inspection VPC. Nó không nằm trước CloudFront trong public ingress; WAF được liên kết với CloudFront hoặc ALB tại lớp ứng dụng.
+
+Quy ước màu kiến trúc dùng thống nhất trong cả ba option: **Infrastructure & Network** xanh lá đậm, **Security** đỏ, **Platform & Governance** cam, **Application** tím, **On-premises** xám than, **Internet** xanh dương và **DR** xám nhạt.
 
 ## 4. Tích hợp platform và vận hành Kubernetes
 
@@ -136,7 +151,42 @@ Network Firewall kiểm tra traffic hybrid/egress qua inspection VPC. Nó không
 - **Triển khai**: canary `5% -> 25% -> 100%` hoặc blue/green; rollback tự động dựa trên SLO/CloudWatch alarm.
 - **Failure test**: mất DX, mất VPN, mất ArgoCD hub, metric/log backlog và mất một AZ phải được diễn tập riêng.
 
-## 5. Database và DR
+## 5. CI/CD và vận hành
+
+```mermaid
+flowchart LR
+  Dev["Developer"] --> Git["GitLab repository\non-premises"]
+  Git --> Runner["GitLab Runner\non-premises"]
+  Runner --> Test["Test + build multi-arch"]
+  Test --> Scan["ECR / Inspector scan"]
+  Scan --> ECR["Amazon ECR"]
+  ECR --> GitOps["Cập nhật GitOps repository"]
+  GitOps --> Argo["ArgoCD\non-premises"]
+  Argo --> Agent["GitLab/Argo cluster agent\ntự vận hành"]
+  Agent --> EKS["Amazon EKS"]
+  EKS --> Verify["CloudWatch alarm\n+ smoke test"]
+  EKS -. "Metrics" .-> Collector["Collector / remote_write\ntự vận hành"]
+  Collector --> Prom["Prometheus + Grafana\non-premises"]
+  EKS -. "Logs" .-> Fluent["Fluent Bit\ntự vận hành"]
+  Fluent --> OS["OpenSearch / EFK\non-premises"]
+
+  classDef existing fill:#2c3e50,stroke:#1a252f,color:#fff;
+  classDef selfbuilt fill:#f39c12,stroke:#b9770e,color:#fff;
+  classDef awsnative fill:#16a085,stroke:#0e6655,color:#fff;
+  class Dev,Git,Runner,Argo,Prom,OS existing;
+  class Test,GitOps,Agent,Collector,Fluent selfbuilt;
+  class Scan,ECR,EKS,Verify awsnative;
+```
+
+**Chú giải CI/CD:** xám than = dịch vụ/công cụ đã có sẵn ở on-premises; cam = thành phần mới do đội tự xây dựng và vận hành, có thể dùng open source; xanh lá = dịch vụ AWS native.
+
+- Pipeline dùng OIDC/role assumption và credential ngắn hạn; không lưu AWS access key cố định trong GitLab.
+- ArgoCD áp dụng project, destination allow-list và service account riêng cho từng cluster; không cấp `cluster-admin` thường trực.
+- Canary `5% -> 25% -> 100%` hoặc blue/green phải rollback tự động khi SLO/CloudWatch alarm vượt ngưỡng.
+- Collector và Fluent Bit cần buffer, retry, backpressure và quota để mất DX/VPN không làm đầy node.
+- Diễn tập mất Direct Connect, VPN failover, ArgoCD hub, backlog log/metric và một Availability Zone.
+
+## 6. Database và DR
 
 | Nhóm RDS | Phạm vi | Sizing tham khảo |
 | :--- | :--- | :--- |
@@ -149,7 +199,7 @@ Network Firewall kiểm tra traffic hybrid/egress qua inspection VPC. Nó không
 - Estimate bao gồm DR pilot light khoảng 200 USD/tháng, nhưng replication topology và runbook phải thiết kế sau khi có RTO/RPO thật.
 - Database lõi on-premises vẫn là dependency; không gọi đồng bộ qua hybrid link trên đường xử lý nhạy latency nếu có thể dùng cache, async event hoặc local read model.
 
-## 6. Dự toán chi phí
+## 7. Dự toán chi phí
 
 | Lớp | Hạng mục | USD/tháng |
 | :--- | :--- | ---: |
@@ -167,7 +217,29 @@ Network Firewall kiểm tra traffic hybrid/egress qua inspection VPC. Nó không
 
 Estimate không tính lại Prometheus/Grafana/OpenSearch/ArgoCD/GitLab vì Option 2 tái sử dụng on-premises. Lưu lượng metric/log/pipeline nằm trong giả định data transfer khoảng 3 TB/tháng; nếu vượt mức này phải cập nhật lại chi phí và capacity DX. Phí cổng/last-mile Direct Connect từ đối tác có thể nằm ngoài hóa đơn AWS.
 
-## 7. Rủi ro và tiêu chí chọn
+## 8. Lộ trình đánh giá Option 2
+
+Option 2 chỉ cần triển khai PoC giới hạn nếu doanh nghiệp muốn kiểm chứng con số so sánh trước khi hoàn thiện Option 3.
+
+```mermaid
+%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#2c3e50', 'lineColor': '#2c3e50', 'tertiaryColor': '#f4f4f4', 'cScale0': '#2c3e50', 'cScaleLabel0': '#ffffff', 'cScale1': '#16a085', 'cScaleLabel1': '#ffffff', 'cScale2': '#f39c12', 'cScaleLabel2': '#ffffff', 'cScale3': '#9b59b6', 'cScaleLabel3': '#ffffff', 'cScale4': '#e74c3c', 'cScaleLabel4': '#ffffff' } } }%%
+timeline
+  title Lộ trình đánh giá Option 2 - Benchmark Hub-Spoke
+  Tuần 1-2 : Audit HA, backup và capacity on-premises
+             : Xác nhận owner và SLO của platform hiện hữu
+  Tuần 2-4 : Thiết lập DX/VPN, route và hybrid DNS
+             : Kiểm tra security và failover path
+  Tuần 4-6 : Tích hợp Runner, ArgoCD, SSO và collectors
+             : Cấu hình credential ngắn hạn và RBAC
+  Tuần 6-8 : Deploy workload benchmark trên EKS
+             : Đo latency, ingestion và data transfer
+  Tuần 8-10 : Failover, backlog và recovery test
+              : Xác nhận shared failure domain
+  Tuần 10-12 : So sánh TCO/SLO với Option 3
+               : Bàn giao kết quả làm đầu vào thiết kế đích
+```
+
+## 9. Rủi ro và tiêu chí đánh giá
 
 | Rủi ro | Kiểm soát bắt buộc |
 | :--- | :--- |
@@ -177,4 +249,4 @@ Estimate không tính lại Prometheus/Grafana/OpenSearch/ArgoCD/GitLab vì Opti
 | Credential quản lý remote cluster quá rộng | Short-lived token, RBAC tối thiểu, audit và rotation |
 | Platform hiện hữu thiếu capacity | Load test ingestion/pipeline trước khi production |
 
-Nếu platform không vượt qua các điều kiện trên, chọn [Option 3 - Xây mới platform trên AWS](build-platform-on-aws.md).
+Dù platform vượt qua các điều kiện trên, kết quả Option 2 vẫn được dùng làm benchmark TCO/SLO và đầu vào tối ưu cho [Option 3 - Xây mới platform trên AWS](build-platform-on-aws.md), là trạng thái đích của lộ trình.

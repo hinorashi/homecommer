@@ -122,9 +122,24 @@ flowchart LR
   Git --> Conn
   OnPrem <-->|"Private hybrid link"| DX
   EKS -. "Private DB query" .-> CoreDB
+
+  classDef onprem fill:#2c3e50,stroke:#1a252f,color:#fff;
+  classDef internet fill:#3498db,stroke:#2471a3,color:#fff;
+  classDef network fill:#16a085,stroke:#0e6655,color:#fff;
+  classDef security fill:#e74c3c,stroke:#a93226,color:#fff;
+  classDef platform fill:#f39c12,stroke:#b9770e,color:#fff;
+  classDef application fill:#9b59b6,stroke:#7d3c98,color:#fff;
+  class User internet;
+  class Dev,CoreDB,Legacy onprem;
+  class R53,CF,ALB,DX,TGW network;
+  class WAF,NFW,Hub security;
+  class Git,Conn,CI,Argo,AMP,OS,Trail platform;
+  class ECR,EKS,RDS,Cache,MSK application;
 ```
 
 Public ingress và hybrid inspection là hai đường độc lập. Network Firewall xử lý traffic qua inspection VPC; CloudFront/WAF/ALB xử lý public HTTP(S) ở edge và application layer.
+
+Quy ước màu kiến trúc dùng thống nhất trong cả ba option: **Infrastructure & Network** xanh lá đậm, **Security** đỏ, **Platform & Governance** cam, **Application** tím, **On-premises** xám than, **Internet** xanh dương và **DR** xám nhạt.
 
 ## 4. Platform và Kubernetes
 
@@ -136,7 +151,45 @@ Public ingress và hybrid inspection là hai đường độc lập. Network Fir
 - **Cluster operation**: managed node group, topology spread, PDB, requests/limits, HPA, NetworkPolicy, CSI snapshot và version-skew policy.
 - **Progressive delivery**: canary hoặc blue/green với rollback tự động dựa trên SLO.
 
-## 5. Database và DR
+## 5. CI/CD và vận hành
+
+```mermaid
+flowchart LR
+  Dev["Developer"] --> Source["Git repository hiện hữu\non-premises"]
+  Source --> Conn["AWS CodeConnections"]
+  Conn --> Pipe["AWS CodePipeline"]
+  Pipe --> Build["AWS CodeBuild\ntest + build multi-arch"]
+  Build --> Scan["ECR / Inspector scan"]
+  Scan --> Sign["Ký image + SBOM policy\ntự vận hành"]
+  Sign --> ECR["Amazon ECR"]
+  ECR --> GitOps["Helm / Kustomize repository\ntự vận hành"]
+  GitOps --> Argo["ArgoCD HA trên\nEKS Shared Services"]
+  Argo --> Policy["Admission policy\ntự vận hành"]
+  Policy --> EKS["Amazon EKS production"]
+  EKS --> Verify["CloudWatch SLO alarm\n+ smoke test"]
+  Verify --> Decision{"SLO đạt?"}
+  Decision -->|Có| Promote["Canary 5% -> 25% -> 100%"]
+  Decision -->|Không| Rollback["ArgoCD rollback"]
+  SM["AWS Secrets Manager"] --> ESO["External Secrets Operator\ntự vận hành"] --> EKS
+
+  classDef existing fill:#2c3e50,stroke:#1a252f,color:#fff;
+  classDef selfbuilt fill:#f39c12,stroke:#b9770e,color:#fff;
+  classDef awsnative fill:#16a085,stroke:#0e6655,color:#fff;
+  class Dev,Source existing;
+  class Sign,GitOps,Argo,Policy,Promote,Rollback,ESO selfbuilt;
+  class Conn,Pipe,Build,Scan,ECR,EKS,Verify,Decision,SM awsnative;
+```
+
+**Chú giải CI/CD:** xám than = dịch vụ/tài sản đã có sẵn ở on-premises; cam = thành phần mới do đội tự xây dựng và vận hành, có thể dùng open source; xanh lá = dịch vụ AWS native.
+
+- Nếu Git repository hiện hữu không đáp ứng HA/security, migrate source sang GitHub/GitLab SaaS đã được phê duyệt; license SaaS không nằm trong estimate AWS.
+- Pipeline dùng connection/role ngắn hạn, không lưu AWS access key trong CI variable hoặc manifest.
+- Testing gate: unit/integration -> SBOM -> vulnerability scan -> ký image -> staging smoke test -> canary/blue-green production.
+- ArgoCD project giới hạn repository/destination; admission policy xác minh image signature và baseline security trước khi nhận workload.
+- Metric/tracing qua ADOT tới AMP/CloudWatch; log qua Fluent Bit/OpenTelemetry tới CloudWatch/OpenSearch, có quota và retention policy.
+- Diễn tập rollback, mất platform node, mất một AZ, restore ArgoCD và khôi phục workload từ Git.
+
+## 6. Database và DR
 
 | Nhóm RDS | Phạm vi | Sizing tham khảo |
 | :--- | :--- | :--- |
@@ -149,7 +202,7 @@ Public ingress và hybrid inspection là hai đường độc lập. Network Fir
 - Tách instance khi một service gây noisy neighbor, cần engine/version khác hoặc có RTO/RPO riêng.
 - DR pilot light và backup cross-Region phải được kiểm thử; Multi-AZ chỉ xử lý lỗi trong Region, không phải chiến lược DR hoàn chỉnh.
 
-## 6. Dự toán chi phí
+## 7. Dự toán chi phí
 
 | Lớp | Hạng mục | USD/tháng |
 | :--- | :--- | ---: |
@@ -171,7 +224,31 @@ Public ingress và hybrid inspection là hai đường độc lập. Network Fir
 
 Chi phí chưa gồm GitHub/GitLab SaaS license và Keycloak tùy chọn. Nếu bắt buộc self-host Keycloak HA, dự trù thêm **150-300 USD/tháng** cho compute, database, load balancer, backup và log trước support. OpenSearch và observability có sai số lớn theo ingestion/retention; phải đo GB/ngày và số active series trước phê duyệt.
 
-## 7. Rủi ro và tiêu chí chọn
+## 8. Lộ trình triển khai Option 3
+
+```mermaid
+%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#2c3e50', 'lineColor': '#2c3e50', 'tertiaryColor': '#f4f4f4', 'cScale0': '#2c3e50', 'cScaleLabel0': '#ffffff', 'cScale1': '#e74c3c', 'cScaleLabel1': '#ffffff', 'cScale2': '#16a085', 'cScaleLabel2': '#ffffff', 'cScale3': '#f39c12', 'cScaleLabel3': '#ffffff', 'cScale4': '#9b59b6', 'cScaleLabel4': '#ffffff', 'cScale5': '#7f8c8d', 'cScaleLabel5': '#ffffff' } } }%%
+timeline
+  title Lộ trình Option 3 - Xây mới Platform trên AWS
+  Đầu vào : Baseline tải, chi phí và RTO/RPO từ Option 1
+           : Kết quả Option 2 nếu có chỉ dùng để benchmark
+  Tháng 4 : Triển khai Landing Zone, account và guardrail
+           : Chuẩn hóa tagging, audit và security baseline
+  Tháng 4-5 : Thiết lập DX/VPN, Transit Gateway và hybrid DNS
+             : Triển khai inspection VPC và Network Firewall
+  Tháng 5-6 : Xây Shared Services, CI/CD và observability
+             : Triển khai ArgoCD HA và golden path
+  Tháng 6-9 : Triển khai EKS production và RDS Multi-AZ
+             : Migration workload theo từng wave
+  Tháng 9-11 : Hoàn thiện DR pilot light và backup cross-Region
+              : Thực hiện game day và kiểm thử RTO/RPO
+  Tháng 11-12 : Đánh giá SLO, right-size và Savings Plans
+               : Nghiệm thu Success Picture
+```
+
+Option 3 nhận số liệu thực tế từ Option 1 làm đầu vào sizing. Kết quả Option 2, nếu được thực hiện như benchmark, chỉ bổ sung dữ liệu so sánh TCO/SLO và không làm thay đổi trạng thái đích.
+
+## 9. Rủi ro và tiêu chí hoàn tất
 
 | Rủi ro | Kiểm soát bắt buộc |
 | :--- | :--- |

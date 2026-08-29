@@ -1,6 +1,6 @@
 # AWS Cloud Adoption cho doanh nghiệp vừa và nhỏ
 
-Tài liệu này đề xuất lộ trình **hybrid cloud trên AWS** cho một hệ thống microservice đang vận hành on-premises. Nội dung được tổ chức theo một tài liệu định hướng và ba phương án triển khai độc lập để đội dự án có thể lựa chọn theo hiện trạng DevOps thực tế.
+Tài liệu này đề xuất lộ trình **hybrid cloud trên AWS** cho một hệ thống microservice đang vận hành on-premises. Tuyến triển khai khuyến nghị bắt đầu bằng **Option 1 - Basic** để kiểm chứng và hoàn thiện ở **Option 3 - Xây mới platform trên AWS**. **Option 2 - Tái sử dụng platform on-premises** là phương án đối chiếu có giá trị để lượng hóa phần hạ tầng có thể tái sử dụng, chi phí tiết kiệm và rủi ro phụ thuộc hybrid, nhưng không phải trạng thái đích của lộ trình.
 
 ## 1. Mục tiêu
 
@@ -56,39 +56,85 @@ Quyết định quan trọng nhất không phải là có dùng EKS hay không, 
 - Đội vận hành có trực 24/7, runbook, quy trình incident, kỹ năng EKS và khả năng tự vận hành stateful platform hay không.
 - RTO/RPO, data residency, SLA, ngân sách và thời điểm cần Direct Connect.
 
-## 5. Ba phương án
+## 5. Ba phương án và vai trò trong lộ trình
 
-| Phương án | Phù hợp khi | Kết nối | Platform tooling | Chi phí tham khảo |
+| Phương án | Vai trò | Phù hợp khi | Platform tooling | Chi phí tham khảo |
 | :--- | :--- | :--- | :--- | ---: |
-| [Option 1 - Basic](basic.md) | Cần pilot nhanh, phạm vi nhỏ, chưa cần platform đầy đủ | Site-to-Site VPN | AWS baseline và CI tối giản | **~1.865 USD/tháng** |
-| [Option 2 - Tái sử dụng platform on-premises](reuse-on-prem-platform.md) | GitLab, ArgoCD, SSO và observability on-premises đã production-ready | Direct Connect + VPN dự phòng | On-premises làm hub, AWS là spoke | **~6.294 USD/tháng** |
-| [Option 3 - Xây mới platform trên AWS](build-platform-on-aws.md) | Không có platform dùng lại hoặc muốn tách failure domain khỏi on-premises | Direct Connect + VPN dự phòng | Shared Services account trên AWS | **~7.670 USD/tháng** |
+| [Option 1 - Basic](basic.md) | **Điểm bắt đầu bắt buộc** | Cần pilot nhanh, đo tải và kiểm chứng hybrid với 3-5 service | AWS baseline và CI tối giản | **~1.865 USD/tháng** |
+| [Option 2 - Tái sử dụng platform on-premises](reuse-on-prem-platform.md) | **Phương án so sánh/benchmark** | Cần đánh giá giá trị tái sử dụng GitLab, ArgoCD, SSO và observability hiện hữu | On-premises làm hub, AWS là spoke | **~6.294 USD/tháng** |
+| [Option 3 - Xây mới platform trên AWS](build-platform-on-aws.md) | **Trạng thái đích** | Pilot đã đủ số liệu và doanh nghiệp sẵn sàng tách failure domain, chuẩn hóa vận hành | Shared Services account trên AWS | **~7.670 USD/tháng** |
 
 Chi phí là estimate mức lập kế hoạch, độ chính xác mục tiêu **±20-30%**, chưa gồm thuế, phí đối tác Direct Connect, license Git SaaS/Enterprise, nhân sự vận hành và migration one-time.
 
-## 6. Cây quyết định
+## 6. Quan hệ giữa các option
 
 ```mermaid
 flowchart TD
-  Start["Bắt đầu đánh giá"] --> Pilot{"Chỉ cần pilot 3-5 service?"}
-  Pilot -->|Có| Basic["Option 1: Basic"]
-  Pilot -->|Không| Existing{"Platform on-premises có HA, backup, SLA và đủ capacity?"}
-  Existing -->|Có| Reuse["Option 2: Tái sử dụng platform on-premises"]
-  Existing -->|Không| Build["Option 3: Xây mới platform trên AWS"]
-  Reuse --> Review{"Latency hoặc failure domain on-premises có vi phạm SLO?"}
-  Review -->|Có| Build
-  Review -->|Không| Operate["Vận hành mô hình Hub-Spoke"]
+  Start["Discovery và baseline"] --> Basic["Option 1\nBasic Pilot"]
+  Basic --> Gate{"Pilot đạt KPI\nvà đủ dữ liệu?"}
+  Gate -->|Chưa| Tune["Tối ưu workload\nvà chạy lại pilot"] --> Basic
+  Gate -->|Đạt| Build["Option 3\nXây platform trên AWS"]
+  Gate -. "Benchmark tái sử dụng" .-> Reuse["Option 2\nSo sánh Hub-Spoke"]
+  Reuse -. "Chi phí, SLA và bài học" .-> Build
+  Build --> Success["Success Picture"]
+
+  classDef discovery fill:#2c3e50,stroke:#1a252f,color:#fff;
+  classDef pilot fill:#1f6f8b,stroke:#154c61,color:#fff;
+  classDef compare fill:#b9770e,stroke:#7e5109,color:#fff;
+  classDef target fill:#8e44ad,stroke:#633077,color:#fff;
+  classDef success fill:#16a085,stroke:#0e6655,color:#fff;
+  class Start discovery;
+  class Basic,Tune pilot;
+  class Gate,Reuse compare;
+  class Build target;
+  class Success success;
 ```
 
 ## 7. Lộ trình khuyến nghị
 
-1. **Discovery, 2-4 tuần**: thu thập metric, dependency map, RTO/RPO, compliance và đánh giá platform hiện hữu.
-2. **Foundation, 3-6 tuần**: account, IAM, VPC, VPN, logging, budgets, IaC và security baseline.
-3. **Pilot, 6-10 tuần**: triển khai Option 1 với 3-5 service, load test và diễn tập rollback/restore.
-4. **Decision gate**: dùng số liệu thật để chọn Option 2 hoặc Option 3; không mặc định platform on-premises đã tồn tại.
-5. **Production expansion, 3-9 tháng**: Direct Connect, multi-account, Multi-AZ, DR và progressive delivery.
+```mermaid
+flowchart TD
+  D["0-1 tháng\nDiscovery và foundation"] --> O1["1-3 tháng\nOption 1: Basic Pilot"]
+  O1 --> E["3-4 tháng\nĐánh giá KPI, tải và RTO/RPO"]
+  E -. "Nhánh phân tích, không phải đích" .-> O2["Option 2\nBenchmark tái sử dụng on-premises"]
+  E --> O3A["4-6 tháng\nOption 3: Landing Zone và Shared Services"]
+  O2 -. "Đầu vào so sánh" .-> O3A
+  O3A --> O3B["6-12 tháng\nMở rộng production, DR và vận hành"]
+  O3B --> S["Success Picture"]
 
-## 8. Điều kiện phê duyệt
+  classDef discovery fill:#2c3e50,stroke:#1a252f,color:#fff;
+  classDef pilot fill:#1f6f8b,stroke:#154c61,color:#fff;
+  classDef compare fill:#b9770e,stroke:#7e5109,color:#fff;
+  classDef target fill:#8e44ad,stroke:#633077,color:#fff;
+  classDef success fill:#16a085,stroke:#0e6655,color:#fff;
+  class D discovery;
+  class O1,E pilot;
+  class O2 compare;
+  class O3A,O3B target;
+  class S success;
+```
+
+1. **Discovery và foundation, 0-1 tháng**: thu thập metric/dependency, chốt RTO/RPO, dựng account, IAM, VPC, VPN, logging, budgets, IaC và security baseline.
+2. **Option 1 - Basic Pilot, 1-3 tháng**: di chuyển 3-5 service, load test, đo data transfer và diễn tập rollback/restore.
+3. **Đánh giá, 3-4 tháng**: xác nhận KPI pilot; dùng Option 2 để so sánh TCO, SLA và rủi ro nếu tái sử dụng platform on-premises.
+4. **Option 3 - Platform foundation, 4-6 tháng**: triển khai multi-account landing zone, Shared Services, CI/CD, observability và Direct Connect.
+5. **Option 3 - Production expansion, 6-12 tháng**: RDS Multi-AZ, progressive delivery, DR pilot light, game day và tối ưu chi phí.
+
+## 8. Success Picture (Definition of Done)
+
+Mô hình hybrid cloud được coi là hoàn thiện khi:
+
+1. Kết nối on-premises với AWS ổn định qua Direct Connect, có VPN dự phòng và đã kiểm thử failover.
+2. Multi-account landing zone vận hành với guardrail, tagging, audit log và cost allocation rõ ràng.
+3. Workload mục tiêu chạy trên EKS đa AZ với autoscaling, policy vận hành chuẩn và RDS Multi-AZ cho dữ liệu production.
+4. GuardDuty, Security Hub, WAF, Network Firewall và Inspector hoạt động, có owner và quy trình xử lý finding.
+5. CI/CD và GitOps tự động hóa từ source đến production, có security gate, progressive delivery và rollback đã kiểm thử.
+6. Observability hợp nhất cho on-premises và AWS, không phụ thuộc vị trí đặt công cụ, với dashboard SLO và cảnh báo hành động được.
+7. DR pilot light ở Region phụ có RTO/RPO được phê duyệt và đã diễn tập ít nhất một lần.
+8. Chi phí nằm trong ngân sách, có báo cáo Cost Explorer định kỳ và kế hoạch right-size/Savings Plans dựa trên baseline thực tế.
+9. Runbook, ownership, on-call và quy trình nâng cấp/backup/restore Kubernetes được bàn giao và kiểm chứng bằng game day.
+
+## 9. Điều kiện phê duyệt
 
 - Dependency và latency tới database lõi đã được đo bằng thử nghiệm thực tế.
 - RTO/RPO và SLO được chủ hệ thống chấp thuận.
@@ -97,7 +143,7 @@ flowchart TD
 - AWS Pricing Calculator và báo giá Direct Connect từ đối tác đã thay thế estimate sơ bộ.
 - Có owner, runbook, cảnh báo hành động được và kế hoạch rollback cho từng workload.
 
-## 9. Tham chiếu
+## 10. Tham chiếu
 
 - [AWS Well-Architected Framework](https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html)
 - [AWS Hybrid Cloud](https://aws.amazon.com/hybrid/)

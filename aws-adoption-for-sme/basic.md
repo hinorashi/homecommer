@@ -108,9 +108,24 @@ flowchart LR
 
   OnPrem <-->|"Site-to-Site VPN - 2 tunnels"| VGW
   EKS -. "Private query qua VPN" .-> CoreDB
+
+  classDef onprem fill:#2c3e50,stroke:#1a252f,color:#fff;
+  classDef internet fill:#3498db,stroke:#2471a3,color:#fff;
+  classDef network fill:#16a085,stroke:#0e6655,color:#fff;
+  classDef security fill:#e74c3c,stroke:#a93226,color:#fff;
+  classDef platform fill:#f39c12,stroke:#b9770e,color:#fff;
+  classDef application fill:#9b59b6,stroke:#7d3c98,color:#fff;
+  class User internet;
+  class OPK8s,CoreDB onprem;
+  class R53,ALB,IGW,NAT,VGW network;
+  class WAF security;
+  class CW platform;
+  class EKS,RDS,Cache,ECR,S3 application;
 ```
 
 Public traffic đi theo `Route 53 -> WAF tại ALB -> ALB -> EKS`. Internet Gateway là attachment của VPC, không phải một thiết bị inspection nối tiếp. Traffic hybrid đi riêng qua VPN và route table private.
+
+Quy ước màu kiến trúc dùng thống nhất trong cả ba option: **Infrastructure & Network** xanh lá đậm, **Security** đỏ, **Platform & Governance** cam, **Application** tím, **On-premises** xám than, **Internet** xanh dương và **DR** xám nhạt.
 
 ## 4. Database và Kubernetes
 
@@ -129,7 +144,29 @@ Public traffic đi theo `Route 53 -> WAF tại ALB -> ALB -> EKS`. Internet Gate
 
 ## 5. CI/CD và vận hành
 
-Luồng tối thiểu: `Git -> unit/integration test -> build multi-arch image -> scan -> ECR -> cập nhật manifest -> rolling deployment -> smoke test`.
+```mermaid
+flowchart LR
+  Dev["Developer"] --> Git["Git repository hiện hữu\non-premises"]
+  Git --> Runner["CI runner hiện hữu"]
+  Runner --> Test["Unit / integration test"]
+  Test --> Build["Build multi-arch image"]
+  Build --> Scan["ECR image scanning"]
+  Scan --> ECR["Amazon ECR"]
+  ECR --> Manifest["Cập nhật manifest"]
+  Manifest --> Deploy["Amazon EKS\nrolling deployment"]
+  Deploy --> Smoke["Smoke test + CloudWatch alarm"]
+  Secret["External Secrets Operator"] -. "Đồng bộ" .-> Deploy
+  SM["AWS Secrets Manager"] --> Secret
+
+  classDef existing fill:#2c3e50,stroke:#1a252f,color:#fff;
+  classDef selfbuilt fill:#f39c12,stroke:#b9770e,color:#fff;
+  classDef awsnative fill:#16a085,stroke:#0e6655,color:#fff;
+  class Dev,Git,Runner existing;
+  class Test,Build,Manifest,Secret selfbuilt;
+  class Scan,ECR,Deploy,Smoke,SM awsnative;
+```
+
+**Chú giải CI/CD:** xám than = dịch vụ/công cụ đã có sẵn ở on-premises; cam = thành phần mới do đội tự xây dựng và vận hành, có thể dùng open source; xanh lá = dịch vụ AWS native.
 
 - Có thể dùng GitLab CI/GitHub Actions hiện hữu hoặc pipeline tạm thời; Option 1 không dựng một platform DevOps mới.
 - Secret lấy từ Secrets Manager qua External Secrets Operator hoặc CSI driver.
@@ -155,8 +192,26 @@ Luồng tối thiểu: `Git -> unit/integration test -> build multi-arch image -
 
 Sai số dự kiến ±20-30%. Chi phí chưa gồm thuế, nhân sự, license ngoài AWS và migration one-time. Nếu chỉ triển khai 3-5 service, cần tạo estimate nhỏ hơn thay vì cấp trước toàn bộ 4 nhóm RDS và 6 worker.
 
-## 7. Điều kiện chuyển sang option khác
+## 7. Lộ trình triển khai Option 1
 
-- Chuyển sang [Option 2](reuse-on-prem-platform.md) khi platform on-premises vượt qua đánh giá HA, capacity, security và SLA.
-- Chuyển sang [Option 3](build-platform-on-aws.md) khi không có platform phù hợp, hoặc sự phụ thuộc control plane vào on-premises vi phạm SLO.
+```mermaid
+%%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#2c3e50', 'lineColor': '#2c3e50', 'tertiaryColor': '#f4f4f4', 'cScale0': '#2c3e50', 'cScaleLabel0': '#ffffff', 'cScale1': '#16a085', 'cScaleLabel1': '#ffffff', 'cScale2': '#9b59b6', 'cScaleLabel2': '#ffffff', 'cScale3': '#f39c12', 'cScaleLabel3': '#ffffff', 'cScale4': '#e74c3c', 'cScaleLabel4': '#ffffff' } } }%%
+timeline
+  title Lộ trình Option 1 - Basic Hybrid Cloud Pilot
+  Tuần 1-2 : Khảo sát on-premises và dependency
+             : Xác định 3-5 service pilot
+  Tuần 2-4 : Thiết lập VPC, IAM và Site-to-Site VPN
+             : Hoàn thiện security baseline
+  Tuần 4-8 : Triển khai EKS, ECR và RDS
+             : Di chuyển 3-5 service pilot
+  Tuần 8-10 : Thiết lập CI/CD, observability và backup
+              : Chuẩn hóa runbook vận hành
+  Tuần 10-12 : Load test, failover và restore test
+               : Decision gate và bàn giao đầu vào cho Option 3
+```
+
+## 8. Điều kiện hoàn tất và chuyển tiếp
+
+- [Option 2](reuse-on-prem-platform.md) được dùng để so sánh chi phí, SLA và mức tái sử dụng nếu platform on-premises vượt qua đánh giá HA/capacity/security; đây không phải trạng thái đích của lộ trình.
+- Chuyển sang [Option 3](build-platform-on-aws.md) sau khi pilot đạt KPI và có đủ baseline để sizing landing zone, platform, observability và DR.
 - Nâng Direct Connect khi VPN không đạt ngưỡng latency, jitter, throughput hoặc độ ổn định đã thống nhất.

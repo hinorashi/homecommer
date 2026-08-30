@@ -12,7 +12,7 @@ Tài liệu đề xuất mô hình **Hybrid Cloud (AWS Cloud Adoption)** cho h�
 
 1. Tóm tắt điều hành
 2. Hiện trạng on-prem (giả định)
-3. Nguyên tắc thiết kế và cách tiếp cận
+3. Nguyên tắc thiết kế, cách tiếp cận và ba option
 4. AWS Service Catalog
 5. Kiến trúc AWS đề xuất
 6. Dự toán chi phí (Basic vs Full-fledged)
@@ -24,7 +24,7 @@ Tài liệu đề xuất mô hình **Hybrid Cloud (AWS Cloud Adoption)** cho h�
 ## 1) Tóm Tắt Điều Hành
 
 - Mục tiêu: xây dựng mô hình **hybrid cloud thử nghiệm** giữa hạ tầng on-prem hiện có và AWS, làm bước đệm cho lộ trình AWS Cloud Adoption toàn diện.
-- Cách tiếp cận: một kiến trúc thống nhất, chia hai mức đầu tư — **Basic** (tối giản Network/Security/Governance, đầu tư vào Application để có hệ thống chạy thật) và **Full-fledged** (success picture đầy đủ các dịch vụ trọng yếu ở mọi lớp).
+- Cách tiếp cận: lộ trình chính bắt đầu bằng **Option 1 - Basic** để kiểm chứng hybrid cloud, sau đó hoàn thiện bằng **Option 3 - xây mới DevOps stack trên AWS** với cụm Kubernetes platform độc lập. **Option 2 - tái sử dụng DevOps stack on-premises** chỉ dùng làm phương án so sánh và không khả thi trong hiện trạng vì on-premises chưa xây dựng stack này.
 - Kết nối on-prem <-> AWS: **Site-to-Site VPN** ở giai đoạn Basic; nâng cấp lên **Direct Connect** ở Full-fledged khi cần băng thông ổn định hơn.
 - Ngân sách tham khảo Basic: **~4,000 USD/tháng** (ước tính thực tế thấp hơn, còn dư địa cho contingency/support).
 
@@ -34,6 +34,7 @@ Tài liệu đề xuất mô hình **Hybrid Cloud (AWS Cloud Adoption)** cho h�
 | :--- | :--- |
 | Tổng số server | ~30 server (vật lý/VM) |
 | Kubernetes | 1 cụm K8s, ước lượng 8-12 node (mix control-plane + worker) |
+| DevOps platform | Chưa có GitLab/ArgoCD/Keycloak/Prometheus/Grafana/OpenSearch production-ready để tái sử dụng |
 | Non-Kubernetes | ~18-22 server chạy service truyền thống, batch job, DB, legacy app |
 | Người dùng | ~10,000 user đăng ký |
 | DAU (Daily Active User) | ước lượng 1,000-1,500 (10-15% tổng user) |
@@ -49,11 +50,32 @@ Tài liệu đề xuất mô hình **Hybrid Cloud (AWS Cloud Adoption)** cho h�
 
 ## 3) Nguyên Tắc Thiết Kế Và Cách Tiếp Cận
 
-- **Một kiến trúc, hai mức đầu tư**: Basic và Full-fledged dùng chung một khung kiến trúc 4 lớp, khác nhau ở mức độ HA/automation/số dịch vụ managed — giúp nâng cấp dần thay vì làm lại.
+- **Một tuyến triển khai, hai bước đầu tư**: Option 1 (Basic) và Option 3 (Full-fledged) dùng chung khung kiến trúc 4 lớp; Option 1 tạo baseline, Option 3 là trạng thái đích với DevOps stack và cụm Kubernetes platform độc lập trên AWS.
 - **Application-first cho Basic**: các lớp Network/Security/Governance chỉ ở mức đủ an toàn tối thiểu; ngân sách ưu tiên cho compute/application để có hệ thống chạy thật, đo lường được.
 - **Well-Architected Framework** làm khung tham chiếu xuyên suốt (Operational Excellence, Security, Reliability, Performance Efficiency, Cost Optimization, Sustainability — ưu tiên dịch vụ managed/serverless và instance Graviton (ARM) để giảm cả chi phí lẫn mức tiêu thụ năng lượng trên mỗi đơn vị workload).
 - **Loose coupling qua VPN**: service trên AWS gọi ngược on-prem qua kết nối riêng tư, không expose trực tiếp ra Internet cho lưu lượng nội bộ.
 - **Không lock-in sớm**: ưu tiên container hóa (EKS) và IaC (Terraform/CloudFormation) để giữ khả năng di chuyển ngược lại on-prem nếu cần.
+
+### 3.1 Vai trò của ba option
+
+| Option | Vai trò | Đánh giá khả thi | Kết luận |
+| :--- | :--- | :--- | :--- |
+| **Option 1 - Basic** | Pilot 3-5 microservice, đo tải, latency, data transfer và khả năng vận hành EKS | Khả thi ngay với Site-to-Site VPN và AWS security baseline | **Điểm bắt đầu của lộ trình** |
+| **Option 2 - Tái sử dụng DevOps stack on-premises** | So sánh TCO/SLO nếu dùng on-premises làm hub cho GitLab, ArgoCD, SSO và observability | **Không khả thi trong hiện trạng** vì các thành phần này chưa được xây dựng on-premises | Chỉ giữ làm benchmark, không triển khai |
+| **Option 3 - Xây mới DevOps stack trên AWS** | Xây platform CI/CD, GitOps, SSO và observability trên AWS; tách cụm EKS platform khỏi cụm EKS ứng dụng | Khả thi sau khi Option 1 cung cấp baseline sizing và năng lực vận hành | **Trạng thái đích** |
+
+Tuyến phê duyệt là `Option 1 -> Option 3`. Option 2 không phải một decision gate hay nhánh triển khai; tài liệu chỉ dùng nó để chứng minh vì sao tái sử dụng on-premises không phù hợp với hiện trạng.
+
+### 3.2 So sánh Option 2 và Option 3
+
+| Tiêu chí | Option 2 - Tái sử dụng on-premises | Option 3 - Xây mới trên AWS |
+| :--- | :--- | :--- |
+| Điều kiện tiên quyết | Phải có DevOps stack production-ready on-premises; **hiện không đáp ứng** | Cần năng lực xây/vận hành platform trên AWS |
+| Chi phí AWS tham khảo | ~6.294 USD/tháng, **chưa gồm chi phí xây mới platform on-premises còn thiếu** | ~7.669 USD/tháng, đã gồm platform cluster và dịch vụ observability AWS |
+| Failure domain | Phụ thuộc data center và kết nối hybrid cho control plane DevOps | Platform EKS tách khỏi application EKS, cùng nằm trong AWS Landing Zone |
+| CI/CD và GitOps | Phải đầu tư mới on-premises trước khi có thể tái sử dụng | Xây trực tiếp trên AWS, role ngắn hạn và tích hợp ECR/EKS/CloudWatch |
+| Log/metric | Đi qua Direct Connect/VPN về on-premises, tăng tải và rủi ro backlog | Thu thập và lưu trữ trong AWS; hybrid link không nằm trên đường observability chính |
+| Kết luận | Benchmark phản thực tế để so sánh TCO/SLO, **không đưa vào execution plan** | Phương án đích sau Option 1 |
 
 ## 4) AWS Service Catalog
 
@@ -99,7 +121,11 @@ Ký hiệu: **●** = dùng trong Basic, **◐** = dùng một phần/đơn gi�
 | AWS Config | Ghi nhận và đánh giá compliance cấu hình tài nguyên theo thời gian | ◐ (vài rule cơ bản) | ● (rule đầy đủ + conformance pack) | Compliance-as-code |
 | AWS CloudTrail | Ghi log mọi lệnh gọi API để audit và điều tra sự cố | ● | ● (org trail) | Audit log bắt buộc mọi mức |
 | Amazon CloudWatch (Logs/Metrics/Alarms) | Thu thập log/metric, dựng dashboard và cảnh báo | ● | ● | Baseline observability |
-| Amazon Managed Prometheus/Grafana (AMP/AMG) | Prometheus/Grafana được AWS vận hành, không cần tự quản lý hạ tầng | ○ | ● | Khớp stack Prometheus/Grafana hiện có on-prem, khuyến nghị cộng đồng |
+| Amazon Managed Prometheus/Grafana (AMP/AMG) | Prometheus/Grafana được AWS vận hành, không cần tự quản lý hạ tầng | ○ | ● | Observability backend cho Option 3, không phụ thuộc stack on-premises |
+| Amazon EKS - Platform Cluster | Cụm Kubernetes độc lập để chạy ArgoCD HA và các controller/platform OSS tự vận hành | ○ | ● | Tách failure domain và vòng đời nâng cấp khỏi EKS application |
+| Amazon OpenSearch Service | Phân tích và lưu trữ log tập trung | ○ | ● | AWS native, giảm gánh nặng vận hành stateful search cluster |
+| GitLab CE / ArgoCD / Keycloak | Source control, GitOps và SSO tự xây dựng trên EKS Platform Cluster | ○ | ● | Open source; đội dự án chịu trách nhiệm HA, backup, upgrade và incident response |
+| AWS CodePipeline / CodeBuild / CodeConnections | Orchestrate pipeline, build và kết nối source | ○ | ● | AWS native; dùng role ngắn hạn, tích hợp ECR và EKS |
 | AWS Backup | Tự động hóa chính sách sao lưu/khôi phục tập trung | ◐ (RDS/EFS cơ bản) | ● (cross-region) | Chính sách backup/restore tập trung |
 | AWS Budgets / Cost Explorer | Theo dõi, cảnh báo và phân tích chi phí sử dụng | ● | ● | Kiểm soát chi phí ngay từ Basic |
 | AWS Systems Manager | Quản lý vá lỗi, truy cập từ xa an toàn không cần SSH/bastion | ● | ● | Patch, Session Manager (thay SSH/bastion) |
@@ -111,7 +137,7 @@ Ký hiệu: **●** = dùng trong Basic, **◐** = dùng một phần/đơn gi�
 
 | Dịch vụ | Ý nghĩa / Mô tả | Basic | Full-fledged | Ghi chú / khuyến nghị |
 | :--- | :--- | :---: | :---: | :--- |
-| Amazon EKS | Kubernetes được AWS quản lý, giảm gánh nặng vận hành control plane | ● | ● | Khớp kinh nghiệm K8s on-prem hiện có, dễ vận hành song song |
+| Amazon EKS | Kubernetes được AWS quản lý, giảm gánh nặng vận hành control plane | ● | ● | Basic dùng application cluster; Option 3 tách application EKS và platform EKS độc lập |
 | Amazon ECR | Kho lưu trữ container image riêng tư, tích hợp quét lỗ hổng | ● | ● | Container registry, tích hợp scan image |
 | Amazon EC2 (worker node) | Máy chủ ảo, đơn vị compute nền tảng cho worker node EKS | ● | ● | Cân nhắc Graviton (m6g/m7g) để tối ưu chi phí |
 | AWS Fargate | Chạy container serverless, không cần quản lý node | ◐ (tùy chọn) | ◐ (workload phù hợp) | Giảm vận hành node cho service ít traffic/burst |
@@ -219,7 +245,7 @@ flowchart LR
   class EKS,ECR,RDS,S3 applayer;
 ```
 
-### 5.2 Kiến trúc tổng thể hybrid (Full-fledged — Success Picture)
+### 5.2 Kiến trúc tổng thể hybrid (Option 3 — Success Picture)
 
 ```mermaid
 %%{ init: { "layout": "elk" } }%%
@@ -258,7 +284,17 @@ flowchart LR
       Config[AWS Config + Conformance Pack]
       SC[Service Catalog]
       AMPG[Managed Prometheus/Grafana]
+      EKSplat[EKS Platform Cluster\nđộc lập]
+      GitLab[GitLab CE]
+      Argo[ArgoCD HA]
+      Keycloak[Keycloak / SSO]
+      CICD[CodePipeline + CodeBuild]
+      OS[OpenSearch Service]
       Backup[AWS Backup - cross-region]
+      EKSplat --> GitLab
+      EKSplat --> Argo
+      EKSplat --> Keycloak
+      GitLab --> CICD --> Argo
     end
     subgraph AppF ["Application (multi-env)"]
       EKSf[EKS Cluster - prod/stage\nautoscaling]
@@ -269,14 +305,16 @@ flowchart LR
       MSKf[MSK - event streaming]
       APIGWf[API Gateway]
     end
-    Internet --> IGWf --> NFW --> CDN --> WAF --> ALBm --> AppF
-    R53 --> CDN
-    TGW --> NetF
-    NetF --> AppF
-    AppF --> RDSf
-    AppF --> ECf
-    AppF --> MSKf
-    APIGWf --> AppF
+    Internet --> R53 --> CDN --> WAF --> ALBm --> EKSf
+    IGWf --- ALBm
+    TGW --> NFW --> EKSf
+    Argo -.->|GitOps deploy| EKSf
+    EKSf -.->|Metrics| AMPG
+    EKSf -.->|Logs| OS
+    EKSf --> RDSf
+    EKSf --> ECf
+    EKSf --> MSKf
+    APIGWf --> EKSf
   end
 
   subgraph DR ["DR Region (pilot light)"]
@@ -300,7 +338,7 @@ flowchart LR
   class Internet internet;
   class IGWf,CDN,TGW,NATm,ALBm,R53 netlayer;
   class IAMf,KMSf,GDf,SHf,WAF,NFW,Insp seclayer;
-  class Config,SC,AMPG,Backup platlayer;
+  class Config,SC,AMPG,EKSplat,GitLab,Argo,Keycloak,CICD,OS,Backup platlayer;
   class EKSf,RDSf,ECf,S3f,EFSf,MSKf,APIGWf applayer;
   class RDSdr,S3dr dr;
 ```
@@ -308,22 +346,50 @@ flowchart LR
 ### 5.3 Ghi chú kiến trúc theo lớp
 
 - **Màu sắc nhất quán theo lớp** (áp dụng cho cả 2 sơ đồ Basic và Full-fledged): Infra & Network (xanh lá đậm), Security (đỏ), Platform & Governance (cam), Application (tím), On-Premise (xám than), Internet (xanh dương), DR (xám nhạt) — giúp đối chiếu trực quan cùng một lớp giữa hai kịch bản.
-- **Đường đi traffic từ Internet**: `Internet → Internet Gateway → Network Firewall (kiểm tra lưu lượng tầng mạng L3/L4) → CloudFront (tùy chọn) → WAF (lọc tầng ứng dụng L7, OWASP Top 10) → ALB → Application`. Network Firewall kiểm soát trước ở biên VPC, WAF lọc sâu hơn ở tầng ứng dụng ngay trước ALB — đúng nguyên tắc defense-in-depth nhiều lớp.
+- **Đường đi traffic từ Internet**: `Internet → Route 53 → CloudFront (tùy chọn) → WAF → ALB → EKS application`. Internet Gateway là attachment của VPC cho ALB public, không phải thiết bị inspection nối tiếp. Network Firewall nằm trên đường hybrid/egress qua Transit Gateway và inspection VPC.
 - **Kết nối on-prem qua Transit Gateway (Full-fledged)**: Direct Connect/VPN backup gắn trực tiếp vào **Transit Gateway** (qua Direct Connect Gateway attachment) thay vì Virtual Private Gateway riêng lẻ — cho phép một điểm kết nối on-prem dùng chung cho nhiều VPC/account trong Landing Zone, đúng vai trò hub của Transit Gateway.
 - **Internet exposure**: song song với kênh VPN/Direct Connect nối on-prem, ứng dụng còn được expose ra Internet qua **Internet Gateway + ALB internet-facing**, có **AWS WAF** (ruleset cơ bản ngay từ Basic) và **Shield Standard** bảo vệ mặc định. Full-fledged bổ sung **Network Firewall** ở biên VPC và **CloudFront** (tùy chọn) làm lớp edge/CDN phía trước ALB.
 - **Infra & Network**: Basic dùng 1 VPC đơn giản, VPN 2 tunnel, NAT 1-2 AZ, cộng thêm Internet Gateway cho lối vào công khai. Full-fledged chuyển hẳn sang Direct Connect qua Transit Gateway (giữ VPN làm backup), phục vụ nhiều VPC/account.
 - **Security**: Basic bật các dịch vụ chi phí thấp nhưng hiệu quả cao (IAM, KMS, GuardDuty, WAF ruleset cơ bản vì đã expose Internet). Full-fledged bổ sung Network Firewall, Security Hub, Inspector để đạt baseline production.
-- **Platform & Governance**: Basic dùng single-account, CloudWatch/CloudTrail cơ bản. Full-fledged chuyển sang multi-account (Control Tower), Config conformance pack, Managed Prometheus/Grafana để khớp stack quan sát on-prem hiện có.
+- **Platform & Governance**: Basic dùng single-account, CloudWatch/CloudTrail cơ bản. Option 3 chuyển sang multi-account, Config conformance pack và dựng DevOps stack trên AWS; EKS platform độc lập chạy ArgoCD/controller OSS, còn AMP/AMG, OpenSearch và CloudWatch cung cấp observability managed.
 - **Application**: Lớp được đầu tư nhiều nhất ở Basic — EKS làm nền, giữ nguyên mô hình container hóa đã quen thuộc. Full-fledged mở rộng RDS Multi-AZ, ElastiCache, multi-environment, DR pilot light.
 
 ### 5.4 CI/CD Và Chiến Lược Triển Khai
 
-- **SDLC automation**: dùng GitLab CI/CD hoặc GitHub Actions hiện có của đội (khớp kinh nghiệm sẵn có) để build/scan image, push lên ECR, sau đó GitOps (ArgoCD) đồng bộ manifest xuống EKS — mọi thay đổi hạ tầng/ứng dụng đều truy vết được từ Git.
+Option 3 không phụ thuộc DevOps stack on-premises. Các thành phần OSS cần quyền kiểm soát sâu được tự triển khai trên EKS platform độc lập; các năng lực hạ tầng, registry, build, secret và monitoring dùng dịch vụ AWS native.
+
+```mermaid
+flowchart TD
+  Git["GitLab CE\ntrên EKS Platform"] --> ArgoRepo["GitOps repository\nHelm / Kustomize"]
+  Git --> Pipe["AWS CodePipeline"]
+  Pipe --> Build["AWS CodeBuild\nTest + build multi-arch"]
+  Build --> Scan["ECR image scanning\n+ Amazon Inspector"]
+  Scan --> ECR["Amazon ECR"]
+  ECR --> Sign["Ký image + SBOM policy"]
+  Sign --> ArgoRepo
+  ArgoRepo --> Argo["ArgoCD HA\ntrên EKS Platform"]
+  Argo --> Policy["Admission policy\nKyverno / Gatekeeper"]
+  Policy --> EKS["Amazon EKS\nApplication Cluster"]
+  EKS --> Verify["CloudWatch SLO alarm\n+ smoke test"]
+  Verify --> Decision{"SLO đạt?"}
+  Decision -->|Có| Promote["Progressive delivery\n5% -> 25% -> 100%"]
+  Decision -->|Không| Rollback["ArgoCD rollback"]
+  Secrets["AWS Secrets Manager"] --> ESO["External Secrets Operator"] --> EKS
+
+  classDef selfbuilt fill:#f39c12,stroke:#b9770e,color:#fff;
+  classDef awsnative fill:#16a085,stroke:#0e6655,color:#fff;
+  class Git,ArgoRepo,Sign,Argo,Policy,Promote,Rollback,ESO selfbuilt;
+  class Pipe,Build,Scan,ECR,EKS,Verify,Decision,Secrets awsnative;
+```
+
+**Chú giải:** cam = dịch vụ/thành phần mới do đội tự xây dựng và vận hành, có thể dùng open source; xanh lá = dịch vụ AWS native. Không có nhóm “dịch vụ đã có sẵn on-premises” vì hiện trạng chưa có DevOps stack để tái sử dụng.
+
+- **SDLC automation**: source trigger AWS CodePipeline; CodeBuild chạy test/build, ECR/Inspector quét image, sau đó ArgoCD trên EKS platform đồng bộ manifest xuống EKS application. Mọi thay đổi hạ tầng và ứng dụng phải truy vết được từ Git.
 - **Chiến lược rollout theo tier**:
   - **Basic**: rolling update mặc định của Kubernetes Deployment — đơn giản, đủ an toàn cho pilot quy mô nhỏ.
-  - **Full-fledged**: chuyển sang **blue/green** hoặc **canary** (ví dụ 5% → 25% → 100% traffic qua weighted target group/Ingress) với rollback tự động khi CloudWatch alarm hoặc SLO burn-rate vượt ngưỡng.
+  - **Option 3**: chuyển sang **blue/green** hoặc **canary** (ví dụ 5% → 25% → 100% traffic qua weighted target group/Ingress) với rollback tự động khi CloudWatch alarm hoặc SLO burn-rate vượt ngưỡng.
 - **Quản lý cấu hình**: secrets qua Secrets Manager/External Secrets Operator, không hardcode trong manifest hay image; cấu hình môi trường qua ConfigMap/SSM Parameter Store.
-- **Testing gate trước khi lên production**: unit/integration test → quét bảo mật image (ECR scan/Inspector) → staging smoke test → rollout theo chiến lược ở trên, có bước xác nhận (approval) thủ công cho Full-fledged.
+- **Testing gate trước khi lên production**: unit/integration test → quét bảo mật image (ECR scan/Inspector) → staging smoke test → rollout theo chiến lược ở trên, có bước xác nhận (approval) thủ công cho Option 3.
 
 ## 6) Dự Toán Chi Phí
 
@@ -358,7 +424,7 @@ flowchart LR
 | **Tổng cộng** | | **~1,865** |
 | Dư địa so với ngân sách 4,000 | | **~2,135 (buffer/contingency/scale-up)** |
 
-### 6.2 Kịch bản Full-fledged (Success Picture)
+### 6.2 Kịch bản Option 3 (Success Picture)
 
 | Lớp | Hạng mục | Ước tính (USD/tháng) |
 | :--- | :--- | ---: |
@@ -379,7 +445,10 @@ flowchart LR
 | Platform & Governance | Config (org-wide) + CloudTrail | 80 |
 | Platform & Governance | Managed Prometheus/Grafana | 125 |
 | Platform & Governance | AWS Backup (cross-region) | 50 |
-| **Subtotal Governance** | | **~255** |
+| Platform & Governance | EKS Platform Cluster + 3 worker Graviton + EBS | 450 |
+| Platform & Governance | Amazon OpenSearch Service + EBS/snapshot | 450 |
+| Platform & Governance | CodePipeline/CodeBuild/CodeConnections | 75 |
+| **Subtotal Governance** | | **~1,230** |
 | Application | EKS Control Plane (prod + stage) | 146 |
 | Application | EC2 worker node (12 x m6g.xlarge, Graviton, mix RI/Savings Plan khuyến nghị) | 1,450 |
 | Application | RDS Multi-AZ - 4 cluster cho 20 microservice DB (xem 4.5) | 1,340 |
@@ -392,19 +461,21 @@ flowchart LR
 | Application | API Gateway | 20 |
 | Application | Amazon SES | 10 |
 | **Subtotal Application** | | **~4,345** |
-| **Tổng chi phí AWS (indicative)** | | **~5,997** |
-| AWS Business Support (~10%) | | 600 |
-| **Tổng cộng** | | **~6,597** |
+| **Tổng chi phí AWS (indicative)** | | **~6,972** |
+| AWS Business Support (~10%) | | 697 |
+| **Tổng cộng** | | **~7,669** |
 
 ### 6.3 So sánh và lộ trình nâng cấp chi phí
 
 ```mermaid
 flowchart LR
-  Basic["Basic\n~1,870 USD/tháng\nVPN + single account\nApplication-first + Graviton"] -->|mở rộng dần theo tải thực tế và ROI| Full["Full-fledged\n~6,600 USD/tháng\nDirect Connect + multi-account\nFull security & HA + Graviton"]
+  Basic["Option 1 - Basic\n~1,870 USD/tháng\nVPN + single account"] -->|baseline tải, chi phí và RTO/RPO| Full["Option 3 - Trạng thái đích\n~7,670 USD/tháng\nDevOps stack trên AWS\nEKS platform độc lập"]
+  Compare["Option 2\nBenchmark không khả thi\ndo chưa có stack on-premises"] -.->|chỉ dùng để so sánh| Full
 ```
 
-- Chênh lệch chủ yếu đến từ: Direct Connect, Network Firewall, RDS Multi-AZ (20 microservice DB), MSK, số lượng worker node, và DR region.
-- Khuyến nghị: chạy Basic 2-3 tháng để đo tải thực tế (traffic, CPU/memory, chi phí data transfer) trước khi quyết định thời điểm và mức độ nâng cấp sang Full-fledged, **tránh đầu tư dư thừa**.
+- Chênh lệch chủ yếu đến từ: Direct Connect, Network Firewall, RDS Multi-AZ, MSK, số lượng worker, DR region và DevOps platform độc lập trên AWS.
+- Option 2 không tạo thêm một nấc chi phí triển khai vì không khả thi; nó chỉ minh họa giả định tiết kiệm nếu on-premises đã có platform, điều không đúng với hiện trạng.
+- Khuyến nghị: chạy Option 1 trong 2-3 tháng để đo tải thực tế trước khi sizing và triển khai Option 3, **tránh đầu tư dư thừa**.
 - **Graviton (ARM, m6g)** đã được áp dụng thay x86 (m5) trong cả hai kịch bản ở bảng trên — giảm ~20% chi phí EC2 worker node, đúng khuyến nghị Performance Efficiency/Cost Optimization/Sustainability trong mục 4.4 và 3. Cần xác nhận toolchain build image hỗ trợ multi-arch (arm64) trước khi áp dụng.
 
 ### 6.4 Cơ Sở Tính Toán Và Độ Tin Cậy Số Liệu
@@ -419,19 +490,22 @@ flowchart LR
 ```mermaid
 %%{ init: { 'theme': 'base', 'themeVariables': { 'primaryColor': '#ffffff', 'primaryTextColor': '#1a1a1a', 'primaryBorderColor': '#2c3e50', 'lineColor': '#2c3e50', 'tertiaryColor': '#f4f4f4', 'cScale0': '#2c3e50', 'cScaleLabel0': '#ffffff', 'cScale1': '#1f6f8b', 'cScaleLabel1': '#ffffff', 'cScale2': '#8e44ad', 'cScaleLabel2': '#ffffff', 'cScale3': '#b9770e', 'cScaleLabel3': '#ffffff' } } }%%
 timeline
-  title Roadmap: Hybrid Cloud Pilot -> Success Picture
+  title Roadmap: Option 1 -> Option 3 -> Success Picture
   0-1 tháng : Chuẩn bị nền tảng
              : Landing zone đơn giản, VPC, IAM, VPN
              : Xác định service pilot trong Hệ thống X
   1-3 tháng : Basic Pilot
              : Triển khai EKS, di chuyển 3-5 service
              : Kết nối ngược DB on-prem qua VPN, đo tải thực tế
-  3-6 tháng : Đánh giá và mở rộng
-             : Bật thêm Security Hub, WAF, Config đầy đủ
-             : Cân nhắc Direct Connect nếu băng thông VPN không đủ
-  6-12 tháng : Full-fledged Adoption
-              : Multi-account landing zone (Control Tower)
-              : RDS Multi-AZ, DR pilot light, Managed Prometheus/Grafana
+  3-4 tháng : Đánh giá Option 1
+             : Chốt baseline tải, chi phí và RTO/RPO
+             : Option 2 chỉ được ghi nhận làm benchmark, không triển khai
+  4-6 tháng : Xây nền tảng Option 3 trên AWS
+             : Multi-account landing zone và Direct Connect
+             : EKS platform độc lập, CI/CD, GitOps và observability
+  6-12 tháng : Hoàn thiện Option 3
+              : EKS application, RDS Multi-AZ và progressive delivery
+              : DR pilot light, game day và nghiệm thu Success Picture
 ```
 
 ## 8) Rủi Ro Chính Và Biện Pháp Giảm Thiểu
@@ -442,7 +516,8 @@ timeline
 | Chi phí data transfer vượt dự kiến | Vượt ngân sách | Bật AWS Budgets alert theo tuần; theo dõi Cost Explorer theo service |
 | Thiếu Security Hub/WAF ở Basic | Bề mặt tấn công lớn hơn | Vẫn bật GuardDuty + IAM least-privilege từ đầu; giới hạn public exposure của ALB |
 | Chọn sai service pilot (quá phụ thuộc DB on-prem) | Không đo được lợi ích thật của hybrid | Ưu tiên chọn service ít trạng thái, latency-tolerant cho pilot |
-| Thiếu kỹ năng vận hành multi-cloud | Chậm tiến độ, sự cố vận hành | Tận dụng kinh nghiệm K8s/observability on-prem sẵn có (Prometheus/Grafana/EFK), map 1-1 sang AWS tương đương (AMP/AMG) |
+| Chưa có DevOps stack và kinh nghiệm vận hành platform | Chậm tiến độ, pipeline/observability thiếu ổn định | Xây EKS platform độc lập theo từng wave; đào tạo EKS/GitOps, chuẩn hóa runbook, backup/restore và game day |
+| EKS platform ảnh hưởng EKS application | Mất công cụ triển khai hoặc tăng blast radius | Tách cluster, node group, account và vòng đời nâng cấp; giữ break-glass deployment có audit |
 | Chưa rà soát compliance dữ liệu cá nhân | Rủi ro pháp lý khi lên Full-fledged | Rà soát Nghị định 13/2023 và quy định ngành trước khi mở rộng phạm vi dữ liệu |
 | RDS Single-AZ ở Basic không tự failover (xem 4.5) | Downtime khi instance lỗi; mất dữ liệu tối đa bằng chu kỳ backup | Định nghĩa rõ mục tiêu **RPO ≤ 24h** (theo lịch AWS Backup hàng ngày) và **RTO ≤ 4h** (restore thủ công) cho Basic; nâng lên Multi-AZ ở nhóm RDS quan trọng khi RTO/RPO này không còn chấp nhận được |
 
@@ -452,11 +527,13 @@ Mô hình hybrid cloud được coi là đạt Full-fledged khi:
 
 1. Kết nối on-prem <-> AWS ổn định qua Direct Connect (VPN là backup).
 2. Multi-account landing zone (Control Tower) vận hành với governance/tagging/cost allocation rõ ràng.
-3. Toàn bộ service pilot và mở rộng chạy trên EKS với autoscaling, RDS Multi-AZ cho dữ liệu production.
+3. Workload ứng dụng chạy trên EKS Application Cluster với autoscaling và RDS Multi-AZ; DevOps stack chạy trên EKS Platform Cluster độc lập, không chia sẻ worker/failure domain.
 4. Bộ bảo mật đầy đủ: GuardDuty, Security Hub, WAF, Network Firewall, Inspector đang hoạt động và có quy trình xử lý finding.
-5. Observability hợp nhất on-prem/AWS qua Managed Prometheus/Grafana, cùng dashboard với stack hiện có.
-6. Có DR pilot light ở region phụ, RTO/RPO được định nghĩa và kiểm thử ít nhất 1 lần.
-7. Chi phí vận hành nằm trong ngân sách đã phê duyệt, có báo cáo Cost Explorer định kỳ hàng tháng.
+5. DevOps stack được xây trên AWS; GitLab CE, ArgoCD và controller OSS chạy trên EKS platform độc lập với EKS application, không phụ thuộc platform on-premises.
+6. CI/CD và GitOps tự động hóa từ source đến production, có security gate, progressive delivery và rollback đã kiểm thử.
+7. Observability hợp nhất on-premises/AWS qua CloudWatch, AMP/AMG và OpenSearch trên AWS, có dashboard SLO và cảnh báo hành động được.
+8. Có DR pilot light ở Region phụ, RTO/RPO được định nghĩa và kiểm thử ít nhất một lần.
+9. Chi phí vận hành nằm trong ngân sách đã phê duyệt, có báo cáo Cost Explorer định kỳ hàng tháng.
 
 ## 10) Tham Chiếu
 

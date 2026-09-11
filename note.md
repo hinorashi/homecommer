@@ -13,7 +13,7 @@ Tập trung chủ yếu vào **độ tin cậy**, **hiệu năng**, **tính sẵ
 #### People
 
 - **Blameless Culture**: Khi xảy ra sự cố, doanh nghiệp tập trung tìm nguyên nhân hệ thống thay vì quy trách nhiệm cá nhân.
-- **Hybrid Engineers**: (Nôm na là SysOps xài dc tool) Có năng lực cả software engineering và systems engineering để thiết kế, vận hành, và tự động hóa hệ thống. Toil phải dưới 50% để tối thiểu một nửa thời gian dành cho engineering thực hiện cải tiến lâu dài.
+- **Hybrid Engineers**: (_Nôm na là SysOps xài dc tool_) Có năng lực cả software engineering và systems engineering để thiết kế, vận hành, và tự động hóa hệ thống. Toil phải dưới 50% để tối thiểu một nửa thời gian dành cho engineering thực hiện cải tiến lâu dài.
 - **Shared Responsibility**: SysOps và Dev cùng tham gia sửa lỗi, cùng chịu trách nhiệm về uptime, cùng tham gia thiết kế hệ thống chịu lỗi.
 - **Service Owner**: Chịu trách nhiệm về SLO, production readiness, reliability backlog và các quyết định trade-off của dịch vụ.
 - **Incident Commander**: Điều phối Sev1/Sev2, phân công vai trò, duy trì timeline và truyền thông; không nhất thiết là người trực tiếp debug.
@@ -415,22 +415,42 @@ Chuyển dịch từ tư duy "hỗ trợ kỹ thuật" sang tư duy "cung cấp 
 
 ### 2. Checklist
 
-#### Trải nghiệm Lập trình viên (Developer Experience - DevEx)
+Mỗi tiêu chí chỉ được đánh dấu **Đạt** khi có số đo đạt ngưỡng, owner rõ ràng, bằng chứng lưu trữ được và được review theo chu kỳ. Các ngưỡng là điểm bắt đầu, cần hiệu chỉnh theo quy mô tổ chức, service tier và mức độ rủi ro.
 
-- **Thời gian Onboarding cực ngắn**: Một lập trình viên mới vào công ty có thể tự cấp phát môi trường, clone dự án mẫu và chạy được bản "Hello World" trên môi trường thử nghiệm trong vòng dưới 1 giờ.
-- **Cổng thông tin tập trung (Developer Portal)**: Công ty có một trang web duy nhất chứa toàn bộ catalog dịch vụ, tài liệu API, trạng thái hệ thống và danh mục tự phục vụ.
-- **Không còn hiện tượng "Chờ Ticket"**: Lập trình viên không phải tạo ticket trên Jira/ServiceNow rồi ngồi chờ đội Infra tạo hộ database hay cấp quyền truy cập.
+| Nhóm | Tiêu chí đo được | Ngưỡng Đạt đề xuất | Bằng chứng bắt buộc | Owner / chu kỳ review |
+| :--- | :--- | :--- | :--- | :--- |
+| DevEx | **Onboarding happy path** | P50 <= 1 giờ, P90 <= 1 ngày làm việc từ lúc đủ quyền truy cập đến khi deploy được template chuẩn vào môi trường thử nghiệm | Event log onboarding; completion funnel; developer survey | Platform Product Owner / hàng tháng |
+| DevEx | **Self-service fulfillment** | >= 70% routine request rủi ro thấp hoàn tất qua portal/API/CLI không cần ticket; phần còn lại có approval workflow, SLA và audit | Workflow log; ticket classification; request lead-time report | Platform Team / hàng tháng |
+| DevEx | **Support health** | Support response/resolution đạt SLA theo priority; top friction theme có backlog item hoặc quyết định từ chối được ghi nhận | Support dashboard; backlog metadata; decision log | Platform Product Owner / hàng tháng |
+| Developer experience | **Developer satisfaction** | Điểm hài lòng/CES >= 4/5 hoặc cải thiện liên tục so với baseline; khảo sát có tỷ lệ phản hồi đại diện | Survey result; segmentation; action plan | Platform Product Owner / hàng quý |
+| Golden paths | **Golden-path adoption** | >= 80% service mới đi qua golden path; bypass/escape hatch được phân loại theo lý do và owner | Template usage; repository/service catalog metadata; exception register | Platform Team / hàng tháng |
+| Golden paths | **Golden-path quality and lifecycle** | Template có owner, version, deprecation policy; template chuẩn tích hợp CI/CD, observability, security và ownership metadata | Template registry; release notes; lifecycle policy | Platform Team / hàng quý |
+| Golden paths | **Path completion rate** | >= 95% workflow scaffold/provision/deploy chuẩn hoàn tất thành công; failure có incident hoặc backlog xử lý | Workflow execution log; failure dashboard | Platform Team / hàng tháng |
+| Platform reliability | **Platform SLO** | Portal/API/workflow provisioning có SLI/SLO, dashboard, alert và error-budget policy theo tier | SLO spec; dashboard; alert rules; incident records | Platform SRE/Engineering / hàng tháng |
+| Platform reliability | **Recovery readiness** | Backup/restore được kiểm thử; RTO/RPO của catalog, config và workflow được xác nhận qua drill | Backup report; restore drill; DR action tracker | Platform Team / hàng quý |
+| Governance | **Policy-as-code coverage** | 100% workflow chuẩn chạy policy check tại provision/deploy; policy violation có audit trail | Policy engine logs; CI/CD evidence; audit report | Security + Platform / hàng tháng |
+| Governance | **Exception management** | 100% exception có owner, business reason, expiry date và approver; exception quá hạn < 5% | Exception register; approval/audit log | Security + Platform / hàng tháng |
+| FinOps | **Cost allocation coverage** | >= 95% resource có owner, service, environment và cost-center tag hợp lệ; >= 90% chi phí phân bổ được về team/service | Tagging report; cost allocation dashboard | Platform + FinOps / hàng tháng |
+| FinOps | **Cost action effectiveness** | Budget anomaly có owner; saving/waste-reduction action được theo dõi đến kết quả | Cost anomaly log; action tracker; savings report | Platform + FinOps / hàng quý |
+| Product management | **Evidence-driven backlog** | >= 70% item được ưu tiên có usage data, support friction, developer feedback hoặc business objective liên kết | Backlog metadata; quarterly roadmap review | Platform Product Owner / hàng quý |
 
-#### Tính Chuẩn hóa & Quản trị (Standardization & Governance)
+#### Công thức và dashboard tối thiểu
 
-- **Golden Paths rõ ràng**: Có sẵn các bộ khung (Templates) chuẩn cho các ngôn ngữ lập trình phổ biến trong công ty (Java, Node.js, Go) tích hợp sẵn CI/CD và Security Scan.
-- **Bảo mật và Tuân thủ mặc định (Guardrails)**: Hệ thống tự động chặn các hành vi vi phạm chính sách (_ví dụ: tạo database công khai ra internet_) ngay từ lúc lập trình viên yêu cầu cấp phát tài nguyên trên IDP.
-- **Quản lý chi phí (FinOps) minh bạch**: IDP có thể hiển thị rõ ràng chi phí hạ tầng của từng đội nhóm/dự án để lập trình viên tự nhận thức và tối ưu hóa tài nguyên mình đang dùng.
+- **Onboarding time** = thời điểm hoàn tất deploy template chuẩn - thời điểm developer có đủ quyền truy cập.
+- **Self-service fulfillment rate** = routine request hoàn tất qua workflow tự phục vụ / tổng routine request.
+- **Golden-path adoption** = service mới dùng template/path chuẩn / tổng service mới.
+- **Golden-path completion rate** = workflow chuẩn hoàn tất thành công / tổng workflow chuẩn được khởi tạo.
+- **Platform SLO compliance** = cửa sổ đo đạt SLO / tổng cửa sổ đo.
+- **Cost allocation coverage** = chi phí hoặc resource có tag hợp lệ / tổng chi phí hoặc resource.
+- Dashboard phải drill-down được từ metric -> team/service -> workflow/template -> support request, exception hoặc incident liên quan.
 
-#### Đo lường hiệu quả (Platform Metrics)
+#### Success Picture cho Platform Engineering
 
-- **Tỷ lệ áp dụng (Adoption Rate)**: Trên 80% các dự án mới trong công ty tự nguyện sử dụng IDP và đi theo Golden Paths thay vì tự dựng hạ tầng riêng.
-- **Thời gian hoàn thành tác vụ (Lead Time for Infrastructure)**: Thời gian từ lúc Dev yêu cầu một tài nguyên hạ tầng mới (như cụm Redis) đến khi nó sẵn sàng sử dụng chỉ tính bằng phút.
+- Developers có thể tự hoàn tất các workflow chuẩn nhanh, an toàn và có tài liệu mà không phải chờ ticket thủ công.
+- Golden path là lựa chọn dễ nhất và được dùng nhiều nhất; escape hatch tồn tại nhưng được quản trị, không trở thành đường mặc định.
+- Platform vận hành như production product: có owner, SLO, on-call/support, backup/restore và DR.
+- Guardrail được tự động hóa; exception có audit và thời hạn rõ ràng.
+- Đầu tư platform được ưu tiên bằng data về adoption, friction, reliability và cost, không chỉ theo công cụ mới.
 
 ### 3. Công cụ cốt lõi
 

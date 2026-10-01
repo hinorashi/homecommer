@@ -65,6 +65,31 @@ button:focus-visible, textarea:focus-visible, .issue-toggle:focus-within { outli
 .review-content small { color: #6f8279; font-size: 12px; overflow-wrap: anywhere; }
 .overall-panel { margin-top: 28px; }
 .review-footnote { margin-top: 25px; color: #73857c; font-size: 12px; }
+.preview-notice { display: grid; gap: 4px; margin-top: 23px; padding: 13px 16px; border-left: 3px solid #cf8058; background: #fff; color: #77513f; font-size: 12px; line-height: 1.5; }
+.preview-notice span { color: #65766e; }
+.match-list { margin-top: 22px; border-top: 1px solid #d5dfda; }
+.match-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: start; gap: 14px; padding: 20px 4px; border-bottom: 1px solid #d5dfda; }
+.match-rank { color: #b77759; font: 600 20px 'Newsreader', Georgia, serif; }
+.match-copy { min-width: 0; }
+.match-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.match-title-row h2 { margin: 0; color: #263a34; font: 600 20px 'Newsreader', Georgia, serif; }
+.candidate-tag { padding: 3px 6px; border: 1px solid #d9a68f; color: #8f513b; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.scope-tag { padding: 3px 6px; border: 1px solid #d8c28c; color: #806637; font-size: 9px; font-weight: 700; }
+.series-name { margin: 6px 0 0; color: #6d7d76; font-size: 11px; line-height: 1.5; }
+.release-source { display: inline-block; margin-top: 5px; color: #276f64; font-size: 10px; text-underline-offset: 2px; }
+.criteria-list { margin-top: 12px; }
+.criteria-row { padding: 12px 0; border-top: 1px solid #e0e6e2; }
+.criteria-row strong { color: #31584c; font-size: 12px; }
+.criteria-row p { margin: 5px 0; color: #52665d; font-size: 12px; line-height: 1.5; }
+.criteria-row small { display: block; color: #7b8b84; font-size: 10px; line-height: 1.5; }
+.criteria-row .cutoff-warning { color: #98643f; font-weight: 700; }
+.criteria-row a { display: inline-block; margin-top: 5px; color: #276f64; font-size: 11px; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+.criteria-row a:focus-visible { outline: 2px solid #25766e; outline-offset: 3px; }
+.match-count { display: grid; justify-items: end; gap: 3px; color: #324e44; }
+.match-count strong { font: 600 20px 'Newsreader', Georgia, serif; }
+.match-count span { color: #7b8b84; font-size: 10px; white-space: nowrap; }
+.match-empty { margin-top: 24px; padding: 17px 0; border-top: 1px solid #d5dfda; border-bottom: 1px solid #d5dfda; color: #3a5e52; }
+.match-empty p { margin: 7px 0 0; color: #697a73; font-size: 12px; line-height: 1.6; }
 
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 205px minmax(0, 1fr); }
@@ -94,6 +119,8 @@ button:focus-visible, textarea:focus-visible, .issue-toggle:focus-within { outli
   .bottom-actions { align-items: stretch; }
   .right-actions { gap: 10px; }
   .primary-action { padding-inline: 12px; }
+  .match-row { grid-template-columns: 27px minmax(0, 1fr); gap: 10px; }
+  .match-count { grid-column: 2; display: flex; align-items: baseline; justify-items: start; gap: 6px; }
 }
 
 @media (max-width: 370px) {

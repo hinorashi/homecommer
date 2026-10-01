@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, Download, RotateCcw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Download, RotateCcw, Sparkles } from 'lucide-react'
+import { characterProfiles } from './characterProfiles'
 import { issueLabels, questions, questionSetVersion } from './questions'
+import { buildUserTraits, matchCharacters } from './matching'
 import './Quiz.css'
 
 function shuffledOrders() {
@@ -28,7 +30,11 @@ export default function Quiz() {
   const [step, setStep] = useState(0)
   const [generalNote, setGeneralNote] = useState('')
   const review = step === questions.length
+  const results = step === questions.length + 1
+  const completed = review || results
   const answered = answers.filter((answer) => answer !== null).length
+  const userTraits = buildUserTraits(answers, questions)
+  const matches = matchCharacters(userTraits, characterProfiles, { includeProposed: true }).slice(0, 3)
 
   function navigate(index) {
     setStep(index)
@@ -100,7 +106,7 @@ export default function Quiz() {
               return <circle key={question.id} cx={120 + Math.cos(angle) * 88} cy={120 + Math.sin(angle) * 88} r={index === step ? 8 : 5} fill={answers[index] !== null ? '#e68459' : index === step ? '#e7eee2' : '#68938d'} />
             })}
           </svg>
-          <span>{review ? '10/10' : `${String(step + 1).padStart(2, '0')}/10`}</span>
+          <span>{completed ? '10/10' : `${String(step + 1).padStart(2, '0')}/10`}</span>
         </div>
         <div className="side-heading"><span>TIẾN ĐỘ</span><span>{answered} đã chọn</span></div>
         <nav className="question-nav" aria-label="Danh sách câu hỏi">
@@ -114,7 +120,7 @@ export default function Quiz() {
       </aside>
 
       <main className="workspace">
-        <header className="topbar"><span>THỬ NGHIỆM / BỘ CÂU HỎI 02</span><span className="status"><i /> BẢN POC</span></header>
+        <header className="topbar"><span>THỬ NGHIỆM / BỘ CÂU HỎI 05</span><span className="status"><i /> BẢN POC</span></header>
         {review ? (
           <div className="content-wrap review-wrap">
             <div className="section-label"><span className="label-number">✓</span> / HOÀN TẤT</div>
@@ -130,8 +136,45 @@ export default function Quiz() {
               ))}
             </div>
             <section className="feedback-panel overall-panel"><label className="note-label" htmlFor="general-note">Nhận xét chung về bộ câu hỏi</label><textarea id="general-note" rows="3" placeholder="Câu nào khiến cụ phân vân nhất?" value={generalNote} onChange={(event) => setGeneralNote(event.target.value)} /></section>
-            <div className="bottom-actions"><button type="button" className="text-action" onClick={reset}><RotateCcw size={17} /> Làm lại</button><button type="button" className="primary-action" onClick={exportReport}><Download size={18} /> Tải phản hồi JSON</button></div>
-            <p className="review-footnote">Chưa có kết quả ghép nhân vật trong giai đoạn thử câu hỏi.</p>
+            <div className="bottom-actions"><button type="button" className="text-action" onClick={reset}><RotateCcw size={17} /> Làm lại</button><div className="right-actions"><button type="button" className="text-action" onClick={exportReport}><Download size={17} /> Tải phản hồi JSON</button><button type="button" className="primary-action" onClick={() => navigate(questions.length + 1)}><Sparkles size={17} /> Xem nhân vật phù hợp</button></div></div>
+            <p className="review-footnote">Kết quả dưới đây là bản preview; các tag nhân vật còn chờ duyệt biên tập.</p>
+          </div>
+        ) : results ? (
+          <div className="content-wrap results-wrap">
+            <div className="section-label"><span className="label-number"><Sparkles size={17} /></span> / KẾT QUẢ THỬ</div>
+            <h1>Nhân vật phù hợp</h1>
+            <p className="question-hint">Tìm thấy {matches.length} hồ sơ có tag hành vi chung với {userTraits.length} tag từ câu trả lời.</p>
+            <div className="preview-notice" role="note"><strong>Bản preview, chưa phải kết quả đã duyệt.</strong><span>Tag bên dưới được rút từ hồ sơ anime chính thức nhưng chưa qua biên tập viên duyệt. Anime nguồn của từng tag và cutoff mới nhất được ghi riêng; việc tag còn đúng với cutoff mới nhất chưa được xác minh. Chỉ các tag trùng mới được nêu; tag vắng mặt không bị xem là đối lập.</span></div>
+            {matches.length > 0 ? (
+              <section className="match-list" aria-label="Nhân vật và tiêu chí trùng">
+                {matches.map(({ character, sharedTraits }, index) => (
+                  <article className="match-row" key={character.id}>
+                    <span className="match-rank">{String(index + 1).padStart(2, '0')}</span>
+                    <div className="match-copy">
+                      <div className="match-title-row"><h2>{character.name}</h2><span className="candidate-tag">Tag đề xuất / chưa duyệt</span><span className="scope-tag">{character.latestReleaseVerified ? 'Mốc mới nhất đã kiểm tra' : 'Mốc mới nhất chưa xác minh'}</span></div>
+                      <p className="series-name">{character.series} · {character.releaseMilestone}</p>
+                      <a className="release-source" href={character.releaseSourceUrl} target="_blank" rel="noreferrer">Nguồn mốc anime</a>
+                      <div className="criteria-list">
+                        {sharedTraits.map((trait) => (
+                          <div className="criteria-row" key={trait.tagId}>
+                            <strong>{trait.label}</strong>
+                            <p>{trait.editorialInterpretation}</p>
+                            <small>Thuật ngữ nguồn: {trait.sourceTerm} · Độ tin cậy: {trait.confidence}</small>
+                            <small>Anime của nguồn: {trait.animeTitle} · {trait.releaseMilestone}</small>
+                            {!character.traitCutoffAligned && <small className="cutoff-warning">Chưa xác nhận trait này trong cutoff mới nhất.</small>}
+                            <a href={trait.url} target="_blank" rel="noreferrer">{trait.sourceTitle} ({trait.sourceType})</a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="match-count"><strong>{sharedTraits.length}</strong><span>tag chung</span></div>
+                  </article>
+                ))}
+              </section>
+            ) : (
+              <div className="match-empty" role="status"><strong>Chưa có tiêu chí chung</strong><p>Không có tag hành vi trùng với các hồ sơ nguồn hiện có. Đây không phải kết luận rằng cụ có đặc điểm đối lập với các nhân vật.</p></div>
+            )}
+            <div className="bottom-actions"><button type="button" className="text-action" onClick={() => navigate(questions.length)}><ArrowLeft size={18} /> Rà soát câu trả lời</button><button type="button" className="primary-action" onClick={exportReport}><Download size={18} /> Tải phản hồi JSON</button></div>
           </div>
         ) : (
           <div className="content-wrap question-wrap" key={step}>
@@ -155,7 +198,7 @@ export default function Quiz() {
             <div className="bottom-actions"><button type="button" className="text-action" onClick={() => navigate(step - 1)} disabled={step === 0}><ArrowLeft size={18} /> Câu trước</button><div className="right-actions">{answers[step] === null && <button type="button" className="skip-action" onClick={() => navigate(step + 1)}>Bỏ qua</button>}<button type="button" className="primary-action" disabled={answers[step] === null} onClick={() => navigate(step + 1)}>{step === questions.length - 1 ? 'Xem lại' : 'Tiếp tục'} <ArrowRight size={18} /></button></div></div>
           </div>
         )}
-        <footer className="page-footer"><span>NHÂN VẬT GIỐNG MÌNH</span><span>{review ? 'HOÀN TẤT' : `${seen.filter(Boolean).length} / 10 ĐÃ XEM`}</span></footer>
+        <footer className="page-footer"><span>NHÂN VẬT GIỐNG MÌNH</span><span>{completed ? 'HOÀN TẤT' : `${seen.filter(Boolean).length} / 10 ĐÃ XEM`}</span></footer>
       </main>
     </div>
   )

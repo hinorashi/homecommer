@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-ok" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2d3d4d" />
+      <stop offset="100%" stop-color="#141a22" />
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="16" fill="url(#bg-ok)" />
+  <circle cx="80" cy="80" r="68" fill="none" stroke="#6b8ca8" stroke-width="2" stroke-dasharray="4 4" opacity="0.4" />
+  <!-- White Lab Coat & T-shirt -->
+  <path d="M25 160 C30 118, 50 110, 80 110 C110 110, 130 118, 135 160 Z" fill="#ffffff" />
+  <path d="M56 112 L80 160 L104 112 Z" fill="#9e3428" />
+  <path d="M68 112 L80 135 L92 112 Z" fill="#586776" />
+  <!-- Face -->
+  <path d="M54 62 C54 90, 64 105, 80 105 C96 105, 106 90, 106 62 C106 45, 95 40, 80 40 C65 40, 54 45, 54 62 Z" fill="#fae2cb" />
+  <!-- Stubble / Chin hint -->
+  <circle cx="80" cy="100" r="1.5" fill="#a08b7d" />
+  <!-- Sharp eyes -->
+  <ellipse cx="68" cy="71" rx="4.5" ry="5.5" fill="#59402e" />
+  <circle cx="69" cy="69" r="1.8" fill="#fff" />
+  <ellipse cx="92" cy="71" rx="4.5" ry="5.5" fill="#59402e" />
+  <circle cx="93" cy="69" r="1.8" fill="#fff" />
+  <!-- Intense eyebrows -->
+  <path d="M62 64 L74 67" stroke="#36251b" stroke-width="2.2" stroke-linecap="round" />
+  <path d="M98 64 L86 67" stroke="#36251b" stroke-width="2.2" stroke-linecap="round" />
+  <!-- Messy swept-back brown hair -->
+  <path d="M46 54 C42 80, 52 88, 50 94 C54 75, 60 55, 66 48 C72 38, 76 32, 80 32 C84 32, 88 38, 94 48 C100 55, 106 75, 110 94 C108 88, 118 80, 114 54 C110 32, 96 26, 80 26 C64 26, 50 32, 46 54 Z" fill="#38261e" />
+  <path d="M72 40 L78 65 L82 46 L88 64 L92 42" stroke="#483227" stroke-width="2.5" stroke-linecap="round" fill="none" />
+  <!-- Confident smile -->
+  <path d="M74 88 Q80 93 88 87" stroke="#874c43" stroke-width="2" fill="none" stroke-linecap="round" />
+</svg>

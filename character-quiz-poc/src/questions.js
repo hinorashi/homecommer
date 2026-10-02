@@ -1,4 +1,4 @@
-export const questionSetVersion = '2026-10-01-r5'
+export const questionSetVersion = '2026-10-01-r6'
 
 export const questions = [
   { id: 1, prompt: 'Cụ và đồng đội cùng chịu trách nhiệm bản nộp sau một giờ. Đồng đội vừa phát hiện lỗi khiến phần họ làm không dùng được; phần cụ làm vẫn ổn.', choices: [
@@ -58,3 +58,51 @@ export const issueLabels = {
   missing: 'Thiếu phương án phù hợp',
   biased: 'Một phương án nghe đúng hơn',
 }
+
+export const drillDownQuestions = [
+  {
+    id: 11,
+    tier: 2,
+    prompt: 'Trước một biến cố lớn, cụ buộc phải lựa chọn giữa bảo vệ người thân yêu hoặc tuân thủ nguyên tắc/lợi ích chung của tập thể.',
+    choices: [
+      'Quyết liệt bảo vệ người thân yêu bằng mọi giá',
+      'Giữ trọn cam kết và đặt sứ mệnh chung lên vị trí ưu tiên cao nhất',
+      'Tìm kiếm phương án thứ ba linh hoạt để dung hòa cả hai mục tiêu',
+    ],
+    choiceTraits: [
+      ['reacts-intensely-to-threats-near-loved-ones', 'self-directed'],
+      ['prioritizes-shared-deadline', 'honors-commitments'],
+      ['plans-alternatives', 'pursues-goals-strategically'],
+    ],
+  },
+  {
+    id: 12,
+    tier: 2,
+    prompt: 'Khi phát hiện một tổ chức hoặc người từng tin tưởng có dấu hiệu đối xử bất công hoặc phản bội.',
+    choices: [
+      'Trực diện lên tiếng công khai và yêu cầu làm rõ ngay lập tức',
+      'Âm thầm lập kế hoạch dài hạn, chuẩn bị lực lượng riêng để xoay chuyển cục diện',
+      'Giữ khoảng cách thận trọng, bảo toàn vị thế và tập trung vào con đường của mình',
+    ],
+    choiceTraits: [
+      ['advocates-for-fairness', 'communicates-directly'],
+      ['plans-confrontational-action', 'self-directed'],
+      ['respects-personal-space', 'prepares-before-action'],
+    ],
+  },
+  {
+    id: 13,
+    tier: 2,
+    prompt: 'Khi một kế hoạch lớn bất ngờ sụp đổ hoàn toàn và thời gian hành động còn rất ít.',
+    choices: [
+      'Hành động quyết đoán ngay theo trực giác thực chiến, vừa làm vừa khắc phục',
+      'Bình tĩnh lùi lại quan sát, chuẩn bị kỹ lưỡng cho một đòn xoay chuyển duy nhất',
+      'Lập tức huy động đồng đội chia sẻ trách nhiệm và phối hợp ứng biến tập thể',
+    ],
+    choiceTraits: [
+      ['acts-under-uncertainty', 'learns-by-doing'],
+      ['prepares-before-action', 'self-directed'],
+      ['collaborates', 'leads-group'],
+    ],
+  },
+]

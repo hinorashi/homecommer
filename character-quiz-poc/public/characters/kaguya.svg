@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-kg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3c1825" />
+      <stop offset="100%" stop-color="#190e14" />
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="16" fill="url(#bg-kg)" />
+  <circle cx="80" cy="80" r="68" fill="none" stroke="#d63354" stroke-width="2" stroke-dasharray="3 4" opacity="0.4" />
+  <!-- Shuchiin uniform -->
+  <path d="M28 160 C32 120, 50 114, 80 114 C110 114, 128 120, 132 160 Z" fill="#202228" />
+  <path d="M70 114 L80 134 L90 114 Z" fill="#fff" />
+  <path d="M76 130 L80 138 L84 130 Z" fill="#c92842" />
+  <!-- Hair back -->
+  <path d="M44 55 C40 85, 42 115, 46 135 C58 135, 102 135, 114 135 C118 115, 120 85, 116 55 Z" fill="#18191d" />
+  <!-- Face -->
+  <path d="M54 62 C54 90, 64 104, 80 104 C96 104, 106 90, 106 62 C106 45, 95 40, 80 40 C65 40, 54 45, 54 62 Z" fill="#fff0e6" />
+  <!-- Red eyes -->
+  <ellipse cx="68" cy="70" rx="5" ry="6.5" fill="#a81932" />
+  <circle cx="69" cy="68" r="2.2" fill="#fff" />
+  <ellipse cx="92" cy="70" rx="5" ry="6.5" fill="#a81932" />
+  <circle cx="93" cy="68" r="2.2" fill="#fff" />
+  <!-- Elegant red ribbon in hair -->
+  <path d="M80 34 C65 22, 60 16, 70 12 C78 18, 80 28, 80 34 Z" fill="#b82138" />
+  <path d="M80 34 C95 22, 100 16, 90 12 C82 18, 80 28, 80 34 Z" fill="#b82138" />
+  <circle cx="80" cy="32" r="4" fill="#d93b54" />
+  <!-- Front Hair bangs -->
+  <path d="M50 55 C52 72, 60 76, 64 68 C68 56, 73 45, 80 44 C87 45, 92 56, 96 68 C100 76, 108 72, 110 55 C108 38, 96 32, 80 32 C64 32, 52 38, 50 55 Z" fill="#22242a" />
+  <!-- Calm subtle smile -->
+  <path d="M76 86 Q80 89 84 86" stroke="#9e4e5d" stroke-width="1.8" fill="none" stroke-linecap="round" />
+</svg>

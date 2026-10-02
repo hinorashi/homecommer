@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-lv" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#243828" />
+      <stop offset="100%" stop-color="#0f1911" />
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="16" fill="url(#bg-lv)" />
+  <circle cx="80" cy="80" r="68" fill="none" stroke="#52825c" stroke-width="2" stroke-dasharray="3 4" opacity="0.4" />
+  <!-- Survey Corps Green Cloak & White Cravat -->
+  <path d="M25 160 C30 118, 50 112, 80 112 C110 112, 130 118, 135 160 Z" fill="#2d4a34" />
+  <path d="M60 115 L80 160 L100 115 Z" fill="#b8935c" />
+  <!-- White Ascot Cravat -->
+  <path d="M72 118 C70 135, 74 146, 80 148 C86 146, 90 135, 88 118 Z" fill="#ffffff" />
+  <path d="M76 122 L84 122" stroke="#d5ded8" stroke-width="1.5" />
+  <!-- Face -->
+  <path d="M54 62 C54 90, 64 104, 80 104 C96 104, 106 90, 106 62 C106 45, 95 40, 80 40 C65 40, 54 45, 54 62 Z" fill="#f8e5d5" />
+  <!-- Piercing steel eyes -->
+  <ellipse cx="68" cy="71" rx="4.5" ry="5" fill="#3c4e4d" />
+  <circle cx="69" cy="70" r="1.5" fill="#fff" />
+  <ellipse cx="92" cy="71" rx="4.5" ry="5.5" fill="#3c4e4d" />
+  <circle cx="93" cy="70" r="1.5" fill="#fff" />
+  <!-- Stoic eyebrows -->
+  <path d="M62 66 L74 68" stroke="#1d2624" stroke-width="2" stroke-linecap="round" />
+  <path d="M98 66 L86 68" stroke="#1d2624" stroke-width="2" stroke-linecap="round" />
+  <!-- Undercut dark hair with middle parting -->
+  <path d="M48 54 C46 76, 52 82, 54 75 C56 64, 62 52, 68 48 C74 44, 78 40, 80 42 C82 40, 86 44, 92 48 C98 52, 104 64, 106 75 C108 82, 114 76, 112 54 C110 32, 96 26, 80 26 C64 26, 50 32, 48 54 Z" fill="#1b1d20" />
+  <path d="M72 44 L78 68 L80 50 L82 68 L88 44" stroke="#26292e" stroke-width="2.5" stroke-linecap="round" fill="none" />
+  <!-- Serious straight mouth -->
+  <path d="M75 87 L85 87" stroke="#7a554a" stroke-width="1.8" stroke-linecap="round" />
+</svg>

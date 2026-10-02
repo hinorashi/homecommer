@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { ArrowLeft, ArrowRight, Check, Download, RotateCcw, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Award, Check, Compass, Download, ExternalLink, Filter, Flame, RotateCcw, Sparkles, Tag, User, Zap } from 'lucide-react'
 import { characterProfiles } from './characterProfiles'
-import { issueLabels, questions, questionSetVersion } from './questions'
-import { buildUserTraits, matchCharacters } from './matching'
+import { drillDownQuestions, issueLabels, questions, questionSetVersion } from './questions'
+import { buildUserTraits, matchCharacters, summarizeUserPersonality } from './matching'
 import './Quiz.css'
 
 function shuffledOrders() {
@@ -29,12 +29,38 @@ export default function Quiz() {
   const [seen, setSeen] = useState(() => questions.map((_, index) => index === 0))
   const [step, setStep] = useState(0)
   const [generalNote, setGeneralNote] = useState('')
+
+  // Tier-2 Adaptive Drill-down state
+  const [drillDownAnswers, setDrillDownAnswers] = useState(() => drillDownQuestions.map(() => null))
+  const [drillDownOpen, setDrillDownOpen] = useState(false)
+  const [drillDownStep, setDrillDownStep] = useState(0)
+
+  // Contextual filters
+  const [genreFilter, setGenreFilter] = useState('all')
+  const [archetypeFilter, setArchetypeFilter] = useState('all')
+
   const review = step === questions.length
   const results = step === questions.length + 1
   const completed = review || results
   const answered = answers.filter((answer) => answer !== null).length
-  const userTraits = buildUserTraits(answers, questions)
-  const matches = matchCharacters(userTraits, characterProfiles, { includeProposed: true }).slice(0, 3)
+  const drillDownAnsweredCount = drillDownAnswers.filter((a) => a !== null).length
+
+  // Combine core quiz and drill-down answers for high-resolution matching
+  const combinedQuestions = [
+    ...questions,
+    ...drillDownQuestions,
+  ]
+  const combinedAnswers = [
+    ...answers,
+    ...drillDownAnswers,
+  ]
+  const userTraits = buildUserTraits(combinedAnswers, combinedQuestions)
+  const personalitySummary = summarizeUserPersonality(userTraits)
+  const matches = matchCharacters(userTraits, characterProfiles, {
+    includeProposed: true,
+    genreFilter,
+    archetypeFilter,
+  }).slice(0, 3)
 
   function navigate(index) {
     setStep(index)
@@ -74,6 +100,16 @@ export default function Quiz() {
         issues: feedback[index].issues,
         note: feedback[index].note.trim(),
       })),
+      drillDownAnswers: drillDownQuestions.map((q, idx) => ({
+        questionId: q.id,
+        prompt: q.prompt,
+        choiceId: drillDownAnswers[idx] === null ? null : drillDownAnswers[idx] + 1,
+        choice: drillDownAnswers[idx] === null ? null : q.choices[drillDownAnswers[idx]],
+      })),
+      filters: {
+        genreFilter,
+        archetypeFilter,
+      },
       generalNote: generalNote.trim(),
     }
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }))
@@ -87,6 +123,11 @@ export default function Quiz() {
   function reset() {
     setOrders(shuffledOrders())
     setAnswers(questions.map(() => null))
+    setDrillDownAnswers(drillDownQuestions.map(() => null))
+    setDrillDownOpen(false)
+    setDrillDownStep(0)
+    setGenreFilter('all')
+    setArchetypeFilter('all')
     setFeedback(emptyFeedback())
     setSeen(questions.map((_, index) => index === 0))
     setGeneralNote('')
@@ -120,7 +161,7 @@ export default function Quiz() {
       </aside>
 
       <main className="workspace">
-        <header className="topbar"><span>THỬ NGHIỆM / BỘ CÂU HỎI 05</span><span className="status"><i /> BẢN POC</span></header>
+        <header className="topbar"><span>THỬ NGHIỆM / BỘ CÂU HỎI 06</span><span className="status"><i /> BẢN POC</span></header>
         {review ? (
           <div className="content-wrap review-wrap">
             <div className="section-label"><span className="label-number">✓</span> / HOÀN TẤT</div>
@@ -141,40 +182,305 @@ export default function Quiz() {
           </div>
         ) : results ? (
           <div className="content-wrap results-wrap">
-            <div className="section-label"><span className="label-number"><Sparkles size={17} /></span> / KẾT QUẢ THỬ</div>
-            <h1>Nhân vật phù hợp</h1>
-            <p className="question-hint">Tìm thấy {matches.length} hồ sơ có tag hành vi chung với {userTraits.length} tag từ câu trả lời.</p>
-            <div className="preview-notice" role="note"><strong>Bản preview, chưa phải kết quả đã duyệt.</strong><span>Tag bên dưới được rút từ hồ sơ anime chính thức nhưng chưa qua biên tập viên duyệt. Anime nguồn của từng tag và cutoff mới nhất được ghi riêng; việc tag còn đúng với cutoff mới nhất chưa được xác minh. Chỉ các tag trùng mới được nêu; tag vắng mặt không bị xem là đối lập.</span></div>
+            <div className="section-label"><span className="label-number"><Sparkles size={17} /></span> / KẾT QUẢ SUY LUẬN & GHÉP ĐÔI</div>
+            <h1>Nhân vật anime phù hợp</h1>
+            <p className="question-hint">Tổng hợp từ {answered} câu trả lời của cụ và đối chiếu với dữ liệu tính cách từ các nguồn trực tuyến.</p>
+
+            <section className="user-profile-assessment" aria-labelledby="user-assessment-title">
+              <div className="assessment-card">
+                <div className="assessment-header">
+                  <div className="assessment-badge"><User size={15} /><span>HỒ SƠ TÍNH CÁCH CỦA BẠN</span></div>
+                  <h2 id="user-assessment-title">Đánh giá phong cách ứng xử từ câu trả lời</h2>
+                </div>
+                <p className="assessment-headline">{personalitySummary.headline}</p>
+                <div className="user-traits-list">
+                  {userTraits.length > 0 ? (
+                    userTraits.map((trait) => (
+                      <div className="user-trait-item" key={trait.tagId}>
+                        <div className="user-trait-top">
+                          <span className="user-trait-name">{trait.label}</span>
+                          <span className="user-trait-count">{trait.count} lần</span>
+                        </div>
+                        {trait.description && <p className="user-trait-desc">{trait.description}</p>}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="no-traits-note">Cụ chưa chọn câu trả lời nào để suy luận tính cách.</p>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Cơ chế câu hỏi phân tầng (Adaptive Drill-Down) */}
+            <section className="adaptive-drilldown-section" aria-labelledby="drilldown-heading">
+              <div className="drilldown-card">
+                <div className="drilldown-header">
+                  <div className="drilldown-badge">
+                    <Zap size={14} /> <span>CƠ CHẾ PHÂN TẦNG (ADAPTIVE DRILL-DOWN)</span>
+                  </div>
+                  <h3 id="drilldown-heading">
+                    {drillDownAnsweredCount === 3
+                      ? 'Đã mở khóa phân tích chuyên sâu (+3 câu hỏi Tầng 2)'
+                      : 'Phân tích sâu hơn & Phá vỡ thế cân bằng giữa các nhân vật'}
+                  </h3>
+                  <p className="drilldown-desc">
+                    {drillDownAnsweredCount === 3
+                      ? 'Cụ đã hoàn thành 3 câu hỏi tình huống áp lực cao. Điểm tương đồng và trọng số độ hiếm đã được tái tính toán chi tiết hơn.'
+                      : 'Khi kho nhân vật mở rộng, các nhân vật chính diện dễ có điểm trùng nhau. Hãy trả lời 3 câu hỏi tình huống hóc búa này để bóc tách nét tính cách tiềm ẩn.'}
+                  </p>
+                </div>
+
+                {!drillDownOpen && drillDownAnsweredCount < 3 && (
+                  <button
+                    type="button"
+                    className="drilldown-start-btn"
+                    onClick={() => setDrillDownOpen(true)}
+                  >
+                    <Zap size={15} /> Bắt đầu 3 câu tình huống chuyên sâu
+                  </button>
+                )}
+
+                {drillDownOpen && drillDownStep < drillDownQuestions.length && (
+                  <div className="drilldown-quiz-box">
+                    <div className="drilldown-step-bar">
+                      <span>Tình huống nâng cao {drillDownStep + 1} / {drillDownQuestions.length}</span>
+                      <span className="drilldown-tag-indicator">Câu {drillDownQuestions[drillDownStep].id}</span>
+                    </div>
+                    <p className="drilldown-prompt">{drillDownQuestions[drillDownStep].prompt}</p>
+                    <div className="drilldown-choices">
+                      {drillDownQuestions[drillDownStep].choices.map((choice, cIdx) => (
+                        <button
+                          key={cIdx}
+                          type="button"
+                          className={`drilldown-choice-btn ${drillDownAnswers[drillDownStep] === cIdx ? 'selected' : ''}`}
+                          onClick={() => {
+                            setDrillDownAnswers((prev) => {
+                              const next = [...prev]
+                              next[drillDownStep] = cIdx
+                              return next
+                            })
+                            if (drillDownStep < drillDownQuestions.length - 1) {
+                              setDrillDownStep(drillDownStep + 1)
+                            } else {
+                              setDrillDownOpen(false)
+                            }
+                          }}
+                        >
+                          <span className="choice-idx">0{cIdx + 1}</span>
+                          <span className="choice-txt">{choice}</span>
+                          {drillDownAnswers[drillDownStep] === cIdx && <Check size={16} />}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="drilldown-actions">
+                      {drillDownStep > 0 && (
+                        <button
+                          type="button"
+                          className="text-action"
+                          onClick={() => setDrillDownStep(drillDownStep - 1)}
+                        >
+                          <ArrowLeft size={14} /> Câu trước
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="text-action close-action"
+                        onClick={() => setDrillDownOpen(false)}
+                      >
+                        Đóng tạm thời
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {drillDownAnsweredCount > 0 && !drillDownOpen && (
+                  <button
+                    type="button"
+                    className="text-action drilldown-retake-btn"
+                    onClick={() => {
+                      setDrillDownStep(0)
+                      setDrillDownOpen(true)
+                    }}
+                  >
+                    <RotateCcw size={14} /> Trả lời lại 3 câu hỏi chuyên sâu
+                  </button>
+                )}
+              </div>
+            </section>
+
+            {/* Bộ lọc bối cảnh & thể loại / hình mẫu */}
+            <section className="contextual-filters-panel" aria-label="Bộ lọc bối cảnh và hình mẫu">
+              <div className="filter-group">
+                <span className="filter-label"><Filter size={13} /> Thể loại:</span>
+                <div className="filter-chips">
+                  {[
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'action-fantasy', label: 'Hành động / Kỳ ảo' },
+                    { id: 'psychological-school', label: 'Đấu trí / Học đường' },
+                    { id: 'action-historical', label: 'Hành động / Lịch sử' },
+                    { id: 'scifi-thriller', label: 'Khoa học / Đấu trí' },
+                  ].map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className={`filter-chip ${genreFilter === g.id ? 'active' : ''}`}
+                      onClick={() => setGenreFilter(g.id)}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="filter-group">
+                <span className="filter-label"><Compass size={13} /> Hình mẫu:</span>
+                <div className="filter-chips">
+                  {[
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'protagonist', label: 'Chính diện kiên định' },
+                    { id: 'strategist', label: 'Chiến lược gia' },
+                    { id: 'antihero', label: 'Thủ lĩnh / Khắc kỷ' },
+                    { id: 'mentor', label: 'Chiêm nghiệm' },
+                  ].map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      className={`filter-chip ${archetypeFilter === a.id ? 'active' : ''}`}
+                      onClick={() => setArchetypeFilter(a.id)}
+                    >
+                      {a.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <div className="preview-notice" role="note">
+              <strong><Sparkles size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Thu thập từ nguồn mạng & Trọng số độ hiếm (TF-IDF)</strong>
+              <span>Áp dụng thuật toán trọng số nghịch đảo (IDF) để giảm ưu thế của tag đại trà và tôn vinh nét tính cách hiếm gặp. Kết quả phân bổ theo các vị trí đại diện (Best Match, Soulmate/Niche, Wildcard).</span>
+            </div>
+
             {matches.length > 0 ? (
               <section className="match-list" aria-label="Nhân vật và tiêu chí trùng">
-                {matches.map(({ character, sharedTraits }, index) => (
+                {matches.map(({ character, sharedTraits, allTraits, slot, weightedScore }, index) => (
                   <article className="match-row" key={character.id}>
-                    <span className="match-rank">{String(index + 1).padStart(2, '0')}</span>
-                    <div className="match-copy">
-                      <div className="match-title-row"><h2>{character.name}</h2><span className="candidate-tag">Tag đề xuất / chưa duyệt</span><span className="scope-tag">{character.latestReleaseVerified ? 'Mốc mới nhất đã kiểm tra' : 'Mốc mới nhất chưa xác minh'}</span></div>
-                      <p className="series-name">{character.series} · {character.releaseMilestone}</p>
-                      <a className="release-source" href={character.releaseSourceUrl} target="_blank" rel="noreferrer">Nguồn mốc anime</a>
-                      <div className="criteria-list">
-                        {sharedTraits.map((trait) => (
-                          <div className="criteria-row" key={trait.tagId}>
-                            <strong>{trait.label}</strong>
-                            <p>{trait.editorialInterpretation}</p>
-                            <small>Thuật ngữ nguồn: {trait.sourceTerm} · Độ tin cậy: {trait.confidence}</small>
-                            <small>Anime của nguồn: {trait.animeTitle} · {trait.releaseMilestone}</small>
-                            {!character.traitCutoffAligned && <small className="cutoff-warning">Chưa xác nhận trait này trong cutoff mới nhất.</small>}
-                            <a href={trait.url} target="_blank" rel="noreferrer">{trait.sourceTitle} ({trait.sourceType})</a>
-                          </div>
-                        ))}
+                    {slot && (
+                      <div className={`slot-badge slot-${slot.type}`}>
+                        {slot.type === 'best' && <Award size={14} />}
+                        {slot.type === 'soulmate' && <Flame size={14} />}
+                        {slot.type === 'wildcard' && <Sparkles size={14} />}
+                        <span>{slot.badge}</span>
+                        <small className="slot-title-text">— {slot.title}</small>
+                      </div>
+                    )}
+
+                    <div className="match-row-header">
+                      <span className="match-rank">{String(index + 1).padStart(2, '0')}</span>
+
+                      <div className="character-avatar-box">
+                        {character.imageUrl ? (
+                          <img
+                            src={character.imageUrl}
+                            alt={character.name}
+                            className="character-avatar-image"
+                            loading="eager"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none'
+                              if (e.currentTarget.nextElementSibling) {
+                                e.currentTarget.nextElementSibling.style.display = 'flex'
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div className="character-avatar-fallback" style={character.imageUrl ? { display: 'none' } : { display: 'flex' }}>
+                          {character.name.charAt(0)}
+                        </div>
+                      </div>
+
+                      <div className="character-main-info">
+                        <div className="match-title-row">
+                          <h2>{character.name}</h2>
+                          <span className="source-tag">Nguồn mạng</span>
+                          {character.genreLabel && <span className="meta-badge genre-badge">{character.genreLabel}</span>}
+                          {character.archetypeLabel && <span className="meta-badge archetype-badge">{character.archetypeLabel}</span>}
+                        </div>
+                        <p className="series-name">{character.series}</p>
+                        <p className="milestone-text">{character.releaseMilestone}</p>
+                      </div>
+
+                      <div className="match-count-badge">
+                        <strong title="Điểm tương đồng tính theo trọng số độ hiếm (IDF)">{weightedScore}</strong>
+                        <span>Điểm tương đồng (IDF)</span>
+                        <small>{sharedTraits.length} tag trùng</small>
                       </div>
                     </div>
-                    <div className="match-count"><strong>{sharedTraits.length}</strong><span>tag chung</span></div>
+
+                    <div className="match-body">
+                      {slot?.description && (
+                        <p className="slot-explanation-note">
+                          <strong>Vị trí đề xuất:</strong> {slot.description}
+                        </p>
+                      )}
+
+                      <div className="shared-traits-block">
+                        <span className="block-label"><Check size={14} /> Điểm tương đồng được suy luận ({sharedTraits.length} tag):</span>
+                        <div className="criteria-list">
+                          {sharedTraits.map((trait) => (
+                            <div className="criteria-row" key={trait.tagId}>
+                              <div className="criteria-row-top">
+                                <span className="matched-tag-badge"><Check size={12} /> {trait.label}</span>
+                                <span className="trait-rarity-badge" title="Độ hiếm của tag (IDF weight càng cao càng độc đáo)">
+                                  Độ hiếm: +{trait.idf}
+                                </span>
+                                {trait.sourceTerm && <span className="source-term-text">Thuật ngữ gốc: <em>"{trait.sourceTerm}"</em></span>}
+                              </div>
+                              <p className="criteria-interpretation">{trait.editorialInterpretation || trait.description}</p>
+                              <a className="source-link" href={trait.url} target="_blank" rel="noreferrer">
+                                <ExternalLink size={12} /> {trait.sourceTitle}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="all-character-traits-block">
+                        <span className="block-label"><Tag size={13} /> Tất cả tag tính cách của nhân vật ({allTraits.length}):</span>
+                        <div className="character-tags-cloud">
+                          {allTraits.map((trait) => (
+                            <span
+                              key={trait.tagId}
+                              className={`character-tag-pill ${trait.isShared ? 'is-shared' : ''}`}
+                              title={trait.editorialInterpretation || trait.label}
+                            >
+                              {trait.isShared && <Check size={11} className="pill-check-icon" />}
+                              {trait.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   </article>
                 ))}
               </section>
             ) : (
-              <div className="match-empty" role="status"><strong>Chưa có tiêu chí chung</strong><p>Không có tag hành vi trùng với các hồ sơ nguồn hiện có. Đây không phải kết luận rằng cụ có đặc điểm đối lập với các nhân vật.</p></div>
+              <div className="match-empty" role="status">
+                <strong>Chưa có tiêu chí chung cho bộ lọc này</strong>
+                <p>Không có nhân vật nào thỏa mãn đồng thời các tag tính cách và tiêu chí thể loại/hình mẫu được chọn. Cụ có thể chọn "Tất cả" để xem toàn bộ danh sách.</p>
+              </div>
             )}
-            <div className="bottom-actions"><button type="button" className="text-action" onClick={() => navigate(questions.length)}><ArrowLeft size={18} /> Rà soát câu trả lời</button><button type="button" className="primary-action" onClick={exportReport}><Download size={18} /> Tải phản hồi JSON</button></div>
+
+            <div className="bottom-actions">
+              <button type="button" className="text-action" onClick={() => navigate(questions.length)}>
+                <ArrowLeft size={18} /> Rà soát câu trả lời
+              </button>
+              <div className="right-actions">
+                <button type="button" className="text-action" onClick={reset}>
+                  <RotateCcw size={17} /> Làm lại
+                </button>
+                <button type="button" className="primary-action" onClick={exportReport}>
+                  <Download size={18} /> Tải phản hồi JSON
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="content-wrap question-wrap" key={step}>

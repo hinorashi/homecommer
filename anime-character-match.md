@@ -4,7 +4,7 @@
 
 Người dùng trả lời các tình huống về cách họ thường hành động. Hệ thống trả về 3 nhân vật có cách ứng xử gần nhất, nêu 2 điểm giống và 1 điểm khác biệt có căn cứ. Đây là trải nghiệm giải trí, không phải đánh giá tâm lý hoặc kết luận người dùng "chính là" một nhân vật.
 
-Danh sách biên tập ban đầu gồm 64 ứng viên từ 10 series; mục tiêu về sau là ít nhất 5 hồ sơ được duyệt cho mỗi series (tối thiểu 50 nhân vật). **Giai đoạn hiện tại hoàn thiện câu hỏi và bật màn preview ghép sau khi người dùng rà soát câu trả lời.** Preview chỉ dùng tag candidate có nguồn, ghi rõ tag/mốc anime chưa duyệt; chưa phải kết quả chính thức và chưa dùng để công bố. Chỉ khi trait và cutoff anime được biên tập duyệt mới đủ điều kiện thành kết quả sản phẩm. Không dùng ngoại hình, giới tính, độ nổi tiếng, điểm IMDb hay sở thích waifu/husbando để tính độ giống. Chưa quyết định công nghệ triển khai hoặc nhà cung cấp AI; cần xác nhận với chủ dự án trước khi chọn.
+Danh sách biên tập ban đầu gồm 64 ứng viên từ 10 series; mục tiêu về sau là ít nhất 5 hồ sơ được duyệt cho mỗi series (tối thiểu 50 nhân vật). **Giai đoạn hiện tại hiển thị kết quả suy luận matching của người dùng và các nhân vật anime phù hợp.** Màn hình kết quả hiển thị chân dung ảnh nhân vật, danh sách các tag tính cách lấy từ các nguồn trực tuyến (website chính thức, cơ sở dữ liệu anime, fandom wiki), phân biệt rõ tag trùng khớp với người dùng và các nét tính cách khác của nhân vật. Do số lượng nhân vật mở rộng lớn, hệ thống không bắt buộc admin phải review thủ công từng tag, mà tập trung vào việc tự động/bán tự động thu thập từ nguồn mạng có dẫn chiếu URL minh bạch để người dùng tiện tra cứu. Không dùng ngoại hình, giới tính, độ nổi tiếng, điểm IMDb hay sở thích waifu/husbando để tính độ giống. Chưa quyết định công nghệ triển khai hoặc nhà cung cấp AI; cần xác nhận với chủ dự án trước khi chọn.
 
 ## Danh sách thử nghiệm từ Top Anime MyAnimeList
 
@@ -113,21 +113,50 @@ Với lượt tự thử hiện tại, cụ xác nhận mình hiểu nhất quá
 
 ## Hồ sơ nhân vật và kiểm duyệt
 
-Mỗi nhân vật cần: tên chuẩn/tên khác, tác phẩm, bản anime và mốc nội dung mới nhất đã phát hành, cùng các trait ở những nhóm có ích (ví dụ hành vi/tính cách, phẩm chất/giá trị, khả năng, ngoại hình). Mỗi trait là một record riêng gồm nhãn nguồn, tag chuẩn hóa, diễn giải ngắn bằng lời biên tập, URL và loại nguồn, mức tin cậy, trạng thái duyệt và cờ spoiler nếu cần. Lưu riêng nguồn/quyền ảnh; quyền chưa rõ thì dùng placeholder. Không sao chép toàn văn nguồn vào DB/public profile nếu chưa có quyền.
+Mỗi nhân vật cần: tên chuẩn/tên khác, tác phẩm, ảnh chân dung đại diện (avatar image URL), bản anime và mốc nội dung mới nhất đã phát hành, cùng các tag tính cách thu thập từ các nguồn trực tuyến (website chính thức, MyAnimeList, anime database, fandom wiki). Mỗi trait là một record gồm nhãn nguồn, tag chuẩn hóa, diễn giải ngắn, URL và loại nguồn, mức tin cậy và cờ spoiler nếu cần.
 
-Quy trình: AI có thể trích xuất **candidate trait** từ nguồn được phép để biên tập viên kiểm tra, chuẩn hóa, sửa hoặc bác bỏ. Ưu tiên nguồn chính thức; có thể dùng nguồn phụ trợ uy tín khi nguồn chính thức thiếu thông tin và phải ghi rõ loại nguồn. AI không tự xuất bản hay tự xác nhận trait; trait không đủ căn cứ thì không gán. Duyệt độc lập mẫu 10 nhân vật đầu để thống nhất cách chuẩn hóa đồng nghĩa và mức tin cậy.
+**Cơ chế thu thập từ nguồn mạng:** Do số lượng nhân vật mở rộng rất lớn, admin không thể rà soát và phê duyệt thủ công từng tag đơn lẻ. Hệ thống chuyển sang hướng tự động/bán tự động thu thập từ các nguồn trực tuyến uy tín có dẫn chiếu URL minh bạch. Người dùng có thể xem trực tiếp nguồn trích dẫn và thuật ngữ gốc của từng tag tính cách.
 
-Không cần rà từng tập: hồ sơ thể hiện đặc điểm cốt lõi/đích đến theo anime đã phát hành mới nhất, kể cả khi các tập đầu thể hiện nhân vật chưa có đặc điểm đó. Ghi URL nguồn và vị trí có thể kiểm tra cho mỗi trait được duyệt; diễn giải công khai dùng lời riêng của đội biên tập. Dẫn chứng tiết lộ bước ngoặt/kết cục phải gắn spoiler và mặc định được che tới khi người dùng chọn xem.
+Không cần rà từng tập: hồ sơ thể hiện đặc điểm cốt lõi/đích đến theo anime đã phát hành mới nhất, kể cả khi các tập đầu thể hiện nhân vật chưa có đặc điểm đó. Ghi URL nguồn và vị trí có thể kiểm tra cho mỗi trait; diễn giải công khai dùng lời riêng của đội biên tập. Dẫn chứng tiết lộ bước ngoặt/kết cục phải gắn spoiler và mặc định được che tới khi người dùng chọn xem.
 
-Quiz chỉ đối chiếu traits thuộc nhóm hành vi/tính cách; khám phá nhân vật có thể lọc theo những nhóm trait khác như khả năng hoặc ngoại hình. So khớp trên tag hành vi đã duyệt có ở cả hồ sơ người dùng và nhân vật; trait vắng mặt là chưa biết, không phải trait đối lập hay phủ định. Không có ngưỡng cố định số tag để đưa nhân vật vào kết quả; luôn cho biết số trait và độ tin cậy làm căn cứ. Không dùng anime, ngoại hình, độ nổi tiếng hay gu waifu/husbando làm điểm hành vi.
+Quiz chỉ đối chiếu traits thuộc nhóm hành vi/tính cách; khám phá nhân vật có thể lọc theo những nhóm trait khác như khả năng hoặc ngoại hình. So khớp trên tag hành vi có ở cả hồ sơ người dùng và nhân vật; trait vắng mặt là chưa biết, không phải trait đối lập hay phủ định. Không có ngưỡng cố định số tag để đưa nhân vật vào kết quả; luôn cho biết số trait và độ tin cậy làm căn cứ. Không dùng anime, ngoại hình, độ nổi tiếng hay gu waifu/husbando làm điểm hành vi.
+
+## Giải pháp mở rộng quy mô lớn & Chống thiên lệch nam châm (Hubness Prevention)
+
+Khi mở rộng số lượng nhân vật lên hàng trăm hoặc hàng nghìn hồ sơ từ nhiều tác phẩm khác nhau, một bài trắc nghiệm cố định 10 câu sẽ gặp giới hạn về độ phân giải (nhiều nhân vật bằng điểm nhau) và dễ dẫn đến hiệu ứng "nhân vật nam châm" (các nhân vật chính diện, hình mẫu quốc dân có nhiều tag đại trà sẽ hút hết lượt match). Để giải quyết bài toán này, hệ thống áp dụng các cơ chế:
+
+1. **Thuật toán trọng số độ hiếm (Trait Specificity / TF-IDF Weighting)**:
+   - Thay vì đếm số tag trùng thuần túy (dễ tạo ưu thế cho nhân vật có quá nhiều tag cơ bản), áp dụng trọng số nghịch đảo tần suất xuất hiện (IDF): $IDF(t) = \ln\left(1 + \frac{N}{N_t + 0.5}\right)$.
+   - Các tag đại trà (như *phối hợp*, *cố gắng*) mang trọng số thấp hơn; các tag đặc thù mang tính định danh cao (như *lập kế hoạch dự phòng nhiều lớp*, *hành động độc lập khi chưa chắc chắn*) mang trọng số cao hơn.
+   - Điểm số tương đồng là tổng trọng số các tag trùng, phản ánh độ độc đáo đích thực trong tính cách của người dùng.
+
+2. **Cơ chế câu hỏi phân tầng & Phân nhánh thích ứng (Tiered & Adaptive Drill-down)**:
+   - **Tầng 1 (Core Profile - 10 câu)**: Khảo sát nhanh phong cách hành xử nền tảng để phác thảo hồ sơ tính cách tổng thể mà không làm người dùng nản lòng.
+   - **Tầng 2 (Drill-down / Tie-breaker - 3 câu nâng cao)**: Tùy chọn mở rộng ở màn hình kết quả hoặc khi có nhiều nhân vật sát điểm nhau. Các câu hỏi tình huống hóc búa (xử lý phản bội, khủng hoảng áp lực cao, xung đột giá trị đạo đức) giúp bóc tách sâu hơn các nét tính cách tiềm ẩn để phân định thứ hạng rõ nét.
+
+3. **Bộ lọc bối cảnh & Thể loại linh hoạt (Contextual Filters)**:
+   - Người dùng có thể lọc danh sách kết quả theo thể loại tác phẩm (Hành động/Kỳ ảo, Đấu trí/Tâm lý, Đời thường/Học đường, v.v.) hoặc vai trò/hình mẫu (Chính diện/Thủ lĩnh, Chiến lược gia, Anti-hero, Hỗ trợ/Trầm tĩnh).
+   - Cho phép người dùng cùng một nét tính cách có thể khám phá hình tượng đại diện của mình trong các thế giới quan khác nhau.
+
+4. **Đa dạng hóa các vị trí hiển thị (Diversity & Archetype Slots)**:
+   - Không chỉ xếp 3 nhân vật đầu bảng có thể cùng một khuôn mẫu, hệ thống phân bổ theo các vị trí đại diện:
+     + **Slot 1 - Tương đồng cao nhất (Best Overall Match)**: Nhân vật có tổng điểm tương đồng hành vi cao nhất.
+     + **Slot 2 - Nét đồng điệu hiếm gặp (Soulmate / Niche Match)**: Nhân vật chia sẻ tag tính cách đặc thù và hiếm gặp nhất với người dùng.
+     + **Slot 3 - Gợi ý bất ngờ (Wildcard Match)**: Nhân vật đến từ thể loại hoặc góc nhìn khác hẳn nhưng bất ngờ đồng điệu ở giá trị cốt lõi.
+
+5. **Khai thác dữ liệu phong phú từ nguồn mở (Crowdsourced / Wiki Mining)**:
+   - Tự động và bán tự động thu thập từ các nguồn trực tuyến uy tín (MyAnimeList, AniList, Fandom Wikis, TV Tropes) với URL minh bạch, phân loại tag theo taxonomy mở mà không cần admin duyệt thủ công từng tag đơn lẻ.
 
 ## Cách ghép và giải thích bản đầu
 
-1. POC ánh xạ lựa chọn sang tag hành vi candidate và, sau khi người dùng chọn “Xem nhân vật phù hợp”, trình bày preview tối đa ba nhân vật có tag chung cùng tiêu chí/nguồn. Các tag nhân vật và cutoff anime phải hiện trạng thái duyệt; preview không phải kết quả chính thức.
-2. Sau khi câu hỏi và mapping được duyệt, câu trả lời đã chọn tạo một tập behavioral tag cho người dùng. Câu bỏ qua không tạo tag; không diễn dịch câu trả lời thiếu thành trait đối lập.
-3. Preview có thể so khớp tag candidate nhưng phải dán nhãn đề xuất/chưa duyệt. Kết quả sản phẩm chỉ so tag hành vi đã được biên tập duyệt và có cutoff anime hợp lệ. Cả hai trường hợp chỉ so tag có căn cứ ở hai phía; tag chưa ghi nhận không có nghĩa trait đó vắng mặt. Nêu số tag chung, nguồn, độ tin cậy và trạng thái duyệt; không đặt ngưỡng số tag cố định, không dùng tag ngoại hình, khả năng, độ nổi tiếng hoặc gu waifu/husbando trong behavioral match.
-4. Trả tối đa 3 nhân vật phù hợp nhất. Giải thích bằng các tag chung, kèm nguồn/trạng thái; không suy điểm khác biệt từ trait thiếu. Nếu chưa có tag chung, nêu rõ chưa có tiêu chí match thay vì bịa kết quả. Cách xếp hạng chính xác cần được thử trên dữ liệu seed trước khi chốt.
-5. Không hiển thị tỷ lệ phần trăm "giống nhau" hay suy diễn sức khỏe tâm lý. Cho phép người dùng trả lời lại và gửi phản hồi khi kết quả không hợp lý. Không lưu câu trả lời cá nhân quá phiên sử dụng nếu chưa có sự đồng ý rõ ràng.
+1. POC ánh xạ lựa chọn sang tag hành vi và hiển thị đầy đủ hai khối thông tin ở màn hình kết quả:
+   - **Kết quả suy luận tính cách của người dùng:** Bảng phân tích chi tiết các nét tính cách được suy luận từ câu trả lời, tần suất và diễn giải cụ thể để người dùng dễ hình dung.
+   - **Danh sách nhân vật anime phù hợp:** Hiển thị ảnh chân dung nhân vật, tên, series, số tag trùng, các điểm tương đồng kèm nguồn dẫn chứng, và toàn bộ danh sách các tag tính cách của nhân vật (nổi bật các tag trùng khớp).
+2. Câu trả lời đã chọn tạo một tập behavioral tag cho người dùng. Câu bỏ qua không tạo tag; không diễn dịch câu trả lời thiếu thành trait đối lập.
+3. So khớp dựa trên tag hành vi trùng giữa người dùng và nhân vật kết hợp trọng số độ hiếm (IDF). Tag vắng mặt không phải đối lập. Luôn nêu số tag chung, nguồn trích xuất mạng, độ tin cậy; không đặt ngưỡng số tag cố định, không dùng tag ngoại hình, khả năng, độ nổi tiếng hoặc gu waifu/husbando trong behavioral match.
+4. Trả tối đa 3 nhân vật phù hợp nhất theo các vị trí đa dạng hóa (Best Overall, Soulmate/Niche, Wildcard). Giải thích bằng các tag chung, kèm nguồn/trạng thái; không suy điểm khác biệt từ trait thiếu. Nếu chưa có tag chung, nêu rõ chưa có tiêu chí match thay vì bịa kết quả.
+5. Cung cấp bộ lọc bối cảnh/thể loại và tính năng trả lời câu hỏi nâng cao (Drill-down) để tinh chỉnh kết quả theo nhu cầu.
+6. Không hiển thị tỷ lệ phần trăm "giống nhau" hay suy diễn sức khỏe tâm lý. Cho phép người dùng trả lời lại và gửi phản hồi khi kết quả không hợp lý. Không lưu câu trả lời cá nhân quá phiên sử dụng nếu chưa có sự đồng ý rõ ràng.
 
 Ví dụ khái niệm (tag minh họa, chưa phải taxonomy đã duyệt): người dùng có các tag hành vi `chủ động`, `hỗ trợ người khác`, `thận trọng`; hồ sơ A có `chủ động`, `hỗ trợ người khác`; hồ sơ B có `giữ cam kết`. A có nhiều tag hành vi chung hơn, nhưng hệ thống chỉ được đưa ra thứ hạng sau khi tag, mapping và quy tắc trọng số đã qua duyệt/thử nghiệm; luôn hiển thị số tag làm căn cứ.
 

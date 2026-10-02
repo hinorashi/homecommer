@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-fr" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2d5248" />
+      <stop offset="100%" stop-color="#142b25" />
+    </linearGradient>
+    <linearGradient id="hair-fr" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#d4ded9" />
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="16" fill="url(#bg-fr)" />
+  <circle cx="80" cy="80" r="68" fill="none" stroke="#68b49e" stroke-width="2" stroke-dasharray="3 4" opacity="0.4" />
+  <!-- Long Elf Ears -->
+  <path d="M48 66 C32 60, 20 62, 16 56 C24 68, 36 74, 52 74 Z" fill="#fae5d6" />
+  <path d="M112 66 C128 60, 140 62, 144 56 C136 68, 124 74, 108 74 Z" fill="#fae5d6" />
+  <!-- Red Drop Earrings -->
+  <circle cx="28" cy="74" r="3" fill="#cf3248" />
+  <circle cx="132" cy="74" r="3" fill="#cf3248" />
+  <!-- Mage Cloak / Attire -->
+  <path d="M28 160 C32 120, 50 114, 80 114 C110 114, 128 120, 132 160 Z" fill="#f4f6f4" stroke="#c5ab73" stroke-width="1.5" />
+  <path d="M60 118 L80 148 L100 118 Z" fill="#1b2923" />
+  <circle cx="80" cy="126" r="4" fill="#c5ab73" />
+  <!-- Twintails -->
+  <path d="M42 62 C32 85, 28 115, 34 145 C40 145, 46 115, 48 85 Z" fill="#dce6e1" />
+  <path d="M118 62 C128 85, 132 115, 126 145 C120 145, 114 115, 112 85 Z" fill="#dce6e1" />
+  <!-- Face -->
+  <path d="M54 62 C54 90, 64 102, 80 102 C96 102, 106 90, 106 62 C106 45, 95 40, 80 40 C65 40, 54 45, 54 62 Z" fill="#fff0e6" />
+  <!-- Green eyes -->
+  <ellipse cx="68" cy="70" rx="5" ry="6" fill="#2d876a" />
+  <circle cx="69" cy="68" r="2" fill="#fff" />
+  <ellipse cx="92" cy="70" rx="5" ry="6" fill="#2d876a" />
+  <circle cx="93" cy="68" r="2" fill="#fff" />
+  <!-- Bangs -->
+  <path d="M50 52 C54 70, 62 76, 66 66 C70 54, 74 46, 80 45 C86 46, 90 54, 94 66 C98 76, 106 70, 110 52 C108 34, 96 28, 80 28 C64 28, 52 34, 50 52 Z" fill="url(#hair-fr)" />
+  <!-- Calm mouth -->
+  <path d="M76 86 L84 86" stroke="#876558" stroke-width="1.8" stroke-linecap="round" />
+</svg>

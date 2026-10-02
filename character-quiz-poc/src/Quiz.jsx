@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, Award, Check, Compass, Download, ExternalLink, Filter, Flame, RotateCcw, Sparkles, Tag, User, Zap } from 'lucide-react'
-import { characterProfiles } from './characterProfiles'
 import { drillDownQuestions, issueLabels, questions, questionSetVersion } from './questions'
-import { buildUserTraits, matchCharacters, summarizeUserPersonality } from './matching'
+import { buildUserTraits, summarizeUserPersonality } from './matching'
 import './Quiz.css'
 
 function shuffledOrders() {
@@ -38,6 +37,23 @@ export default function Quiz() {
   // Contextual filters
   const [genreFilter, setGenreFilter] = useState('all')
   const [archetypeFilter, setArchetypeFilter] = useState('all')
+  const [metadataFilters, setMetadataFilters] = useState({
+    contextGenres: [
+      { id: 'action-fantasy', label: 'Hành động / Kỳ ảo' },
+      { id: 'psychological-school', label: 'Đấu trí / Học đường' },
+      { id: 'action-historical', label: 'Hành động / Lịch sử' },
+      { id: 'scifi-thriller', label: 'Khoa học / Đấu trí' },
+    ],
+    archetypes: [
+      { id: 'protagonist', label: 'Chính diện kiên định' },
+      { id: 'strategist', label: 'Chiến lược gia' },
+      { id: 'antihero', label: 'Thủ lĩnh / Khắc kỷ' },
+      { id: 'mentor', label: 'Chiêm nghiệm' },
+    ],
+  })
+  const [matches, setMatches] = useState([])
+  const [matchLoading, setMatchLoading] = useState(false)
+  const [matchError, setMatchError] = useState('')
 
   const review = step === questions.length
   const results = step === questions.length + 1
@@ -56,11 +72,18 @@ export default function Quiz() {
   ]
   const userTraits = buildUserTraits(combinedAnswers, combinedQuestions)
   const personalitySummary = summarizeUserPersonality(userTraits)
-  const matches = matchCharacters(userTraits, characterProfiles, {
-    includeProposed: true,
-    genreFilter,
-    archetypeFilter,
-  }).slice(0, 3)
+  const userTraitsKey = JSON.stringify(userTraits)
+
+  useEffect(() => {
+    let isCurrent = true
+    fetch('/api/metadata/filters')
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        if (isCurrent && payload?.contextGenres && payload?.archetypes) setMetadataFilters(payload)
+      })
+      .catch(() => {})
+    return () => { isCurrent = false }
+  }, [])
 
   function navigate(index) {
     setStep(index)
@@ -133,6 +156,88 @@ export default function Quiz() {
     setGeneralNote('')
     navigate(0)
   }
+
+  useEffect(() => {
+    if (!results) return undefined
+
+    const controller = new AbortController()
+    let isCurrent = true
+    const loadingTimer = window.setTimeout(() => {
+      if (!isCurrent) return
+      setMatchLoading(true)
+      setMatchError('')
+    }, 0)
+    const traitsForRequest = JSON.parse(userTraitsKey)
+
+    async function loadMatches() {
+      try {
+        const response = await fetch('/api/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            userTraits: traitsForRequest,
+            includeProposed: true,
+            genreFilter,
+            archetypeFilter,
+          }),
+        })
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.error ?? `Matching API returned ${response.status}`)
+        if (!isCurrent) return
+        const matchedCharacters = payload.matches ?? []
+        setMatches(matchedCharacters)
+        setMatchLoading(false)
+
+        if (matchedCharacters.length > 0) {
+          try {
+            const imageResponse = await fetch('/api/anilist/characters/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              signal: controller.signal,
+              body: JSON.stringify({
+                characters: matchedCharacters.slice(0, 3).map(({ character }) => ({
+                  id: character.id,
+                  anilistId: character.anilistId,
+                  name: character.name,
+                  series: character.series,
+                })),
+              }),
+            })
+            if (imageResponse.ok && isCurrent) {
+              const imagePayload = await imageResponse.json()
+              const metadataById = new Map(imagePayload.results.map((result) => [result.id, result]))
+              setMatches((current) => current.map((match) => {
+                const syncResult = metadataById.get(match.character.id)
+                if (!syncResult) return match
+                return {
+                  ...match,
+                  character: {
+                    ...match.character,
+                    ...(syncResult.image ? { image: syncResult.image } : {}),
+                    ...(syncResult.metadata?.genres ? { animeGenres: syncResult.metadata.genres } : {}),
+                  },
+                }
+              }))
+            }
+          } catch {
+            // Matching remains available if the third-party image lookup fails.
+          }
+        }
+      } catch (error) {
+        if (error.name !== 'AbortError' && isCurrent) setMatchError(error.message)
+      } finally {
+        if (isCurrent) setMatchLoading(false)
+      }
+    }
+
+    loadMatches()
+    return () => {
+      isCurrent = false
+      window.clearTimeout(loadingTimer)
+      controller.abort()
+    }
+  }, [results, userTraitsKey, genreFilter, archetypeFilter])
 
   return (
     <div className="app-shell">
@@ -313,13 +418,7 @@ export default function Quiz() {
               <div className="filter-group">
                 <span className="filter-label"><Filter size={13} /> Thể loại:</span>
                 <div className="filter-chips">
-                  {[
-                    { id: 'all', label: 'Tất cả' },
-                    { id: 'action-fantasy', label: 'Hành động / Kỳ ảo' },
-                    { id: 'psychological-school', label: 'Đấu trí / Học đường' },
-                    { id: 'action-historical', label: 'Hành động / Lịch sử' },
-                    { id: 'scifi-thriller', label: 'Khoa học / Đấu trí' },
-                  ].map((g) => (
+                  {[{ id: 'all', label: 'Tất cả' }, ...metadataFilters.contextGenres].map((g) => (
                     <button
                       key={g.id}
                       type="button"
@@ -334,13 +433,7 @@ export default function Quiz() {
               <div className="filter-group">
                 <span className="filter-label"><Compass size={13} /> Hình mẫu:</span>
                 <div className="filter-chips">
-                  {[
-                    { id: 'all', label: 'Tất cả' },
-                    { id: 'protagonist', label: 'Chính diện kiên định' },
-                    { id: 'strategist', label: 'Chiến lược gia' },
-                    { id: 'antihero', label: 'Thủ lĩnh / Khắc kỷ' },
-                    { id: 'mentor', label: 'Chiêm nghiệm' },
-                  ].map((a) => (
+                  {[{ id: 'all', label: 'Tất cả' }, ...metadataFilters.archetypes].map((a) => (
                     <button
                       key={a.id}
                       type="button"
@@ -359,7 +452,11 @@ export default function Quiz() {
               <span>Áp dụng thuật toán trọng số nghịch đảo (IDF) để giảm ưu thế của tag đại trà và tôn vinh nét tính cách hiếm gặp. Kết quả phân bổ theo các vị trí đại diện (Best Match, Soulmate/Niche, Wildcard).</span>
             </div>
 
-            {matches.length > 0 ? (
+            {matchLoading ? (
+              <div className="match-empty" role="status"><strong>Đang tìm nhân vật phù hợp…</strong><p>Đang truy vấn hồ sơ và nguồn ảnh có giấy phép sử dụng.</p></div>
+            ) : matchError ? (
+              <div className="match-empty api-error" role="alert"><strong>Không truy vấn được kho nhân vật</strong><p>{matchError}. Kiểm tra Node API đang chạy cùng Vite.</p></div>
+            ) : matches.length > 0 ? (
               <section className="match-list" aria-label="Nhân vật và tiêu chí trùng">
                 {matches.map(({ character, sharedTraits, allTraits, slot, weightedScore }, index) => (
                   <article className="match-row" key={character.id}>
@@ -377,9 +474,9 @@ export default function Quiz() {
                       <span className="match-rank">{String(index + 1).padStart(2, '0')}</span>
 
                       <div className="character-avatar-box">
-                        {character.imageUrl ? (
+                        {character.image?.url ? (
                           <img
-                            src={character.imageUrl}
+                            src={character.image.url}
                             alt={character.name}
                             className="character-avatar-image"
                             loading="eager"
@@ -391,7 +488,7 @@ export default function Quiz() {
                             }}
                           />
                         ) : null}
-                        <div className="character-avatar-fallback" style={character.imageUrl ? { display: 'none' } : { display: 'flex' }}>
+                        <div className="character-avatar-fallback" style={character.image?.url ? { display: 'none' } : { display: 'flex' }}>
                           {character.name.charAt(0)}
                         </div>
                       </div>
@@ -404,7 +501,24 @@ export default function Quiz() {
                           {character.archetypeLabel && <span className="meta-badge archetype-badge">{character.archetypeLabel}</span>}
                         </div>
                         <p className="series-name">{character.series}</p>
+                        {character.animeGenres?.length > 0 && (
+                          <p className="metadata-genres">AniList: {character.animeGenres.join(' · ')}</p>
+                        )}
                         <p className="milestone-text">{character.releaseMilestone}</p>
+                        {character.image?.provider === 'AniList' ? (
+                          <p className="image-attribution">
+                            Ảnh từ AniList · lưu trữ được xác nhận; quyền tái sử dụng chưa xác minh ·{' '}
+                            <a href={character.image.pageUrl} target="_blank" rel="noreferrer">Hồ sơ nhân vật</a>
+                          </p>
+                        ) : character.image ? (
+                          <p className="image-attribution">
+                            {character.image.identityMatchStatus === 'verified' ? 'Ảnh đã đối chiếu' : 'Ảnh đề xuất theo tên file'}: {character.image.attribution} ·{' '}
+                            <a href={character.image.licenseUrl} target="_blank" rel="noreferrer">{character.image.license}</a> ·{' '}
+                            <a href={character.image.pageUrl} target="_blank" rel="noreferrer">Trang ảnh</a>
+                          </p>
+                        ) : (
+                          <p className="image-unavailable">Chưa có ảnh từ nguồn đã đồng bộ.</p>
+                        )}
                       </div>
 
                       <div className="match-count-badge">

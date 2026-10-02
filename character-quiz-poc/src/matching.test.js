@@ -51,7 +51,7 @@ test('provides user personality evaluation summary and descriptions', () => {
   const matches = matchCharacters(userTraits, characterProfiles, { includeProposed: true })
 
   assert.ok(matches.length > 0)
-  assert.ok(matches[0].character.imageUrl)
+  assert.equal('imageUrl' in matches[0].character, false)
   assert.ok(matches[0].allTraits.length >= matches[0].sharedTraits.length)
   assert.equal(matches[0].allTraits.some((t) => t.isShared), true)
 })

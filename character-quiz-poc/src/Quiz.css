@@ -147,7 +147,11 @@ button:focus-visible, textarea:focus-visible, .issue-toggle:focus-within { outli
 .genre-badge { background: #e8f0eb; color: #275f50; border: 1px solid #b7d6c8; }
 .archetype-badge { background: #edf2f7; color: #354e68; border: 1px solid #c2d5e7; }
 .series-name { margin: 4px 0 0; color: #516d63; font-size: 13px; font-weight: 600; line-height: 1.4; }
+.metadata-genres { margin: 3px 0 0; color: #6e7d75; font-size: 10px; line-height: 1.4; overflow-wrap: anywhere; }
 .milestone-text { margin: 2px 0 0; color: #768a82; font-size: 11px; line-height: 1.4; }
+.image-attribution, .image-unavailable { margin: 5px 0 0; color: #65776f; font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.image-attribution a { color: #276b5c; text-decoration: underline; text-underline-offset: 2px; }
+.image-attribution a:hover { color: #164c40; }
 
 .match-count-badge { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; background: #edf5f1; border: 1px solid #c8ded4; border-radius: 6px; padding: 8px 14px; text-align: right; flex-shrink: 0; }
 .match-count-badge strong { font: 600 22px/1 'Newsreader', Georgia, serif; color: #235f52; }
@@ -177,6 +181,7 @@ button:focus-visible, textarea:focus-visible, .issue-toggle:focus-within { outli
 
 .match-empty { margin-top: 24px; padding: 22px 20px; border: 1px solid #d5dfda; border-radius: 6px; background: #fff; color: #3a5e52; }
 .match-empty p { margin: 7px 0 0; color: #697a73; font-size: 13px; line-height: 1.6; }
+.match-empty.api-error { border-color: #d8a69a; color: #803e32; }
 
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 205px minmax(0, 1fr); }

@@ -12,6 +12,11 @@
     "lint": "eslint .",
     "test": "node --test",
     "metadata:sync": "node server/scripts/sync-metadata.js",
+    "crawl": "node server/scripts/crawl-anilist.js",
+    "crawl:genres": "node server/scripts/crawl-anilist.js genres",
+    "crawl:anime": "node server/scripts/crawl-anilist.js anime",
+    "crawl:characters": "node server/scripts/crawl-anilist.js characters",
+    "crawl:all": "node server/scripts/crawl-anilist.js all",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,18 +1,20 @@
 # POC - Nhân vật giống mình
 
+25.413 nhân vật từ 1.898 anime (say no to hentai)
+
 Ứng dụng React/Vite để thử 10 tình huống trong [bản thiết kế](../anime-character-match.md). Sau khi rà soát câu trả lời, POC cho xem trước tối đa ba nhân vật anime dựa trên tag hành vi chung và tiêu chí có dẫn nguồn. Tag seed chưa được biên tập duyệt và mốc anime mới nhất chưa xác minh, nên kết quả chỉ là preview.
 
 ## Chạy thử
 
-Yêu cầu Node.js 20.19+ hoặc 22.12+ và npm. Trên PowerShell (nếu `npm` bị chặn bởi execution policy, dùng `npm.cmd`):
+Yêu cầu Node.js 20.19+ hoặc 22.12+ và npm. Trên PowerShell (nếu `npm` bị chặn bởi execution policy, dùng `npm`):
 
 ```powershell
 cd character-quiz-poc
-npm.cmd install
-npm.cmd run dev
+npm install
+npm run dev
 ```
 
-Mở địa chỉ Vite hiển thị trong terminal. Lệnh `npm.cmd run build` kiểm tra bản phát hành; `npm.cmd run lint` kiểm tra mã nguồn.
+Mở địa chỉ Vite hiển thị trong terminal. Lệnh `npm run build` kiểm tra bản phát hành; `npm run lint` kiểm tra mã nguồn.
 
 ## Cách dùng
 
@@ -22,7 +24,7 @@ Preview hiển thị phần suy luận tính cách của người dùng, tag tr�
 
 ## Kiến trúc dữ liệu
 
-`npm.cmd run dev` chạy Vite và Node/Express API cùng lúc. Vite chuyển tiếp `/api` đến `127.0.0.1:3001`; SQLite dùng `better-sqlite3`, bật WAL/foreign keys và lưu tại `server/data/character-match.sqlite` (được gitignore). API `/api/health` trả số hồ sơ/tag; `/api/match` tính IDF/cosine similarity trực tiếp từ SQLite. Chỉ tag hành vi của người dùng được gửi để đối sánh; câu trả lời thô và góp ý không được lưu trong DB.
+`npm run dev` chạy Vite và Node/Express API cùng lúc. Vite chuyển tiếp `/api` đến `127.0.0.1:3001`; SQLite dùng `better-sqlite3`, bật WAL/foreign keys và lưu tại `server/data/character-match.sqlite` (được gitignore). API `/api/health` trả số hồ sơ/tag; `/api/match` tính IDF/cosine similarity trực tiếp từ SQLite. Chỉ tag hành vi của người dùng được gửi để đối sánh; câu trả lời thô và góp ý không được lưu trong DB.
 
 AniList được tích hợp như nguồn metadata bên thứ ba qua package `anilist-node`; không crawl toàn bộ catalog. Khi kết quả cần làm giàu dữ liệu, backend sync tối đa ba nhân vật/lượt theo AniList ID hoặc tên chính xác cộng series tương ứng. SQLite chuẩn hóa nhân vật, aliases, series, genres theo series, quan hệ character-series, nguồn metadata, ngày đồng bộ, context genre và archetype biên tập thành các bảng riêng. Các hồ sơ seed được migrate idempotent; metadata AniList cập nhật theo external ID và nguồn để có thể bổ sung provider khác sau này. Không lưu mô tả nhân vật dài.
 
@@ -31,12 +33,25 @@ Màn thư viện riêng tại `/characters` tìm theo tên/bí danh/tên series,
 Đồng bộ metadata chủ động từ terminal (mặc định toàn bộ catalog SQLite):
 
 ```powershell
-npm.cmd run metadata:sync -- --name "Kaguya Shinomiya"
-npm.cmd run metadata:sync -- --series "Steins;Gate" --limit 3
-npm.cmd run metadata:sync -- --limit 3
+npm run metadata:sync -- --name "Kaguya Shinomiya"
+npm run metadata:sync -- --series "Steins;Gate" --limit 3
+npm run metadata:sync -- --limit 3
 ```
 
-Không truyền `--name`/`--series` sẽ chọn hồ sơ chưa đồng bộ hoặc đã quá 30 ngày. Dùng `npm.cmd run metadata:sync -- --help` để xem trợ giúp. Lệnh chỉ đồng bộ hồ sơ đã tồn tại trong SQLite, không tải toàn bộ catalog AniList.
+Không truyền `--name`/`--series` sẽ chọn hồ sơ chưa đồng bộ hoặc đã quá 30 ngày. Dùng `npm run metadata:sync -- --help` để xem trợ giúp. Lệnh chỉ đồng bộ hồ sơ đã tồn tại trong SQLite, không tải toàn bộ catalog AniList.
+
+Crawl hàng loạt từ AniList để làm đầy database (theo pipeline thể loại → anime → nhân vật, ưu tiên anime phổ biến):
+
+```powershell
+npm run crawl:genres                                   # 1. đồng bộ GenreCollection
+npm run crawl:anime -- --pages 4                       # 2. top 200 anime phổ biến mỗi thể loại (bỏ Hentai, isAdult)
+npm run crawl:anime -- --genre Romance --pages 10      #    hoặc một thể loại cụ thể / --popular cho bảng xếp hạng chung
+npm run crawl:characters -- --limit 500 --max-pages 2  # 3. nhân vật của anime trong DB, anime phổ biến nhất trước
+npm run crawl:all                                      # chạy cả 3 bước với tham số mặc định
+npm run crawl -- stats                                 # xem số lượng
+```
+
+Crawler tuân thủ rate limit AniList (~30 request/phút, tự chờ khi gặp 429), gộp tối đa 25 anime/request cho trang nhân vật đầu tiên và có thể resume: anime đã crawl nhân vật được đánh dấu `characters_synced_at`, chạy lại sẽ chỉ xử lý phần còn lại (`--force` để crawl lại, `--max-pages 0` để lấy toàn bộ nhân vật). Nhấn Ctrl+C một lần để dừng an toàn sau request hiện tại.
 
 Có thể đồng bộ toàn bộ catalog hiện có trong database từ màn quản trị tại `/admin`. Trang hiển thị phần trăm, số hồ sơ synced/cached/not matched/lỗi và lý do từng hồ sơ; checkbox force sẽ bỏ qua cache 30 ngày. Endpoint admin chỉ hoạt động khi API bind loopback (`127.0.0.1`, `localhost` hoặc `::1`); không bật `ALLOW_REMOTE_ADMIN_SYNC` trên môi trường công khai nếu chưa bổ sung xác thực.
 

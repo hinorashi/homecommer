@@ -1,3 +1,5 @@
+import process from 'node:process'
+
 const ENDPOINT = 'https://graphql.anilist.co'
 const MIN_REQUEST_INTERVAL_MS = Number(process.env.ANILIST_MIN_INTERVAL_MS) || 2100
 const MAX_ATTEMPTS = 6

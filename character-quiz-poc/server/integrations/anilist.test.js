@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { matchesAniListSeries, selectExactAnimeSeries, selectExactCharacter } from './anilist.js'
+import { matchesAniListSeries, matchesCharacterName, selectExactAnimeSeries, selectExactCharacter } from './anilist.js'
 
 test('selects the exact AniList character instead of a partial-name result', () => {
   const results = [
@@ -26,4 +26,9 @@ test('requires the AniList profile to include the expected series', () => {
   assert.equal(matchesAniListSeries(media, 'Love Live! Sunshine!!'), true)
   assert.equal(matchesAniListSeries(media, 'Made in Abyss'), false)
   assert.equal(selectExactAnimeSeries(media, 'Made in Abyss'), null)
+})
+
+test('accepts a canonical AniList name that is a token subset when series is checked separately', () => {
+  assert.equal(matchesCharacterName({ name: { english: 'Levi' } }, 'Levi Ackerman'), true)
+  assert.equal(matchesCharacterName({ name: { english: 'Leviathan' } }, 'Levi Ackerman'), false)
 })

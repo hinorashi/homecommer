@@ -20,6 +20,9 @@
 .workspace { display: flex; flex-direction: column; min-width: 0; min-height: 100svh; background: radial-gradient(circle at 88% 12%, #e9efec 0, transparent 24%), #f5f7f5; }
 .topbar, .page-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 19px clamp(24px, 6vw, 80px); font-size: 10px; font-weight: 800; color: #667a77; }
 .topbar { border-bottom: 1px solid #d9e1dd; }
+.home-navigation { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.home-navigation a { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 9px; border: 1px solid transparent; border-radius: 4px; color: #526a61; font-size: 10px; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.home-navigation a:hover { background: #eaf4ef; color: #205b50; }
 .status { display: inline-flex; align-items: center; gap: 7px; color: #336e60; white-space: nowrap; }
 .status i { width: 7px; height: 7px; background: #de895f; border-radius: 50%; }
 .page-footer { border-top: 1px solid #d9e1dd; margin-top: auto; }
@@ -107,6 +110,14 @@ button:focus-visible, textarea:focus-visible, .issue-toggle:focus-within { outli
 
 /* Contextual Filters Panel */
 .contextual-filters-panel { margin-top: 24px; background: #fff; border: 1px solid #d5dfda; border-radius: 6px; padding: 16px 20px; display: grid; gap: 12px; }
+.character-search-form { display: grid; grid-template-columns: auto minmax(160px, 1fr) auto; align-items: center; gap: 10px; }
+.character-search-form .filter-label { min-width: 0; }
+.character-search-form input, .anime-genre-filter select { min-width: 0; height: 36px; border: 1px solid #cbd9d2; border-radius: 4px; padding: 0 10px; background: #fff; color: #263f37; font: 500 12px 'Manrope', sans-serif; }
+.character-search-form input:focus, .anime-genre-filter select:focus { outline: 2px solid #79b5a4; outline-offset: 1px; }
+.filter-submit { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 13px; border: 1px solid #2a6f62; border-radius: 4px; background: #2a6f62; color: #fff; font: 700 12px 'Manrope', sans-serif; cursor: pointer; }
+.filter-submit:hover { background: #205b50; }
+.anime-genre-filter select { width: min(100%, 360px); }
+.clear-character-filters { justify-self: end; }
 .filter-group { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .filter-label { display: inline-flex; align-items: center; gap: 5px; color: #30584e; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; min-width: 85px; }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
@@ -184,7 +195,8 @@ button:focus-visible, textarea:focus-visible, .issue-toggle:focus-within { outli
 .match-empty.api-error { border-color: #d8a69a; color: #803e32; }
 
 @media (max-width: 900px) {
-  .app-shell { grid-template-columns: 205px minmax(0, 1fr); }
+  .topbar { flex-wrap: wrap; padding: 12px 0; }
+  .home-navigation { order: 3; width: 100%; margin-left: 0; }
   .sidebar { padding-inline: 17px; }
   .topbar, .page-footer { padding-inline: 28px; }
 }
@@ -219,6 +231,14 @@ button:focus-visible, textarea:focus-visible, .issue-toggle:focus-within { outli
   .character-avatar-box { width: 56px; height: 56px; }
   .match-count-badge { flex-direction: row; align-items: center; gap: 8px; padding: 5px 10px; }
   .match-count-badge strong { font-size: 18px; }
+}
+
+@media (max-width: 520px) {
+  .contextual-filters-panel { padding: 13px; }
+  .character-search-form { grid-template-columns: minmax(0, 1fr) auto; }
+  .character-search-form .filter-label { grid-column: 1 / -1; }
+  .anime-genre-filter { align-items: flex-start; flex-direction: column; }
+  .anime-genre-filter select { width: 100%; }
 }
 
 @media (max-width: 370px) {

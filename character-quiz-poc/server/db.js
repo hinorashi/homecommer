@@ -39,10 +39,6 @@ db.exec(`
     name TEXT NOT NULL,
     native_name TEXT,
     series TEXT NOT NULL,
-    genre TEXT NOT NULL DEFAULT 'unknown',
-    genre_label TEXT NOT NULL DEFAULT 'Chưa phân loại',
-    archetype TEXT NOT NULL DEFAULT 'unknown',
-    archetype_label TEXT NOT NULL DEFAULT 'Chưa phân loại',
     source_url TEXT,
     latest_release TEXT,
     latest_release_url TEXT,
@@ -201,8 +197,6 @@ db.exec(`
     finished_at TEXT
   );
 
-  CREATE INDEX IF NOT EXISTS idx_characters_genre ON characters(genre);
-  CREATE INDEX IF NOT EXISTS idx_characters_archetype ON characters(archetype);
   CREATE INDEX IF NOT EXISTS idx_character_traits_tag_status ON character_traits(tag_id, review_status, character_id);
   CREATE INDEX IF NOT EXISTS idx_character_traits_character ON character_traits(character_id, review_status);
   CREATE INDEX IF NOT EXISTS idx_images_license ON character_images(license_verified, character_id);
@@ -220,6 +214,7 @@ const characterColumns = db.pragma('table_info(characters)')
 if (!characterColumns.some((column) => column.name === 'metadata_synced_at')) {
   db.exec('ALTER TABLE characters ADD COLUMN metadata_synced_at TEXT')
 }
+migrateLegacyTaxonomies(characterColumns)
 
 export function seedDatabase() {
   const insertTag = db.prepare(`
@@ -232,21 +227,15 @@ export function seedDatabase() {
   `)
   const insertCharacter = db.prepare(`
     INSERT INTO characters (
-      id, name, series, genre, genre_label, archetype, archetype_label,
-      source_url, latest_release, latest_release_url, latest_release_verified,
-      trait_cutoff_aligned
+      id, name, series, source_url, latest_release, latest_release_url,
+      latest_release_verified, trait_cutoff_aligned
     ) VALUES (
-      @id, @name, @series, @genre, @genreLabel, @archetype, @archetypeLabel,
-      @sourceUrl, @latestRelease, @latestReleaseUrl, @latestReleaseVerified,
-      @traitCutoffAligned
+      @id, @name, @series, @sourceUrl, @latestRelease, @latestReleaseUrl,
+      @latestReleaseVerified, @traitCutoffAligned
     )
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       series = excluded.series,
-      genre = excluded.genre,
-      genre_label = excluded.genre_label,
-      archetype = excluded.archetype,
-      archetype_label = excluded.archetype_label,
       source_url = excluded.source_url,
       latest_release = excluded.latest_release,
       latest_release_url = excluded.latest_release_url,
@@ -306,10 +295,6 @@ export function seedDatabase() {
         id: character.id,
         name: character.name,
         series: character.series,
-        genre: character.genre ?? 'unknown',
-        genreLabel: character.genreLabel ?? 'Chưa phân loại',
-        archetype: character.archetype ?? 'unknown',
-        archetypeLabel: character.archetypeLabel ?? 'Chưa phân loại',
         sourceUrl: character.assertions[0]?.url ?? null,
         latestRelease: character.releaseMilestone,
         latestReleaseUrl: character.releaseSourceUrl,
@@ -451,7 +436,7 @@ export function recordCrawlJob(job) {
   return result.lastInsertRowid
 }
 
-function normalizeId(value) {
+export function normalizeId(value) {
   return String(value ?? '')
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -460,7 +445,59 @@ function normalizeId(value) {
     .replace(/^-|-$/g, '')
 }
 
-function upsertSourceRecord({ url, title, sourceType }) {
+function migrateLegacyTaxonomies(columns) {
+  const columnNames = new Set(columns.map((column) => column.name))
+  const legacyColumns = ['genre', 'genre_label', 'archetype', 'archetype_label']
+  if (!legacyColumns.some((name) => columnNames.has(name))) return
+
+  const sourceId = upsertSourceRecord({
+    url: 'urn:homecomer:editorial-taxonomy:v1',
+    title: 'Homecomer editorial context and archetype taxonomy',
+    sourceType: 'editorial-taxonomy',
+  })
+  const rows = db.prepare(`
+    SELECT id, genre, genre_label, archetype, archetype_label
+    FROM characters
+  `).all()
+  const saveContextGenre = db.prepare(`
+    INSERT INTO context_genres (genre_id, label) VALUES (?, ?)
+    ON CONFLICT(genre_id) DO UPDATE SET label = excluded.label
+  `)
+  const saveCharacterGenre = db.prepare(`
+    INSERT OR IGNORE INTO character_context_genres (character_id, genre_id, source_id)
+    VALUES (?, ?, ?)
+  `)
+  const saveArchetype = db.prepare(`
+    INSERT INTO archetypes (archetype_id, label) VALUES (?, ?)
+    ON CONFLICT(archetype_id) DO UPDATE SET label = excluded.label
+  `)
+  const saveCharacterArchetype = db.prepare(`
+    INSERT OR IGNORE INTO character_archetypes (character_id, archetype_id, source_id, source_term)
+    VALUES (?, ?, ?, ?)
+  `)
+
+  const migrate = db.transaction(() => {
+    for (const row of rows) {
+      if (row.genre) {
+        saveContextGenre.run(row.genre, row.genre_label || row.genre)
+        saveCharacterGenre.run(row.id, row.genre, sourceId)
+      }
+      if (row.archetype) {
+        saveArchetype.run(row.archetype, row.archetype_label || row.archetype)
+        saveCharacterArchetype.run(row.id, row.archetype, sourceId, row.archetype_label || row.archetype)
+      }
+    }
+
+    db.exec('DROP INDEX IF EXISTS idx_characters_genre')
+    db.exec('DROP INDEX IF EXISTS idx_characters_archetype')
+    for (const column of legacyColumns) {
+      if (columnNames.has(column)) db.exec(`ALTER TABLE characters DROP COLUMN ${column}`)
+    }
+  })
+  migrate()
+}
+
+export function upsertSourceRecord({ url, title, sourceType }) {
   db.prepare(`
     INSERT INTO sources (url, title, source_type)
     VALUES (@url, @title, @sourceType)
@@ -569,7 +606,7 @@ export function getAniListMetadataStatus(characterId) {
       i.storage_permission_status AS storagePermissionStatus,
       i.reuse_permission_status AS reusePermissionStatus,
       COALESCE((
-        SELECT json_group_array(g.label)
+        SELECT json_group_array(DISTINCT g.label)
         FROM character_series cs
         JOIN series_genres sg ON sg.series_id = cs.series_id
         JOIN genres g ON g.genre_id = sg.genre_id
@@ -774,4 +811,48 @@ export function getMetadataFilterOptions() {
       ORDER BY label
     `).all(),
   }
+}
+
+export function findCharactersForMetadataSync({ name = '', series = '', limit = 100000 } = {}) {
+  const conditions = []
+  const parameters = []
+  const normalizedName = String(name).trim().toLocaleLowerCase('en')
+  const normalizedSeries = String(series).trim().toLocaleLowerCase('en')
+
+  if (normalizedName) {
+    conditions.push(`(
+      instr(lower(c.name), ?) > 0
+      OR instr(lower(COALESCE(c.native_name, '')), ?) > 0
+      OR EXISTS (
+        SELECT 1 FROM character_aliases ca
+        WHERE ca.character_id = c.id AND ca.spoiler = 0
+          AND instr(lower(ca.alias), ?) > 0
+      )
+    )`)
+    parameters.push(normalizedName, normalizedName, normalizedName)
+  }
+  if (normalizedSeries) {
+    conditions.push(`(
+      instr(lower(c.series), ?) > 0
+      OR EXISTS (
+        SELECT 1 FROM character_series cs
+        JOIN anime_series s ON s.series_id = cs.series_id
+        WHERE cs.character_id = c.id AND (
+          instr(lower(s.title), ?) > 0
+          OR instr(lower(COALESCE(s.title_english, '')), ?) > 0
+          OR instr(lower(COALESCE(s.title_romaji, '')), ?) > 0
+        )
+      )
+    )`)
+    parameters.push(normalizedSeries, normalizedSeries, normalizedSeries, normalizedSeries)
+  }
+  const safeLimit = Math.max(1, Math.min(100000, Math.trunc(Number(limit) || 100000)))
+  const where = conditions.length ? conditions.join(' AND ') : '1 = 1'
+  return db.prepare(`
+    SELECT c.id, c.anilist_id AS anilistId, c.name, c.series
+    FROM characters c
+    WHERE ${where}
+    ORDER BY c.metadata_synced_at IS NOT NULL, c.name COLLATE NOCASE
+    LIMIT ?
+  `).all(...parameters, safeLimit)
 }

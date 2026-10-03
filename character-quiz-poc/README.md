@@ -26,6 +26,20 @@ Preview hiển thị phần suy luận tính cách của người dùng, tag tr�
 
 AniList được tích hợp như nguồn metadata bên thứ ba qua package `anilist-node`; không crawl toàn bộ catalog. Khi kết quả cần làm giàu dữ liệu, backend sync tối đa ba nhân vật/lượt theo AniList ID hoặc tên chính xác cộng series tương ứng. SQLite chuẩn hóa nhân vật, aliases, series, genres theo series, quan hệ character-series, nguồn metadata, ngày đồng bộ, context genre và archetype biên tập thành các bảng riêng. Các hồ sơ seed được migrate idempotent; metadata AniList cập nhật theo external ID và nguồn để có thể bổ sung provider khác sau này. Không lưu mô tả nhân vật dài.
 
+Màn thư viện riêng tại `/characters` tìm theo tên/bí danh/tên series, lọc context genre, archetype và AniList anime genre, có phân trang và không yêu cầu hoàn thành quiz. Màn quiz cũng có navigation trực tiếp tới thư viện. Nút đồng bộ xử lý các hồ sơ của trang đang xem và hiển thị phần trăm hoàn tất theo số hồ sơ thực đã xử lý. Các bộ lọc catalog không thay đổi điểm matching.
+
+Đồng bộ metadata chủ động từ terminal (mặc định toàn bộ catalog SQLite):
+
+```powershell
+npm.cmd run metadata:sync -- --name "Kaguya Shinomiya"
+npm.cmd run metadata:sync -- --series "Steins;Gate" --limit 3
+npm.cmd run metadata:sync -- --limit 3
+```
+
+Không truyền `--name`/`--series` sẽ chọn hồ sơ chưa đồng bộ hoặc đã quá 30 ngày. Dùng `npm.cmd run metadata:sync -- --help` để xem trợ giúp. Lệnh chỉ đồng bộ hồ sơ đã tồn tại trong SQLite, không tải toàn bộ catalog AniList.
+
+Có thể đồng bộ toàn bộ catalog hiện có trong database từ màn quản trị tại `/admin`. Trang hiển thị phần trăm, số hồ sơ synced/cached/not matched/lỗi và lý do từng hồ sơ; checkbox force sẽ bỏ qua cache 30 ngày. Endpoint admin chỉ hoạt động khi API bind loopback (`127.0.0.1`, `localhost` hoặc `::1`); không bật `ALLOW_REMOTE_ADMIN_SYNC` trên môi trường công khai nếu chưa bổ sung xác thực.
+
 AniList profile image URL cũng được lưu với `storage_permission_status` tách biệt khỏi `reuse_permission_status`. Thỏa thuận lưu trữ đã xác nhận cho phép lưu metadata/URL; trạng thái quyền tái sử dụng ảnh vẫn `unverified` cho tới khi có xác nhận riêng. Ảnh đã có license kiểm chứng được ưu tiên hơn; ảnh AniList hiển thị kèm cảnh báo và link hồ sơ.
 
 Matching tính IDF/cosine chỉ từ behavioral traits như trước. Context genre và archetype biên tập được dùng cho filter; AniList genres theo series được hiển thị và dùng làm tín hiệu đa dạng cho Wildcard, không cộng vào điểm tính cách. Archetype lưu source, confidence và review status; giá trị seed hiện là `proposed`, không phải nhãn khách quan do AniList cấp.
@@ -34,6 +48,6 @@ Matching tính IDF/cosine chỉ từ behavioral traits như trước. Context ge
 
 Ảnh lưu từ AniList kèm liên kết hồ sơ; quyền lưu theo thỏa thuận của dự án không tự xác minh quyền tái sử dụng ảnh. Giao diện gắn nhãn quyền tái sử dụng chưa xác minh. Nếu chưa có ảnh phù hợp hoặc sync thất bại, giao diện dùng chữ cái đầu tên nhân vật. Các ảnh Commons cũ nếu có vẫn giữ metadata license riêng.
 
-Các route tiện dụng: `GET /api/health`, `GET /api/metadata/filters`, `GET /api/metadata/anime-genres`, `GET /api/anilist/characters/search?q=...`, `POST /api/anilist/characters/sync` và `POST /api/match`. Sync được tuần tự hóa theo giới hạn tốc độ cục bộ, tối đa ba nhân vật mỗi request; không có crawl hàng loạt. `sources` cùng các khóa external ID/source cho phép thêm adapter Jikan/MAL hoặc nguồn khác mà không đổi mô hình genre/archetype; hiện chỉ AniList được triển khai. Đây là POC, chưa có xác thực API hoặc rà soát pháp lý đầy đủ cho phát hành production.
+Các route tiện dụng: `GET /api/health`, `GET /api/catalog/characters`, `GET /api/metadata/filters`, `GET /api/metadata/anime-genres`, `GET /api/anilist/characters/search?q=...`, `POST /api/anilist/characters/sync`, `POST /api/admin/metadata/sync-all`, `GET /api/admin/metadata/sync`, `GET /api/admin/metadata/sync/:jobId` và `POST /api/match`. Sync AniList được tuần tự hóa theo giới hạn tốc độ; sync-on-demand giới hạn ba nhân vật/request, admin job xử lý tuần tự toàn bộ hồ sơ SQLite. Tên hiển thị có thể khác tên chuẩn AniList (ví dụ Levi Ackerman/Levi); resolver thử canonical first-name rồi yêu cầu series anime khớp trước khi lưu. `sources` cùng external IDs theo provider cho phép thêm adapter Jikan/MAL hoặc nguồn khác mà không đổi mô hình genre/archetype; hiện chỉ AniList được triển khai. Đây là POC, chưa có xác thực API hoặc rà soát pháp lý đầy đủ cho phát hành production.
 
 Trang có thể tải phông chữ từ Google Fonts, nhưng không gửi câu trả lời thô trong yêu cầu tải phông chữ. JSON phản hồi chỉ được tạo khi người dùng nhấn tải; hãy xem lại nội dung trước khi chia sẻ.

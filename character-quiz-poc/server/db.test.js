@@ -8,9 +8,10 @@ import test, { after } from 'node:test'
 const temporaryDirectory = mkdtempSync(join(tmpdir(), 'character-match-db-'))
 process.env.SQLITE_PATH = resolve(temporaryDirectory, 'test.sqlite')
 
-const { db, getAniListMetadataStatus, getMetadataFilterOptions, saveAniListCharacterMetadata, seedDatabase } = await import('./db.js')
+const { db, findCharactersForMetadataSync, getAniListMetadataStatus, getMetadataFilterOptions, saveAniListCharacterMetadata, seedDatabase } = await import('./db.js')
 seedDatabase()
 const { matchFromDatabase } = await import('./match-service.js')
+const { searchCharacterCatalog } = await import('./catalog-service.js')
 
 after(() => {
   db.close()
@@ -19,9 +20,34 @@ after(() => {
 
 test('seeds normalized context genre and archetype taxonomies', () => {
   const filters = getMetadataFilterOptions()
+  const characterColumns = db.pragma('table_info(characters)').map(({ name }) => name)
 
   assert.ok(filters.contextGenres.some(({ id }) => id === 'action-fantasy'))
   assert.ok(filters.archetypes.some(({ id }) => id === 'strategist'))
+  assert.equal(characterColumns.includes('genre'), false)
+  assert.equal(characterColumns.includes('archetype'), false)
+  assert.deepEqual(
+    findCharactersForMetadataSync({ name: 'Kaguya', series: 'Love Is War' }).map(({ id }) => id),
+    ['kaguya-shinomiya-ultra-romantic']
+  )
+  assert.equal(findCharactersForMetadataSync().length, 6)
+  assert.equal(findCharactersForMetadataSync({ limit: 2 }).length, 2)
+})
+
+test('browses the full catalog without quiz traits and applies search, filters, and pagination', () => {
+  const allCharacters = searchCharacterCatalog({ limit: 50 })
+  assert.equal(allCharacters.total, 6)
+  assert.equal(allCharacters.characters.length, 6)
+
+  const searched = searchCharacterCatalog({ searchText: 'kaguya-sama: love is war' })
+  assert.equal(searched.characters[0].id, 'kaguya-shinomiya-ultra-romantic')
+
+  const filtered = searchCharacterCatalog({ contextGenre: 'psychological-school', archetype: 'strategist' })
+  assert.deepEqual(filtered.characters.map(({ id }) => id), ['kaguya-shinomiya-ultra-romantic'])
+
+  const page = searchCharacterCatalog({ limit: 2, offset: 2 })
+  assert.equal(page.characters.length, 2)
+  assert.equal(page.hasMore, true)
 })
 
 test('persists AniList series genres, aliases, image source, and sync idempotently', () => {
@@ -86,4 +112,15 @@ test('persists AniList series genres, aliases, image source, and sync idempotent
   })
   assert.ok(filtered.some(({ character }) => character.id === characterId))
   assert.ok(filtered.every(({ character }) => character.contextGenres.some(({ id }) => id === 'psychological-school')))
+
+  assert.ok(matchFromDatabase({ userTraits, searchText: 'kaguya-sama: love is war' })
+    .some(({ character }) => character.id === characterId))
+  assert.ok(matchFromDatabase({ userTraits, searchText: 'princess' })
+    .some(({ character }) => character.id === characterId))
+  assert.deepEqual(
+    matchFromDatabase({ userTraits, animeGenreFilter: 'psychological' })
+      .map(({ character }) => character.id),
+    [characterId]
+  )
+  assert.deepEqual(matchFromDatabase({ userTraits, searchText: 'not in catalog' }), [])
 })

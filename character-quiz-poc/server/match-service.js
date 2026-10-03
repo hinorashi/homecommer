@@ -88,6 +88,8 @@ export function matchFromDatabase({
   userTraits = [],
   genreFilter = 'all',
   archetypeFilter = 'all',
+  animeGenreFilter = 'all',
+  searchText = '',
   includeProposed = true,
 }) {
   const userTraitMap = new Map(
@@ -152,6 +154,39 @@ export function matchFromDatabase({
         AND ca.review_status IN ('approved', 'proposed')
     )`)
     filterParams.push(archetypeFilter)
+  }
+  if (animeGenreFilter !== 'all') {
+    conditions.push(`EXISTS (
+      SELECT 1 FROM character_series cs
+      JOIN series_genres sg ON sg.series_id = cs.series_id
+      WHERE cs.character_id = c.id AND sg.genre_id = ?
+    )`)
+    filterParams.push(animeGenreFilter)
+  }
+
+  const normalizedSearch = String(searchText ?? '').trim().slice(0, 100).toLocaleLowerCase('en')
+  if (normalizedSearch) {
+    conditions.push(`(
+      instr(lower(c.name), ?) > 0
+      OR instr(lower(COALESCE(c.native_name, '')), ?) > 0
+      OR instr(lower(c.series), ?) > 0
+      OR EXISTS (
+        SELECT 1 FROM character_aliases ca
+        WHERE ca.character_id = c.id AND ca.spoiler = 0
+          AND instr(lower(ca.alias), ?) > 0
+      )
+      OR EXISTS (
+        SELECT 1 FROM character_series cs
+        JOIN anime_series s ON s.series_id = cs.series_id
+        WHERE cs.character_id = c.id AND (
+          instr(lower(s.title), ?) > 0
+          OR instr(lower(COALESCE(s.title_english, '')), ?) > 0
+          OR instr(lower(COALESCE(s.title_romaji, '')), ?) > 0
+          OR instr(lower(COALESCE(s.title_native, '')), ?) > 0
+        )
+      )
+    )`)
+    filterParams.push(...Array.from({ length: 8 }, () => normalizedSearch))
   }
 
   const candidateRows = db.prepare(`

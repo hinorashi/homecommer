@@ -40,6 +40,15 @@ export function matchesAniListSeries(mediaNodes, expectedSeries) {
   return Boolean(selectExactAnimeSeries(mediaNodes, expectedSeries))
 }
 
+function nameMatchesExpected(candidateName, expectedName) {
+  const candidate = normalizeName(candidateName)
+  const expected = normalizeName(expectedName)
+  if (!candidate || !expected) return false
+  if (candidate === expected) return true
+  const expectedTokens = new Set(expected.split(' '))
+  return candidate.split(' ').every((token) => expectedTokens.has(token))
+}
+
 export function selectExactAnimeSeries(mediaNodes, expectedSeries) {
   const normalizedSeries = normalizeName(expectedSeries)
   if (!normalizedSeries) return null
@@ -50,14 +59,13 @@ export function selectExactAnimeSeries(mediaNodes, expectedSeries) {
     )) ?? null
 }
 
-function matchesCharacterName(character, expectedName) {
-  const normalizedName = normalizeName(expectedName)
+export function matchesCharacterName(character, expectedName) {
   const names = [
     character.name?.english,
     character.name?.native,
     ...(character.name?.alternative ?? []),
   ]
-  return names.some((name) => normalizeName(name) === normalizedName)
+  return names.some((name) => nameMatchesExpected(name, expectedName))
 }
 
 export async function searchAniListCharacters(search) {
@@ -82,35 +90,65 @@ function storedImage(status) {
   } : null
 }
 
-export async function syncAniListCharacterMetadata({ characterId, anilistId, name, series }) {
+async function resolveAniListProfile({ anilistId, name, series }) {
+  const expectedName = String(name ?? '').trim().slice(0, 100)
+  const numericId = Number(anilistId)
+  if (Number.isInteger(numericId) && numericId > 0) {
+    const profile = await rateLimited(() => client.people.character(numericId))
+    if (!matchesCharacterName(profile, expectedName)) return { profile: null, reason: 'name-mismatch' }
+    if (!selectExactAnimeSeries(profile.media, series)) return { profile: null, reason: 'series-mismatch' }
+    return { profile }
+  }
+
+  if (expectedName.length < 2) return { profile: null, reason: 'name-too-short' }
+  const searchTerms = [...new Set([expectedName, expectedName.split(/\s+/)[0]])]
+  const candidateIds = new Set()
+
+  for (const term of searchTerms) {
+    const result = await rateLimited(() => client.searchEntry.character(term, 1, 10))
+    const candidates = result.characters ?? []
+    const exact = selectExactCharacter(candidates, expectedName)
+    if (exact) candidateIds.add(exact.id)
+    candidates
+      .filter((candidate) => nameMatchesExpected(candidate.name?.english, expectedName))
+      .forEach((candidate) => candidateIds.add(candidate.id))
+  }
+
+  for (const candidateId of candidateIds) {
+    const profile = await rateLimited(() => client.people.character(candidateId))
+    if (matchesCharacterName(profile, expectedName) && selectExactAnimeSeries(profile.media, series)) {
+      return { profile }
+    }
+  }
+
+  return { profile: null, reason: candidateIds.size ? 'series-mismatch' : 'no-name-match' }
+}
+
+export async function syncAniListCharacterMetadata({ characterId, anilistId, name, series, force = false }) {
   const query = String(name ?? '').trim().slice(0, 100)
   const existing = getAniListMetadataStatus(characterId)
   if (!existing) throw new Error('Character not found in SQLite.')
   const syncedAt = Date.parse(existing.syncedAt ?? '')
-  if (existing.imageUrl && Number.isFinite(syncedAt) && Date.now() - syncedAt < 30 * 24 * 60 * 60 * 1000) {
+  if (!force && existing.imageUrl && Number.isFinite(syncedAt) && Date.now() - syncedAt < 30 * 24 * 60 * 60 * 1000) {
     return {
       characterId,
       image: storedImage(existing),
       stored: true,
       cached: true,
+      status: 'cached',
       metadata: { series: existing.seriesTitle, genres: JSON.parse(existing.genresJson ?? '[]'), syncedAt: existing.syncedAt },
     }
   }
 
-  let aniListCharacterId = Number(anilistId)
-
-  if (!Number.isInteger(aniListCharacterId) || aniListCharacterId < 1) {
-    if (query.length < 2) return null
-    const result = await rateLimited(() => client.searchEntry.character(query, 1, 10))
-    const exactMatch = selectExactCharacter(result.characters, query)
-    if (!exactMatch) return null
-    aniListCharacterId = exactMatch.id
+  const resolved = await resolveAniListProfile({ anilistId, name: query, series })
+  if (!resolved.profile) {
+    return { characterId: String(characterId), image: null, stored: false, status: 'not-matched', reason: resolved.reason }
   }
-
-  const profile = await rateLimited(() => client.people.character(aniListCharacterId))
-  if (!matchesCharacterName(profile, query)) return { characterId: String(characterId), image: null, stored: false }
+  const profile = resolved.profile
   const relatedSeries = selectExactAnimeSeries(profile.media, series)
-  if (!relatedSeries) return { characterId: String(characterId), image: null, stored: false, reason: 'series-mismatch' }
+  if (!relatedSeries) {
+    return { characterId: String(characterId), image: null, stored: false, status: 'not-matched', reason: 'series-mismatch' }
+  }
 
   const media = await rateLimited(() => client.media.anime(relatedSeries.id))
   const pageUrl = `https://anilist.co/character/${profile.id}`
@@ -141,6 +179,7 @@ export async function syncAniListCharacterMetadata({ characterId, anilistId, nam
     image: storedImage(status),
     stored: true,
     cached: false,
+    status: 'synced',
     metadata: {
       series: media.title?.userPreferred || media.title?.english || media.title?.romaji,
       genres: media.genres ?? [],
@@ -150,7 +189,7 @@ export async function syncAniListCharacterMetadata({ characterId, anilistId, nam
   }
 }
 
-export async function syncAniListCharacterMetadataBatch(characters) {
+export async function syncAniListCharacterMetadataBatch(characters, { force = false } = {}) {
   const candidates = Array.isArray(characters) ? characters.slice(0, 3) : []
   const results = []
 
@@ -164,10 +203,11 @@ export async function syncAniListCharacterMetadataBatch(characters) {
         anilistId: candidate?.anilistId,
         name,
         series,
+        force,
       })
       results.push({ id, ...result })
     } catch {
-      results.push({ id, image: null, stored: false })
+      results.push({ id, image: null, stored: false, status: 'error', reason: 'AniList request failed' })
     }
   }
 

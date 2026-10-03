@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, ArrowRight, Award, Check, Compass, Download, ExternalLink, Filter, Flame, RotateCcw, Sparkles, Tag, User, Zap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Award, Check, Download, ExternalLink, Flame, RotateCcw, Search, Sparkles, Tag, User, Zap } from 'lucide-react'
 import { drillDownQuestions, issueLabels, questions, questionSetVersion } from './questions'
 import { buildUserTraits, summarizeUserPersonality } from './matching'
+import CharacterCatalog from './CharacterCatalog'
+import MetadataAdmin from './MetadataAdmin'
 import './Quiz.css'
 
 function shuffledOrders() {
@@ -27,6 +29,7 @@ export default function Quiz() {
   const [feedback, setFeedback] = useState(emptyFeedback)
   const [seen, setSeen] = useState(() => questions.map((_, index) => index === 0))
   const [step, setStep] = useState(0)
+  const [pathname, setPathname] = useState(() => window.location.pathname)
   const [generalNote, setGeneralNote] = useState('')
 
   // Tier-2 Adaptive Drill-down state
@@ -34,23 +37,6 @@ export default function Quiz() {
   const [drillDownOpen, setDrillDownOpen] = useState(false)
   const [drillDownStep, setDrillDownStep] = useState(0)
 
-  // Contextual filters
-  const [genreFilter, setGenreFilter] = useState('all')
-  const [archetypeFilter, setArchetypeFilter] = useState('all')
-  const [metadataFilters, setMetadataFilters] = useState({
-    contextGenres: [
-      { id: 'action-fantasy', label: 'Hành động / Kỳ ảo' },
-      { id: 'psychological-school', label: 'Đấu trí / Học đường' },
-      { id: 'action-historical', label: 'Hành động / Lịch sử' },
-      { id: 'scifi-thriller', label: 'Khoa học / Đấu trí' },
-    ],
-    archetypes: [
-      { id: 'protagonist', label: 'Chính diện kiên định' },
-      { id: 'strategist', label: 'Chiến lược gia' },
-      { id: 'antihero', label: 'Thủ lĩnh / Khắc kỷ' },
-      { id: 'mentor', label: 'Chiêm nghiệm' },
-    ],
-  })
   const [matches, setMatches] = useState([])
   const [matchLoading, setMatchLoading] = useState(false)
   const [matchError, setMatchError] = useState('')
@@ -75,15 +61,16 @@ export default function Quiz() {
   const userTraitsKey = JSON.stringify(userTraits)
 
   useEffect(() => {
-    let isCurrent = true
-    fetch('/api/metadata/filters')
-      .then((response) => response.ok ? response.json() : null)
-      .then((payload) => {
-        if (isCurrent && payload?.contextGenres && payload?.archetypes) setMetadataFilters(payload)
-      })
-      .catch(() => {})
-    return () => { isCurrent = false }
+    const syncPathname = () => setPathname(window.location.pathname)
+    window.addEventListener('popstate', syncPathname)
+    return () => window.removeEventListener('popstate', syncPathname)
   }, [])
+
+  function navigateRoute(path) {
+    if (window.location.pathname !== path) window.history.pushState({}, '', path)
+    setPathname(path)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   function navigate(index) {
     setStep(index)
@@ -129,10 +116,6 @@ export default function Quiz() {
         choiceId: drillDownAnswers[idx] === null ? null : drillDownAnswers[idx] + 1,
         choice: drillDownAnswers[idx] === null ? null : q.choices[drillDownAnswers[idx]],
       })),
-      filters: {
-        genreFilter,
-        archetypeFilter,
-      },
       generalNote: generalNote.trim(),
     }
     const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }))
@@ -149,8 +132,6 @@ export default function Quiz() {
     setDrillDownAnswers(drillDownQuestions.map(() => null))
     setDrillDownOpen(false)
     setDrillDownStep(0)
-    setGenreFilter('all')
-    setArchetypeFilter('all')
     setFeedback(emptyFeedback())
     setSeen(questions.map((_, index) => index === 0))
     setGeneralNote('')
@@ -158,7 +139,7 @@ export default function Quiz() {
   }
 
   useEffect(() => {
-    if (!results) return undefined
+    if (!results || pathname === '/characters') return undefined
 
     const controller = new AbortController()
     let isCurrent = true
@@ -178,8 +159,6 @@ export default function Quiz() {
           body: JSON.stringify({
             userTraits: traitsForRequest,
             includeProposed: true,
-            genreFilter,
-            archetypeFilter,
           }),
         })
         const payload = await response.json()
@@ -237,7 +216,20 @@ export default function Quiz() {
       window.clearTimeout(loadingTimer)
       controller.abort()
     }
-  }, [results, userTraitsKey, genreFilter, archetypeFilter])
+  }, [results, pathname, userTraitsKey])
+
+  if (pathname === '/characters') {
+    return <CharacterCatalog
+      onHome={() => { setStep(0); navigateRoute('/') }}
+      onAdmin={() => navigateRoute('/admin')}
+    />
+  }
+  if (pathname === '/admin') {
+    return <MetadataAdmin
+      onHome={() => { setStep(0); navigateRoute('/') }}
+      onCatalog={() => navigateRoute('/characters')}
+    />
+  }
 
   return (
     <div className="app-shell">
@@ -266,7 +258,15 @@ export default function Quiz() {
       </aside>
 
       <main className="workspace">
-        <header className="topbar"><span>THỬ NGHIỆM / BỘ CÂU HỎI 06</span><span className="status"><i /> BẢN POC</span></header>
+        <header className="topbar">
+          <span>THỬ NGHIỆM / BỘ CÂU HỎI 06</span>
+          <nav className="home-navigation" aria-label="Điều hướng chính">
+            <a href="/" aria-current="page" onClick={(event) => { event.preventDefault(); setStep(0); navigateRoute('/') }}>Bộ câu hỏi</a>
+            <a href="/characters" onClick={(event) => { event.preventDefault(); navigateRoute('/characters') }}><Search size={14} /> Tìm nhân vật</a>
+            <a href="/admin" onClick={(event) => { event.preventDefault(); navigateRoute('/admin') }}>Admin</a>
+          </nav>
+          <span className="status"><i /> BẢN POC</span>
+        </header>
         {review ? (
           <div className="content-wrap review-wrap">
             <div className="section-label"><span className="label-number">✓</span> / HOÀN TẤT</div>
@@ -413,40 +413,6 @@ export default function Quiz() {
               </div>
             </section>
 
-            {/* Bộ lọc bối cảnh & thể loại / hình mẫu */}
-            <section className="contextual-filters-panel" aria-label="Bộ lọc bối cảnh và hình mẫu">
-              <div className="filter-group">
-                <span className="filter-label"><Filter size={13} /> Thể loại:</span>
-                <div className="filter-chips">
-                  {[{ id: 'all', label: 'Tất cả' }, ...metadataFilters.contextGenres].map((g) => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      className={`filter-chip ${genreFilter === g.id ? 'active' : ''}`}
-                      onClick={() => setGenreFilter(g.id)}
-                    >
-                      {g.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="filter-group">
-                <span className="filter-label"><Compass size={13} /> Hình mẫu:</span>
-                <div className="filter-chips">
-                  {[{ id: 'all', label: 'Tất cả' }, ...metadataFilters.archetypes].map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      className={`filter-chip ${archetypeFilter === a.id ? 'active' : ''}`}
-                      onClick={() => setArchetypeFilter(a.id)}
-                    >
-                      {a.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </section>
-
             <div className="preview-notice" role="note">
               <strong><Sparkles size={15} style={{ verticalAlign: 'middle', marginRight: 6 }} />Thu thập từ nguồn mạng & Trọng số độ hiếm (TF-IDF)</strong>
               <span>Áp dụng thuật toán trọng số nghịch đảo (IDF) để giảm ưu thế của tag đại trà và tôn vinh nét tính cách hiếm gặp. Kết quả phân bổ theo các vị trí đại diện (Best Match, Soulmate/Niche, Wildcard).</span>
@@ -577,8 +543,8 @@ export default function Quiz() {
               </section>
             ) : (
               <div className="match-empty" role="status">
-                <strong>Chưa có tiêu chí chung cho bộ lọc này</strong>
-                <p>Không có nhân vật nào thỏa mãn đồng thời các tag tính cách và tiêu chí thể loại/hình mẫu được chọn. Cụ có thể chọn "Tất cả" để xem toàn bộ danh sách.</p>
+                <strong>Chưa có tiêu chí chung</strong>
+                <p>Chưa tìm thấy nhân vật có tag hành vi trùng với câu trả lời của cụ.</p>
               </div>
             )}
 

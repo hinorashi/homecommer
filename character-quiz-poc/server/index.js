@@ -1,7 +1,14 @@
 import express from 'express'
 import process from 'node:process'
 import { db, getDatabasePath, getMetadataFilterOptions, seedDatabase } from './db.js'
-import { getAnimeDetail, searchCharacterCatalog } from './catalog-service.js'
+import {
+  getAnimeDetail,
+  getCharacterDetail,
+  listStudios,
+  searchCharacterCatalog,
+  syncAnimeRelationsIfMissing,
+  syncCharacterDetailsIfMissing,
+} from './catalog-service.js'
 import { getMetadataSyncJob, startFullMetadataSync } from './admin-metadata-sync.js'
 import { searchAniListCharacters, syncAniListCharacterMetadataBatch } from './integrations/anilist.js'
 import { matchFromDatabase } from './match-service.js'
@@ -89,15 +96,23 @@ app.get('/api/metadata/anime-genres', (_request, response) => {
   response.json({ genres })
 })
 
+app.get('/api/metadata/studios', (_request, response) => {
+  response.json({ studios: listStudios() })
+})
+
 app.get('/api/catalog/characters', (request, response) => {
-  const { q = '', contextGenre = 'all', archetype = 'all', animeGenre = 'all' } = request.query
+  const { q = '', contextGenre = 'all', archetype = 'all', animeGenre = 'all', genreMode = 'all', studio = 'all' } = request.query
   const limit = Number(request.query.limit ?? 24)
   const offset = Number(request.query.offset ?? 0)
   if (typeof q !== 'string' || q.length > 100) {
     return response.status(400).json({ error: 'q must be a string with at most 100 characters.' })
   }
-  if (![contextGenre, archetype, animeGenre].every((value) => typeof value === 'string' && value.length <= 100)) {
-    return response.status(400).json({ error: 'Filter values must be strings with at most 100 characters.' })
+  if (![contextGenre, archetype].every((value) => typeof value === 'string' && value.length <= 100)
+    || ![animeGenre, studio].every((value) => typeof value === 'string' && value.length <= 1000)) {
+    return response.status(400).json({ error: 'Filter values must be strings (comma-separated lists for animeGenre/studio).' })
+  }
+  if (!['all', 'any'].includes(genreMode)) {
+    return response.status(400).json({ error: 'genreMode must be "all" or "any".' })
   }
   if (!Number.isInteger(limit) || !Number.isInteger(offset) || limit < 1 || offset < 0) {
     return response.status(400).json({ error: 'limit must be positive and offset must not be negative.' })
@@ -109,6 +124,8 @@ app.get('/api/catalog/characters', (request, response) => {
       contextGenre,
       archetype,
       animeGenre,
+      genreMode,
+      studio,
       limit,
       offset,
     }))
@@ -117,17 +134,33 @@ app.get('/api/catalog/characters', (request, response) => {
   }
 })
 
-app.get('/api/catalog/anime/:seriesId', (request, response) => {
+app.get('/api/catalog/anime/:seriesId', async (request, response) => {
   const { seriesId } = request.params
   if (!/^[a-z0-9-]{1,120}$/i.test(seriesId)) {
     return response.status(400).json({ error: 'Invalid anime id.' })
   }
   try {
+    await syncAnimeRelationsIfMissing(seriesId)
     const anime = getAnimeDetail(seriesId)
     if (!anime) return response.status(404).json({ error: 'Anime not found.' })
     return response.json({ anime })
   } catch (error) {
     return response.status(500).json({ error: `Anime lookup failed: ${error.message}` })
+  }
+})
+
+app.get('/api/catalog/character/:characterId', async (request, response) => {
+  const { characterId } = request.params
+  if (!/^[a-z0-9-]{1,120}$/i.test(characterId)) {
+    return response.status(400).json({ error: 'Invalid character id.' })
+  }
+  try {
+    await syncCharacterDetailsIfMissing(characterId)
+    const character = getCharacterDetail(characterId)
+    if (!character) return response.status(404).json({ error: 'Character not found.' })
+    return response.json({ character })
+  } catch (error) {
+    return response.status(500).json({ error: `Character lookup failed: ${error.message}` })
   }
 })
 

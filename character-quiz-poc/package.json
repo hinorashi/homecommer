@@ -16,6 +16,8 @@
     "crawl:genres": "node server/scripts/crawl-anilist.js genres",
     "crawl:anime": "node server/scripts/crawl-anilist.js anime",
     "crawl:characters": "node server/scripts/crawl-anilist.js characters",
+    "crawl:details": "node server/scripts/crawl-anilist.js details",
+    "crawl:anime-relations": "node server/scripts/crawl-anilist.js anime-relations",
     "crawl:all": "node server/scripts/crawl-anilist.js all",
     "preview": "vite preview"
   },

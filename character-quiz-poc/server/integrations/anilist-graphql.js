@@ -82,7 +82,7 @@ const MEDIA_FIELDS = `
   description(asHtml: false)
   coverImage { extraLarge large }
   bannerImage
-  studios(isMain: true) { nodes { name } }
+  studios(isMain: true) { nodes { id name } }
   isAdult
 `
 
@@ -142,4 +142,62 @@ export async function fetchAnimeCharactersPage(animeId, page, { perPage = 25 } =
     edges: data.Media?.characters?.edges ?? [],
     hasNextPage: Boolean(data.Media?.characters?.pageInfo?.hasNextPage),
   }
+}
+
+const CHARACTER_DETAIL_FIELDS = `
+  id
+  description(asHtml: false)
+  gender
+  age
+  bloodType
+  favourites
+  dateOfBirth { year month day }
+`
+
+export async function fetchCharacterDetailsBatch(characterIds) {
+  const data = await anilistQuery(`
+    query ($ids: [Int], $perPage: Int) {
+      Page(perPage: $perPage) {
+        characters(id_in: $ids) { ${CHARACTER_DETAIL_FIELDS} }
+      }
+    }
+  `, { ids: characterIds, perPage: Math.min(50, characterIds.length) })
+  return data.Page?.characters ?? []
+}
+
+export async function fetchCharacterDetails(characterId) {
+  const data = await anilistQuery(`
+    query ($id: Int) { Character(id: $id) { ${CHARACTER_DETAIL_FIELDS} } }
+  `, { id: Number(characterId) })
+  return data.Character ?? null
+}
+
+const RELATION_FIELDS = `
+  id
+  relations {
+    edges {
+      relationType(version: 2)
+      node {
+        id type format status seasonYear siteUrl isAdult
+        title { userPreferred }
+        coverImage { large }
+      }
+    }
+  }
+`
+
+export async function fetchAnimeRelationsBatch(animeIds) {
+  const data = await anilistQuery(`
+    query ($ids: [Int], $perPage: Int) {
+      Page(perPage: $perPage) { media(id_in: $ids, type: ANIME) { ${RELATION_FIELDS} } }
+    }
+  `, { ids: animeIds, perPage: Math.min(50, animeIds.length) })
+  return data.Page?.media ?? []
+}
+
+export async function fetchAnimeRelations(animeId) {
+  const data = await anilistQuery(`
+    query ($id: Int) { Media(id: $id, type: ANIME) { ${RELATION_FIELDS} } }
+  `, { id: Number(animeId) })
+  return data.Media ?? null
 }

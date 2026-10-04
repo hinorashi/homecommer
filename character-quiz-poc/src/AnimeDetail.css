@@ -38,6 +38,22 @@
 .anime-external-link:hover { text-decoration: underline; }
 
 .anime-characters { margin-top: 26px; }
+.detail-studio-links a { color: #2a6f62; text-decoration: none; border-bottom: 1px solid rgba(42, 111, 98, .3); }
+.detail-studio-links a:hover { border-bottom-color: currentColor; }
+.anime-relations { margin-top: 26px; }
+.anime-relations > h2 { margin: 0 0 12px; color: #203a32; font: 600 26px 'Newsreader', Georgia, serif; }
+.anime-relations > h2 span { color: #8a9a93; font-size: 18px; }
+.anime-relation-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.anime-relation-card { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 11px; min-width: 0; padding: 8px; border: 1px solid #d7e1dc; border-radius: 5px; background: #fff; color: inherit; text-decoration: none; transition: border-color .15s, box-shadow .15s; }
+.anime-relation-card:hover { border-color: #9cc6b7; box-shadow: 0 4px 14px rgba(30, 55, 47, .08); }
+.anime-relation-card.is-internal { border-left: 3px solid #2a6f62; }
+.anime-relation-cover { display: block; width: 56px; aspect-ratio: 23 / 33; overflow: hidden; border-radius: 3px; background: #378676; }
+.anime-relation-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.anime-relation-cover span { display: flex; height: 100%; align-items: center; justify-content: center; color: #fff; font: 600 22px 'Newsreader', Georgia, serif; }
+.anime-relation-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; justify-content: center; }
+.anime-relation-body em { color: #b36b4b; font-size: 9px; font-style: normal; font-weight: 800; text-transform: uppercase; }
+.anime-relation-body strong { color: #203a32; font: 600 15px/1.25 'Newsreader', Georgia, serif; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.anime-relation-body small { display: inline-flex; align-items: center; gap: 3px; color: #7d8f87; font-size: 10px; }
 .anime-characters-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
 .anime-characters-heading h2 { margin: 0; color: #203a32; font: 600 26px 'Newsreader', Georgia, serif; }
 .anime-characters-heading h2 span { color: #8a9a93; font-size: 18px; }

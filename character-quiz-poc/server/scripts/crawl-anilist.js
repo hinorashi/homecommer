@@ -2,15 +2,21 @@ import process from 'node:process'
 import { db, recordCrawlJob, seedDatabase } from '../db.js'
 import {
   findAnimeForCharacterCrawl,
+  findAnimeForRelationCrawl,
+  findCharactersForDetailCrawl,
   getCrawlStats,
   listGenreLabels,
   saveAnimeCharacters,
   saveAnimeList,
+  saveAnimeRelations,
+  saveCharacterDetails,
   saveGenres,
 } from '../crawl-store.js'
 import {
   fetchAnimeCharactersBatch,
   fetchAnimeCharactersPage,
+  fetchAnimeRelationsBatch,
+  fetchCharacterDetailsBatch,
   fetchGenreCollection,
   fetchPopularAnimePage,
 } from '../integrations/anilist-graphql.js'
@@ -25,8 +31,15 @@ Commands:
   genres        Sync the AniList genre collection into SQLite.
   anime         Crawl popular anime (POPULARITY_DESC) per genre into SQLite.
   characters    Crawl characters for anime already in SQLite, most popular anime first.
+  details       Crawl character descriptions + bio and parse relation links (most favourited first).
+  anime-relations  Crawl anime relations (prequel, sequel, side story, spin-off, adaptation...).
   all           Run genres -> anime -> characters.
   stats         Print database counts.
+
+Details options:
+  --limit <n>        Max characters this run (default: all pending).
+  --genre <name>     Only characters from anime with this genre.
+  --force            Re-crawl characters that already have details.
 
 Anime options:
   --genre <name>     Only this genre (repeatable). Default: every stored genre except Hentai.
@@ -174,6 +187,74 @@ async function crawlCharacters(options) {
   })
 }
 
+async function crawlCharacterDetails(options) {
+  const genre = options.genres[0] ?? ''
+  const characters = findCharactersForDetailCrawl({ limit: options.limit, force: options.force, genre })
+  if (!characters.length) {
+    console.log('No pending characters. Use --force to re-crawl descriptions.')
+    return
+  }
+  const batchSize = Math.max(options.batch, 50)
+  console.log(`Crawling descriptions/relations for ${characters.length} characters (most favourited first, ${batchSize}/request)...`)
+
+  let processed = 0
+  let relations = 0
+  let failures = 0
+  for (let start = 0; start < characters.length && !stopRequested; start += batchSize) {
+    const batch = characters.slice(start, start + batchSize)
+    try {
+      const nodes = await fetchCharacterDetailsBatch(batch.map((item) => item.anilistId))
+      const result = saveCharacterDetails(nodes)
+      processed += result.saved
+      relations += result.relations
+      console.log(`[details] ${Math.min(start + batchSize, characters.length)}/${characters.length}: ${result.saved} saved, ${result.relations} relations`)
+    } catch (error) {
+      failures += batch.length
+      console.error(`  Batch failed (${error.message}); skipping ${batch.length} characters.`)
+    }
+  }
+  console.log(`Finished: ${processed} characters, ${relations} relation links, ${failures} failures.`)
+  recordCrawlJob({
+    provider: 'anilist',
+    query: `character-details:limit=${options.limit}${genre ? `:genre=${genre}` : ''}`,
+    status: stopRequested ? 'interrupted' : 'completed',
+    itemsFound: processed,
+    message: failures ? `${failures} failures` : null,
+  })
+}
+
+async function crawlAnimeRelations(options) {
+  const anime = findAnimeForRelationCrawl({ limit: options.limit, force: options.force })
+  if (!anime.length) {
+    console.log('No pending anime. Use --force to re-crawl relations.')
+    return
+  }
+  console.log(`Crawling relations (prequel/sequel/spin-off...) for ${anime.length} anime...`)
+  let processed = 0
+  let relations = 0
+  let failures = 0
+  for (let start = 0; start < anime.length && !stopRequested; start += 50) {
+    const batch = anime.slice(start, start + 50)
+    try {
+      const result = saveAnimeRelations(await fetchAnimeRelationsBatch(batch.map((item) => item.anilistId)))
+      processed += result.saved
+      relations += result.relations
+      console.log(`[relations] ${Math.min(start + 50, anime.length)}/${anime.length}: ${result.relations} links`)
+    } catch (error) {
+      failures += batch.length
+      console.error(`  Batch failed (${error.message}); skipping ${batch.length} anime.`)
+    }
+  }
+  console.log(`Finished: ${processed} anime, ${relations} relations, ${failures} failures.`)
+  recordCrawlJob({
+    provider: 'anilist',
+    query: `anime-relations:limit=${options.limit}`,
+    status: stopRequested ? 'interrupted' : 'completed',
+    itemsFound: relations,
+    message: failures ? `${failures} failures` : null,
+  })
+}
+
 async function main() {
   const options = parseArguments(process.argv.slice(2))
   if (!options.command || options.command === 'help') {
@@ -191,6 +272,8 @@ async function main() {
   if (options.command === 'genres') await crawlGenres()
   else if (options.command === 'anime') await crawlAnime(options)
   else if (options.command === 'characters') await crawlCharacters(options)
+  else if (options.command === 'details') await crawlCharacterDetails(options)
+  else if (options.command === 'anime-relations') await crawlAnimeRelations(options)
   else if (options.command === 'all') {
     await crawlGenres()
     if (!stopRequested) await crawlAnime(options)

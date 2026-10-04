@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ExternalLink, Heart, Home, Search, Star, Users } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Heart, Star, Users } from 'lucide-react'
+import AppLayout from './AppLayout'
 import './CharacterCatalog.css'
 import './AnimeDetail.css'
 
@@ -19,9 +20,35 @@ const STATUS_LABELS = {
   HIATUS: 'Tạm ngưng',
 }
 const SEASON_LABELS = { WINTER: 'Đông', SPRING: 'Xuân', SUMMER: 'Hè', FALL: 'Thu' }
+const RELATION_LABELS = {
+  PREQUEL: 'Phần trước',
+  SEQUEL: 'Phần sau',
+  PARENT: 'Câu chuyện gốc',
+  SIDE_STORY: 'Ngoại truyện',
+  SPIN_OFF: 'Spin-off',
+  ALTERNATIVE: 'Phiên bản khác',
+  SUMMARY: 'Tóm tắt',
+  SOURCE: 'Nguyên tác',
+  ADAPTATION: 'Chuyển thể',
+  CHARACTER: 'Chung nhân vật',
+  COMPILATION: 'Tổng hợp',
+  CONTAINS: 'Bao gồm',
+  OTHER: 'Khác',
+}
+const MEDIA_FORMAT_LABELS = { ...FORMAT_LABELS, MANGA: 'Manga', NOVEL: 'Light novel', ONE_SHOT: 'One-shot' }
 const numberFormat = new Intl.NumberFormat('vi-VN')
 
-export default function AnimeDetail({ seriesId, onHome, onAdmin, onNavigate }) {
+function groupRelations(relations = []) {
+  const groups = new Map()
+  for (const relation of relations) {
+    const key = relation.relationType ?? 'OTHER'
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key).push(relation)
+  }
+  return [...groups.entries()].map(([type, items]) => ({ type, label: RELATION_LABELS[type] ?? type, items }))
+}
+
+export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
   const [anime, setAnime] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -72,37 +99,50 @@ export default function AnimeDetail({ seriesId, onHome, onAdmin, onNavigate }) {
     onNavigate(`/characters?animeGenre=${encodeURIComponent(genreId)}`)
   }
 
-  function openCharacterSearch(name) {
-    onNavigate(`/characters?q=${encodeURIComponent(name)}`)
+  function openCharacter(characterId) {
+    onNavigate(`/character/${encodeURIComponent(characterId)}`)
   }
+
+  function openStudio(studioId) {
+    onNavigate(`/characters?studio=${encodeURIComponent(studioId)}`)
+  }
+
+  const relationGroups = useMemo(() => groupRelations(anime?.relations), [anime])
 
   const facts = anime ? [
     anime.format && ['Định dạng', FORMAT_LABELS[anime.format] ?? anime.format],
     anime.episodes && ['Số tập', anime.episodes],
     anime.status && ['Trạng thái', STATUS_LABELS[anime.status] ?? anime.status],
     (anime.season || anime.seasonYear) && ['Mùa', [SEASON_LABELS[anime.season] ?? anime.season, anime.seasonYear].filter(Boolean).join(' ')],
-    anime.studios?.length && ['Studio', anime.studios.join(', ')],
+    anime.studios?.length && ['Studio', (
+      <span className="detail-studio-links">
+        {anime.studios.map((studio, index) => (
+          <span key={studio.id ?? studio.name}>
+            {index > 0 ? ', ' : null}
+            {studio.id ? (
+              <a
+                href={`/characters?studio=${encodeURIComponent(studio.id)}`}
+                title={`Xem nhân vật trong các anime của ${studio.name}`}
+                onClick={(event) => { event.preventDefault(); openStudio(studio.id) }}
+              >
+                {studio.name}
+              </a>
+            ) : studio.name}
+          </span>
+        ))}
+      </span>
+    )],
   ].filter(Boolean) : []
 
   return (
-    <div className="catalog-shell">
-      <header className="catalog-topbar">
-        <a className="catalog-brand" href="/" onClick={(event) => { event.preventDefault(); onHome() }}>
-          <span className="catalog-brand-mark">N<span>.</span></span>
-          <span>NHÂN VẬT<br />GIỐNG MÌNH</span>
-        </a>
-        <nav className="catalog-navigation" aria-label="Điều hướng chính">
-          <a href="/" onClick={(event) => { event.preventDefault(); onHome() }}><Home size={15} /> Làm bài</a>
-          <a href="/characters" onClick={(event) => { event.preventDefault(); onNavigate('/characters') }}><Search size={15} /> Tìm nhân vật</a>
-          <a href="/admin" onClick={(event) => { event.preventDefault(); onAdmin() }}>Admin</a>
-        </nav>
-      </header>
-
-      {anime?.bannerImage ? (
+    <AppLayout
+      pathname={pathname}
+      onNavigate={onNavigate}
+      mainClassName={`anime-main${anime?.bannerImage ? ' has-banner' : ''}`}
+      before={anime?.bannerImage ? (
         <div className="anime-banner" style={{ backgroundImage: `url(${anime.bannerImage})` }} aria-hidden="true" />
       ) : null}
-
-      <main className={`catalog-main anime-main${anime?.bannerImage ? ' has-banner' : ''}`}>
+    >
         <nav className="anime-breadcrumb" aria-label="Breadcrumb">
           <button type="button" onClick={backToCatalog}><ArrowLeft size={14} /> Thư viện nhân vật</button>
           {anime ? <><span aria-hidden="true">/</span><span>{anime.title}</span></> : null}
@@ -169,6 +209,39 @@ export default function AnimeDetail({ seriesId, onHome, onAdmin, onNavigate }) {
               </div>
             </section>
 
+            {relationGroups.length ? (
+              <section className="anime-relations" aria-labelledby="anime-relations-heading">
+                <h2 id="anime-relations-heading">Liên quan <span>({anime.relations.length})</span></h2>
+                <div className="anime-relation-list">
+                  {relationGroups.flatMap((group) => group.items.map((relation) => {
+                    const internal = Boolean(relation.seriesId)
+                    const href = internal ? `/anime/${encodeURIComponent(relation.seriesId)}` : relation.siteUrl
+                    const meta = [MEDIA_FORMAT_LABELS[relation.format] ?? relation.format ?? relation.mediaType, relation.seasonYear, STATUS_LABELS[relation.status]]
+                      .filter(Boolean).join(' · ')
+                    return (
+                      <a
+                        key={`${group.type}-${relation.anilistId}`}
+                        className={`anime-relation-card${internal ? ' is-internal' : ''}`}
+                        href={href ?? undefined}
+                        target={internal ? undefined : '_blank'}
+                        rel={internal ? undefined : 'noreferrer'}
+                        onClick={internal ? (event) => { event.preventDefault(); onNavigate(href) } : undefined}
+                      >
+                        <span className="anime-relation-cover">
+                          {relation.coverImage ? <img src={relation.coverImage} alt="" loading="lazy" /> : <span>{relation.title?.slice(0, 1)}</span>}
+                        </span>
+                        <span className="anime-relation-body">
+                          <em>{group.label}</em>
+                          <strong>{relation.title}</strong>
+                          <small>{meta}{internal ? null : <> <ExternalLink size={10} /></>}</small>
+                        </span>
+                      </a>
+                    )
+                  }))}
+                </div>
+              </section>
+            ) : null}
+
             <section className="anime-characters" aria-labelledby="anime-characters-heading">
               <div className="anime-characters-heading">
                 <h2 id="anime-characters-heading">Nhân vật <span>({anime.characterTotal})</span></h2>
@@ -206,8 +279,8 @@ export default function AnimeDetail({ seriesId, onHome, onAdmin, onNavigate }) {
                     <div className="anime-character-body">
                       <h3>
                         <a
-                          href={`/characters?q=${encodeURIComponent(character.name)}`}
-                          onClick={(event) => { event.preventDefault(); openCharacterSearch(character.name) }}
+                          href={`/character/${encodeURIComponent(character.id)}`}
+                          onClick={(event) => { event.preventDefault(); openCharacter(character.id) }}
                         >
                           {character.name}
                         </a>
@@ -228,7 +301,6 @@ export default function AnimeDetail({ seriesId, onHome, onAdmin, onNavigate }) {
             </section>
           </>
         ) : null}
-      </main>
-    </div>
+    </AppLayout>
   )
 }

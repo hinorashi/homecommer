@@ -1,5 +1,6 @@
 import { db } from './db.js'
-import './crawl-store.js'
+import { saveCharacterDetails, saveAnimeRelations } from './crawl-store.js'
+import { fetchAnimeRelations, fetchCharacterDetails } from './integrations/anilist-graphql.js'
 
 function parseJson(value, fallback = []) {
   try {
@@ -9,11 +10,18 @@ function parseJson(value, fallback = []) {
   }
 }
 
+export function parseFilterList(value) {
+  const values = Array.isArray(value) ? value : String(value ?? '').split(',')
+  return [...new Set(values.map((item) => String(item).trim().toLowerCase()).filter((item) => item && item !== 'all'))].slice(0, 20)
+}
+
 export function searchCharacterCatalog({
   searchText = '',
   contextGenre = 'all',
   archetype = 'all',
   animeGenre = 'all',
+  genreMode = 'all',
+  studio = 'all',
   limit = 24,
   offset = 0,
 } = {}) {
@@ -59,13 +67,30 @@ export function searchCharacterCatalog({
     )`)
     parameters.push(archetype)
   }
-  if (animeGenre !== 'all') {
+  const animeGenres = parseFilterList(animeGenre)
+  if (animeGenres.length) {
+    const placeholders = animeGenres.map(() => '?').join(', ')
+    // "all" mode requires a single anime carrying every selected genre; "any" matches any of them.
+    const having = genreMode === 'any' || animeGenres.length === 1 ? '' : 'GROUP BY sg.series_id HAVING COUNT(DISTINCT sg.genre_id) = ?'
     conditions.push(`c.id IN (
-      SELECT cs.character_id FROM series_genres sg
-      JOIN character_series cs ON cs.series_id = sg.series_id
-      WHERE sg.genre_id = ?
+      SELECT cs.character_id FROM character_series cs
+      WHERE cs.series_id IN (
+        SELECT sg.series_id FROM series_genres sg
+        WHERE sg.genre_id IN (${placeholders})
+        ${having}
+      )
     )`)
-    parameters.push(animeGenre)
+    parameters.push(...animeGenres)
+    if (having) parameters.push(animeGenres.length)
+  }
+  const studios = parseFilterList(studio)
+  if (studios.length) {
+    conditions.push(`c.id IN (
+      SELECT cs.character_id FROM series_studios ss
+      JOIN character_series cs ON cs.series_id = ss.series_id
+      WHERE ss.studio_id IN (${studios.map(() => '?').join(', ')})
+    )`)
+    parameters.push(...studios)
   }
 
   const where = conditions.length ? conditions.join(' AND ') : '1 = 1'
@@ -178,7 +203,7 @@ export function getAnimeDetail(seriesId, { characterLimit = 500 } = {}) {
       s.popularity, s.favourites, s.format, s.season, s.season_year AS seasonYear,
       s.episodes, s.status, s.average_score AS averageScore, s.description,
       s.cover_image AS coverImage, s.banner_image AS bannerImage, s.studios_json AS studiosJson,
-      s.characters_synced_at AS charactersSyncedAt
+      s.characters_synced_at AS charactersSyncedAt, s.relations_synced_at AS relationsSyncedAt
     FROM anime_series s
     WHERE s.series_id = ?
   `).get(id)
@@ -213,9 +238,22 @@ export function getAnimeDetail(seriesId, { characterLimit = 500 } = {}) {
 
   const roleLabels = ['MAIN', 'SUPPORTING', 'BACKGROUND', null]
   const { studiosJson, ...rest } = series
+  const studios = listSeriesStudios([id])
+  const relations = db.prepare(`
+    SELECT r.related_anilist_id AS anilistId, r.relation_type AS relationType, r.related_media_type AS mediaType,
+      r.related_title AS title, r.related_format AS format, r.related_status AS status,
+      r.related_season_year AS seasonYear, r.related_cover AS coverImage, r.related_site_url AS siteUrl,
+      (SELECT s2.series_id FROM anime_series s2 WHERE s2.anilist_id = r.related_anilist_id AND r.related_media_type = 'ANIME' LIMIT 1) AS seriesId
+    FROM anime_relations r
+    WHERE r.series_id = ?
+    ORDER BY CASE r.relation_type WHEN 'PREQUEL' THEN 0 WHEN 'SEQUEL' THEN 1 WHEN 'PARENT' THEN 2 WHEN 'SIDE_STORY' THEN 3
+      WHEN 'SPIN_OFF' THEN 4 WHEN 'ALTERNATIVE' THEN 5 WHEN 'SUMMARY' THEN 6 WHEN 'SOURCE' THEN 7 WHEN 'ADAPTATION' THEN 8 ELSE 9 END,
+      r.related_season_year IS NULL, r.related_season_year, r.related_title
+  `).all(id)
   return {
     ...rest,
-    studios: parseJson(studiosJson),
+    relations,
+    studios: studios.length ? studios : parseJson(studiosJson).map((name) => ({ id: null, name })),
     genres,
     characterTotal,
     characters: characterRows.map(({ roleRank, imageUrl, ...character }) => ({
@@ -223,5 +261,255 @@ export function getAnimeDetail(seriesId, { characterLimit = 500 } = {}) {
       role: roleLabels[roleRank] ?? null,
       image: imageUrl ? { url: imageUrl, provider: 'AniList' } : null,
     })),
+  }
+}
+
+function listSeriesStudios(seriesIds) {
+  if (!seriesIds.length) return []
+  return db.prepare(`
+    SELECT st.studio_id AS id, st.name, COUNT(DISTINCT ss.series_id) AS seriesCount
+    FROM series_studios ss JOIN studios st ON st.studio_id = ss.studio_id
+    WHERE ss.series_id IN (${seriesIds.map(() => '?').join(', ')})
+    GROUP BY st.studio_id
+    ORDER BY seriesCount DESC, st.name COLLATE NOCASE
+  `).all(...seriesIds)
+}
+
+export function listStudios() {
+  return db.prepare(`
+    SELECT st.studio_id AS id, st.name, COUNT(DISTINCT ss.series_id) AS seriesCount
+    FROM studios st JOIN series_studios ss ON ss.studio_id = st.studio_id
+    GROUP BY st.studio_id
+    ORDER BY st.name COLLATE NOCASE
+  `).all()
+}
+
+const CHARACTER_IMAGE_SQL = `COALESCE(
+  (SELECT i.image_url FROM character_images i WHERE i.character_id = c.id AND i.license_verified = 1 ORDER BY i.id DESC LIMIT 1),
+  (SELECT ei.image_url FROM character_external_images ei WHERE ei.character_id = c.id ORDER BY ei.fetched_at DESC LIMIT 1)
+)`
+const PRIMARY_SERIES_SQL = `(
+  SELECT json_object('id', s.series_id, 'title', s.title)
+  FROM character_series cs2 JOIN anime_series s ON s.series_id = cs2.series_id
+  WHERE cs2.character_id = c.id
+  ORDER BY s.title = c.series DESC, s.popularity IS NULL, s.popularity DESC
+  LIMIT 1
+)`
+
+function toCharacterNode(row) {
+  if (!row?.id) return null
+  return {
+    id: row.id,
+    anilistId: row.anilistId ?? null,
+    name: row.name,
+    image: row.imageUrl ?? null,
+    primarySeries: parseJson(row.primarySeriesJson, null),
+    favourites: row.favourites ?? null,
+  }
+}
+
+function lookupCharacterNodes(ids) {
+  if (!ids.length) return new Map()
+  const rows = db.prepare(`
+    SELECT c.id, c.anilist_id AS anilistId, c.name, c.favourites,
+      ${CHARACTER_IMAGE_SQL} AS imageUrl, ${PRIMARY_SERIES_SQL} AS primarySeriesJson
+    FROM characters c WHERE c.id IN (${ids.map(() => '?').join(', ')})
+  `).all(...ids)
+  return new Map(rows.map((row) => [row.id, toCharacterNode(row)]))
+}
+
+const DIRECT_RELATION_LIMIT = 40
+const CLUSTER_ANIME_LIMIT = 4
+const CLUSTER_CHARACTER_LIMIT = 6
+
+export function getCharacterDetail(characterId) {
+  const id = String(characterId ?? '').slice(0, 120)
+  const character = db.prepare(`
+    SELECT c.id, c.anilist_id AS anilistId, c.name, c.native_name AS nativeName, c.series,
+      c.source_url AS sourceUrl, c.favourites, c.description, c.gender, c.age,
+      c.date_of_birth AS dateOfBirth, c.blood_type AS bloodType, c.details_synced_at AS detailsSyncedAt,
+      ${CHARACTER_IMAGE_SQL} AS imageUrl
+    FROM characters c WHERE c.id = ?
+  `).get(id)
+  if (!character) return null
+
+  const aliases = db.prepare(`
+    SELECT DISTINCT alias FROM character_aliases WHERE character_id = ? AND spoiler = 0 ORDER BY alias LIMIT 30
+  `).all(id).map((row) => row.alias)
+
+  const roleLabels = ['MAIN', 'SUPPORTING', 'BACKGROUND', null]
+  const anime = db.prepare(`
+    SELECT s.series_id AS id, s.title, s.cover_image AS coverImage, s.format, s.season_year AS seasonYear,
+      s.popularity, MIN(${ROLE_ORDER}) AS roleRank
+    FROM character_series cs JOIN anime_series s ON s.series_id = cs.series_id
+    WHERE cs.character_id = ?
+    GROUP BY s.series_id
+    ORDER BY s.popularity IS NULL, s.popularity DESC, s.title COLLATE NOCASE
+  `).all(id).map(({ roleRank, ...item }) => ({ ...item, role: roleLabels[roleRank] ?? null }))
+  const seriesIds = anime.map((item) => item.id)
+
+  const genres = seriesIds.length ? db.prepare(`
+    SELECT g.genre_id AS id, g.label, COUNT(DISTINCT sg.series_id) AS seriesCount
+    FROM series_genres sg JOIN genres g ON g.genre_id = sg.genre_id
+    WHERE sg.series_id IN (${seriesIds.map(() => '?').join(', ')})
+    GROUP BY g.genre_id
+    ORDER BY seriesCount DESC, g.label
+  `).all(...seriesIds) : []
+
+  // Explicit relations: links inside this character's description (out) and other descriptions linking here (in).
+  const direct = new Map()
+  const outgoing = db.prepare(`
+    SELECT r.related_anilist_id AS anilistId, r.related_name AS name, r.relation_label AS label,
+      r.context, r.spoiler, MIN(c.id) AS localId
+    FROM character_relations r LEFT JOIN characters c ON c.anilist_id = r.related_anilist_id
+    WHERE r.character_id = ?
+    GROUP BY r.related_anilist_id
+    LIMIT ?
+  `).all(id, DIRECT_RELATION_LIMIT)
+  for (const row of outgoing) {
+    direct.set(row.localId ?? `anilist:${row.anilistId}`, {
+      anilistId: row.anilistId, name: row.name, localId: row.localId,
+      label: row.label, context: row.context, spoiler: Boolean(row.spoiler), direction: 'out',
+    })
+  }
+  if (character.anilistId) {
+    const incoming = db.prepare(`
+      SELECT r.character_id AS localId, c.anilist_id AS anilistId, c.name, r.relation_label AS label,
+        r.context, r.spoiler
+      FROM character_relations r JOIN characters c ON c.id = r.character_id
+      WHERE r.related_anilist_id = ? AND r.character_id <> ?
+      ORDER BY c.favourites IS NULL, c.favourites DESC
+      LIMIT ?
+    `).all(character.anilistId, id, DIRECT_RELATION_LIMIT)
+    for (const row of incoming) {
+      const existing = direct.get(row.localId)
+      if (existing) {
+        existing.direction = 'both'
+        existing.reverseLabel = row.label
+        existing.reverseContext = row.context
+        if (!existing.label && row.label) existing.label = row.label
+        existing.spoiler = existing.spoiler && Boolean(row.spoiler)
+      } else {
+        direct.set(row.localId, {
+          anilistId: row.anilistId, name: row.name, localId: row.localId,
+          label: row.label, context: row.context, spoiler: Boolean(row.spoiler), direction: 'in',
+        })
+      }
+    }
+  }
+  const directIds = [...direct.values()].map((item) => item.localId).filter(Boolean)
+
+  // Implicit relations: characters sharing the most anime, plus the leading cast of the most popular anime.
+  const coStarRows = db.prepare(`
+    SELECT other.character_id AS id, COUNT(DISTINCT other.series_id) AS sharedCount,
+      MIN(CASE other.role WHEN 'MAIN' THEN 0 WHEN 'SUPPORTING' THEN 1 WHEN 'BACKGROUND' THEN 2 ELSE 3 END) AS roleRank,
+      (SELECT favourites FROM characters WHERE id = other.character_id) AS favourites
+    FROM character_series mine
+    JOIN character_series other ON other.series_id = mine.series_id AND other.character_id <> mine.character_id
+    WHERE mine.character_id = ?
+    GROUP BY other.character_id
+    ORDER BY sharedCount DESC, roleRank, favourites IS NULL, favourites DESC
+    LIMIT 12
+  `).all(id)
+
+  const clusterAnime = anime.slice(0, CLUSTER_ANIME_LIMIT)
+  const clusterMembers = db.prepare(`
+    SELECT cs.character_id AS id, MIN(${ROLE_ORDER}) AS roleRank, c.favourites
+    FROM character_series cs JOIN characters c ON c.id = cs.character_id
+    WHERE cs.series_id = ? AND cs.character_id <> ?
+    GROUP BY cs.character_id
+    ORDER BY roleRank, c.favourites IS NULL, c.favourites DESC
+    LIMIT ?
+  `)
+  const clusterRows = clusterAnime.map((series) => ({
+    series,
+    members: clusterMembers.all(series.id, id, CLUSTER_CHARACTER_LIMIT),
+  }))
+
+  const nodes = lookupCharacterNodes([...new Set([
+    ...directIds,
+    ...coStarRows.map((row) => row.id),
+    ...clusterRows.flatMap((cluster) => cluster.members.map((row) => row.id)),
+  ])])
+
+  return {
+    id: character.id,
+    anilistId: character.anilistId,
+    name: character.name,
+    nativeName: character.nativeName,
+    sourceUrl: character.sourceUrl,
+    favourites: character.favourites,
+    description: character.description,
+    gender: character.gender,
+    age: character.age,
+    dateOfBirth: character.dateOfBirth,
+    bloodType: character.bloodType,
+    detailsSyncedAt: character.detailsSyncedAt,
+    image: character.imageUrl ? { url: character.imageUrl, provider: 'AniList' } : null,
+    aliases,
+    anime,
+    genres,
+    studios: listSeriesStudios(seriesIds),
+    relations: {
+      direct: [...direct.values()].map(({ localId, ...item }) => ({ ...item, character: localId ? nodes.get(localId) ?? null : null })),
+      coStars: coStarRows.map((row) => ({
+        sharedCount: row.sharedCount,
+        role: roleLabels[row.roleRank] ?? null,
+        character: nodes.get(row.id),
+      })).filter((item) => item.character),
+      clusters: clusterRows.map(({ series, members }) => ({
+        series: { id: series.id, title: series.title, coverImage: series.coverImage },
+        role: series.role,
+        characters: members.map((row) => ({ role: roleLabels[row.roleRank] ?? null, character: nodes.get(row.id) }))
+          .filter((item) => item.character),
+      })),
+    },
+  }
+}
+
+const detailSyncAttempts = new Map()
+const DETAIL_RETRY_MS = 10 * 60 * 1000
+
+/** Fetches description/relations from AniList the first time a character page is opened. */
+export async function syncCharacterDetailsIfMissing(characterId, { timeoutMs = 8000 } = {}) {
+  const row = db.prepare('SELECT anilist_id AS anilistId, details_synced_at AS syncedAt FROM characters WHERE id = ?').get(characterId)
+  if (!row?.anilistId || row.syncedAt) return false
+  const lastAttempt = detailSyncAttempts.get(characterId)
+  if (lastAttempt && Date.now() - lastAttempt < DETAIL_RETRY_MS) return false
+  detailSyncAttempts.set(characterId, Date.now())
+  try {
+    const node = await Promise.race([
+      fetchCharacterDetails(row.anilistId),
+      new Promise((_resolve, reject) => setTimeout(() => reject(new Error('AniList timeout')), timeoutMs)),
+    ])
+    if (!node) return false
+    saveCharacterDetails([node])
+    detailSyncAttempts.delete(characterId)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const relationSyncAttempts = new Map()
+
+/** Fetches prequel/sequel/spin-off links from AniList the first time an anime page is opened. */
+export async function syncAnimeRelationsIfMissing(seriesId, { timeoutMs = 8000 } = {}) {
+  const row = db.prepare('SELECT anilist_id AS anilistId, relations_synced_at AS syncedAt FROM anime_series WHERE series_id = ?').get(seriesId)
+  if (!row?.anilistId || row.syncedAt) return false
+  const lastAttempt = relationSyncAttempts.get(seriesId)
+  if (lastAttempt && Date.now() - lastAttempt < DETAIL_RETRY_MS) return false
+  relationSyncAttempts.set(seriesId, Date.now())
+  try {
+    const media = await Promise.race([
+      fetchAnimeRelations(row.anilistId),
+      new Promise((_resolve, reject) => setTimeout(() => reject(new Error('AniList timeout')), timeoutMs)),
+    ])
+    if (!media) return false
+    saveAnimeRelations([media])
+    relationSyncAttempts.delete(seriesId)
+    return true
+  } catch {
+    return false
   }
 }

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
+import AppLayout from './AppLayout'
 import './CharacterCatalog.css'
 
-export default function MetadataAdmin({ onHome, onCatalog }) {
+export default function MetadataAdmin({ pathname = '/admin', onNavigate }) {
   const [job, setJob] = useState(null)
   const [force, setForce] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -70,20 +71,7 @@ export default function MetadataAdmin({ onHome, onCatalog }) {
   const running = job?.status === 'running'
 
   return (
-    <div className="catalog-shell">
-      <header className="catalog-topbar">
-        <a className="catalog-brand" href="/" onClick={(event) => { event.preventDefault(); onHome() }}>
-          <span className="catalog-brand-mark">N<span>.</span></span>
-          <span>NHÂN VẬT<br />GIỐNG MÌNH</span>
-        </a>
-        <nav className="catalog-navigation" aria-label="Điều hướng chính">
-          <a href="/" onClick={(event) => { event.preventDefault(); onHome() }}>Bộ câu hỏi</a>
-          <a href="/characters" onClick={(event) => { event.preventDefault(); onCatalog() }}>Thư viện</a>
-          <a href="/admin" aria-current="page">Quản trị metadata</a>
-        </nav>
-      </header>
-
-      <main className="catalog-main admin-main">
+    <AppLayout pathname={pathname} onNavigate={onNavigate} mainClassName="admin-main">
         <p className="catalog-eyebrow">QUẢN TRỊ DỮ LIỆU</p>
         <h1>Đồng bộ metadata AniList</h1>
         <p className="catalog-subtitle">Đồng bộ toàn bộ hồ sơ character đang có trong SQLite. Tiến độ tính theo từng hồ sơ đã xử lý.</p>
@@ -127,8 +115,7 @@ export default function MetadataAdmin({ onHome, onCatalog }) {
           </section>
         ) : null}
 
-        <button type="button" className="text-action admin-back" onClick={onCatalog}><ArrowLeft size={15} /> Về thư viện nhân vật</button>
-      </main>
-    </div>
+        <button type="button" className="text-action admin-back" onClick={() => onNavigate('/characters')}><ArrowLeft size={15} /> Về thư viện nhân vật</button>
+    </AppLayout>
   )
 }

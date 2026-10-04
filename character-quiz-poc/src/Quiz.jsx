@@ -4,6 +4,7 @@ import { drillDownQuestions, issueLabels, questions, questionSetVersion } from '
 import { buildUserTraits, summarizeUserPersonality } from './matching'
 import CharacterCatalog from './CharacterCatalog'
 import AnimeDetail from './AnimeDetail'
+import CharacterDetail from './CharacterDetail'
 import MetadataAdmin from './MetadataAdmin'
 import './Quiz.css'
 
@@ -31,6 +32,7 @@ export default function Quiz() {
   const [seen, setSeen] = useState(() => questions.map((_, index) => index === 0))
   const [step, setStep] = useState(0)
   const [pathname, setPathname] = useState(() => window.location.pathname)
+  const [routeKey, setRouteKey] = useState(0)
   const [generalNote, setGeneralNote] = useState('')
 
   // Tier-2 Adaptive Drill-down state
@@ -62,7 +64,10 @@ export default function Quiz() {
   const userTraitsKey = JSON.stringify(userTraits)
 
   useEffect(() => {
-    const syncPathname = () => setPathname(window.location.pathname)
+    const syncPathname = () => {
+      setPathname(window.location.pathname)
+      setRouteKey((value) => value + 1)
+    }
     window.addEventListener('popstate', syncPathname)
     return () => window.removeEventListener('popstate', syncPathname)
   }, [])
@@ -73,6 +78,7 @@ export default function Quiz() {
       window.history.pushState(state, '', target.pathname + target.search)
     }
     setPathname(target.pathname)
+    setRouteKey((value) => value + 1)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -143,7 +149,7 @@ export default function Quiz() {
   }
 
   useEffect(() => {
-    if (!results || pathname === '/characters' || pathname.startsWith('/anime/')) return undefined
+    if (!results || pathname === '/characters' || pathname.startsWith('/anime/') || pathname.startsWith('/character/')) return undefined
 
     const controller = new AbortController()
     let isCurrent = true
@@ -222,27 +228,32 @@ export default function Quiz() {
     }
   }, [results, pathname, userTraitsKey])
 
+  const appNavigate = (path, state) => {
+    if (new URL(path, window.location.origin).pathname === '/') setStep(0)
+    navigateRoute(path, state)
+  }
+
   if (pathname === '/characters') {
-    return <CharacterCatalog
-      onHome={() => { setStep(0); navigateRoute('/') }}
-      onAdmin={() => navigateRoute('/admin')}
-      onNavigate={navigateRoute}
-    />
+    return <CharacterCatalog key={routeKey} pathname={pathname} onNavigate={appNavigate} />
   }
   if (pathname.startsWith('/anime/')) {
     return <AnimeDetail
       key={pathname}
+      pathname={pathname}
       seriesId={decodeURIComponent(pathname.slice('/anime/'.length))}
-      onHome={() => { setStep(0); navigateRoute('/') }}
-      onAdmin={() => navigateRoute('/admin')}
-      onNavigate={navigateRoute}
+      onNavigate={appNavigate}
+    />
+  }
+  if (pathname.startsWith('/character/')) {
+    return <CharacterDetail
+      key={pathname}
+      pathname={pathname}
+      characterId={decodeURIComponent(pathname.slice('/character/'.length))}
+      onNavigate={appNavigate}
     />
   }
   if (pathname === '/admin') {
-    return <MetadataAdmin
-      onHome={() => { setStep(0); navigateRoute('/') }}
-      onCatalog={() => navigateRoute('/characters')}
-    />
+    return <MetadataAdmin pathname={pathname} onNavigate={appNavigate} />
   }
 
   return (

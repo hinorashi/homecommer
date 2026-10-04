@@ -1,5 +1,6 @@
 .catalog-shell { min-height: 100vh; background: #f4f7f5; color: #203530; }
-.catalog-topbar { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 34px; background: #fff; border-bottom: 1px solid #d9e3de; }
+.catalog-topbar { position: sticky; top: 0; z-index: 40; min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 0 34px; background: rgba(255, 255, 255, .95); border-bottom: 1px solid #d9e3de; box-shadow: 0 1px 0 rgba(30, 55, 47, .02); backdrop-filter: blur(8px); }
+.catalog-topbar.is-scrolled { box-shadow: 0 6px 18px rgba(30, 55, 47, .09); }
 .catalog-brand { display: inline-flex; align-items: center; gap: 10px; color: #28463d; font-size: 10px; font-weight: 800; line-height: 1.15; text-decoration: none; }
 .catalog-brand-mark { color: #203d34; font: 700 30px/1 'Newsreader', Georgia, serif; }
 .catalog-brand-mark span { color: #d27851; }
@@ -28,6 +29,29 @@
 .catalog-filter span { display: inline-flex; align-items: center; gap: 5px; text-transform: uppercase; }
 .catalog-filter select { width: 100%; height: 34px; padding: 0 9px; border: 1px solid #d0dcd5; border-radius: 4px; background: #fff; color: #304b41; font: 500 11px 'Manrope', sans-serif; }
 .catalog-result-count { margin-left: auto; padding-bottom: 9px; color: #71837b; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.catalog-genre-panel { margin: 14px 0 0; padding: 14px 15px; border: 1px solid #d8e2dd; border-radius: 5px; background: #fff; }
+.catalog-genre-panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.catalog-genre-panel-title { display: inline-flex; align-items: center; gap: 6px; color: #536b62; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.catalog-genre-panel-title em { padding: 2px 7px; border-radius: 9px; background: #2a6f62; color: #fff; font-style: normal; text-transform: none; }
+.catalog-genre-mode { display: inline-flex; overflow: hidden; border: 1px solid #d0dcd5; border-radius: 4px; }
+.catalog-genre-mode button { min-height: 28px; padding: 0 10px; border: 0; background: #fff; color: #536b62; font: 700 11px 'Manrope', sans-serif; cursor: pointer; }
+.catalog-genre-mode button + button { border-left: 1px solid #d0dcd5; }
+.catalog-genre-mode button.is-active { background: #eaf4ef; color: #1f6455; }
+.catalog-genre-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.catalog-genre-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 11px; border: 1px solid #d0ddd6; border-radius: 15px; background: #f8fbf9; color: #3f5d52; font: 700 11px 'Manrope', sans-serif; cursor: pointer; }
+.catalog-genre-chip small { color: #8a9a93; font-size: 10px; font-weight: 600; }
+.catalog-genre-chip:hover { border-color: #9cc6b7; background: #eef6f2; }
+.catalog-genre-chip.is-active { border-color: #2a6f62; background: #2a6f62; color: #fff; }
+.catalog-genre-chip.is-active small { color: #d6ebe3; }
+.catalog-genre-chip.is-active::before { content: '✓'; font-size: 10px; }
+.catalog-clear-filters { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 0 11px; border: 1px solid #e2c9bd; border-radius: 4px; background: #fbf5f1; color: #8a4f37; font: 700 11px 'Manrope', sans-serif; cursor: pointer; }
+.catalog-clear-filters:hover { background: #f6e9e1; }
+.catalog-active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: -6px 0 16px; color: #61766d; font-size: 11px; font-weight: 700; }
+.catalog-active-filters i { color: #8a9a93; font-style: normal; font-weight: 600; }
+.catalog-active-filters button { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid #bed8cd; border-radius: 12px; background: #eaf4ef; color: #1f6455; font: 700 11px 'Manrope', sans-serif; cursor: pointer; }
+.catalog-active-filters button:hover { border-color: #c98a6d; background: #fbf1ec; color: #8a4f37; }
+.catalog-character-link { color: inherit; text-decoration: none; }
+.catalog-character-link:hover { color: #2a6f62; text-decoration: underline; }
 .catalog-sync-progress { margin: 0 0 18px; padding: 12px 14px; border: 1px solid #cfdfd7; border-radius: 5px; background: #fff; }
 .catalog-progress-label { display: flex; justify-content: space-between; gap: 12px; color: #365b4e; font-size: 12px; font-weight: 700; }
 .catalog-progress-label strong { color: #237460; font-variant-numeric: tabular-nums; }

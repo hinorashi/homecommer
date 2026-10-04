@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, Award, Check, Download, ExternalLink, Flame, Rot
 import { drillDownQuestions, issueLabels, questions, questionSetVersion } from './questions'
 import { buildUserTraits, summarizeUserPersonality } from './matching'
 import CharacterCatalog from './CharacterCatalog'
+import AnimeDetail from './AnimeDetail'
 import MetadataAdmin from './MetadataAdmin'
 import './Quiz.css'
 
@@ -66,9 +67,12 @@ export default function Quiz() {
     return () => window.removeEventListener('popstate', syncPathname)
   }, [])
 
-  function navigateRoute(path) {
-    if (window.location.pathname !== path) window.history.pushState({}, '', path)
-    setPathname(path)
+  function navigateRoute(path, state = {}) {
+    const target = new URL(path, window.location.origin)
+    if (window.location.pathname + window.location.search !== target.pathname + target.search) {
+      window.history.pushState(state, '', target.pathname + target.search)
+    }
+    setPathname(target.pathname)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -139,7 +143,7 @@ export default function Quiz() {
   }
 
   useEffect(() => {
-    if (!results || pathname === '/characters') return undefined
+    if (!results || pathname === '/characters' || pathname.startsWith('/anime/')) return undefined
 
     const controller = new AbortController()
     let isCurrent = true
@@ -222,6 +226,16 @@ export default function Quiz() {
     return <CharacterCatalog
       onHome={() => { setStep(0); navigateRoute('/') }}
       onAdmin={() => navigateRoute('/admin')}
+      onNavigate={navigateRoute}
+    />
+  }
+  if (pathname.startsWith('/anime/')) {
+    return <AnimeDetail
+      key={pathname}
+      seriesId={decodeURIComponent(pathname.slice('/anime/'.length))}
+      onHome={() => { setStep(0); navigateRoute('/') }}
+      onAdmin={() => navigateRoute('/admin')}
+      onNavigate={navigateRoute}
     />
   }
   if (pathname === '/admin') {

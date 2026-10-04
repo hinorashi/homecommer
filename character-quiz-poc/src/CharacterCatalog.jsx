@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Filter, Home, RefreshCw, Search } from 'lucide-react'
 import './CharacterCatalog.css'
+import './AnimeDetail.css'
 
 const PAGE_SIZE = 24
 
@@ -16,13 +17,37 @@ function buildCatalogUrl({ query, contextGenre, archetype, animeGenre, offset })
   return `/api/catalog/characters?${params}`
 }
 
-export default function CharacterCatalog({ onHome, onAdmin }) {
-  const [queryInput, setQueryInput] = useState('')
-  const [query, setQuery] = useState('')
-  const [contextGenre, setContextGenre] = useState('all')
-  const [archetype, setArchetype] = useState('all')
-  const [animeGenre, setAnimeGenre] = useState('all')
-  const [offset, setOffset] = useState(0)
+function readInitialState() {
+  const params = new URLSearchParams(window.location.search)
+  const offset = Math.max(0, Math.trunc(Number(params.get('offset')) || 0))
+  return {
+    query: (params.get('q') ?? '').slice(0, 100),
+    contextGenre: params.get('contextGenre') || 'all',
+    archetype: params.get('archetype') || 'all',
+    animeGenre: params.get('animeGenre') || 'all',
+    offset: offset - (offset % PAGE_SIZE),
+  }
+}
+
+function buildPageUrl({ query, contextGenre, archetype, animeGenre, offset }) {
+  const params = new URLSearchParams()
+  if (query) params.set('q', query)
+  if (animeGenre !== 'all') params.set('animeGenre', animeGenre)
+  if (contextGenre !== 'all') params.set('contextGenre', contextGenre)
+  if (archetype !== 'all') params.set('archetype', archetype)
+  if (offset) params.set('offset', String(offset))
+  const search = params.toString()
+  return `/characters${search ? `?${search}` : ''}`
+}
+
+export default function CharacterCatalog({ onHome, onAdmin, onNavigate }) {
+  const [initialState] = useState(readInitialState)
+  const [queryInput, setQueryInput] = useState(initialState.query)
+  const [query, setQuery] = useState(initialState.query)
+  const [contextGenre, setContextGenre] = useState(initialState.contextGenre)
+  const [archetype, setArchetype] = useState(initialState.archetype)
+  const [animeGenre, setAnimeGenre] = useState(initialState.animeGenre)
+  const [offset, setOffset] = useState(initialState.offset)
   const [catalog, setCatalog] = useState({ characters: [], total: 0, hasMore: false })
   const [filterOptions, setFilterOptions] = useState({ contextGenres: [], archetypes: [], animeGenres: [] })
   const [loading, setLoading] = useState(true)
@@ -42,6 +67,13 @@ export default function CharacterCatalog({ onHome, onAdmin }) {
     })
     return () => controller.abort()
   }, [])
+
+  useEffect(() => {
+    const pageUrl = buildPageUrl({ query, contextGenre, archetype, animeGenre, offset })
+    if (window.location.pathname + window.location.search !== pageUrl) {
+      window.history.replaceState(window.history.state, '', pageUrl)
+    }
+  }, [query, contextGenre, archetype, animeGenre, offset])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -67,6 +99,10 @@ export default function CharacterCatalog({ onHome, onAdmin }) {
     setLoading(true)
     setter(value)
     setOffset(0)
+  }
+
+  function openAnime(seriesId) {
+    onNavigate(`/anime/${encodeURIComponent(seriesId)}`, { fromCatalog: true })
   }
 
   async function syncCurrentPage() {
@@ -223,11 +259,32 @@ export default function CharacterCatalog({ onHome, onAdmin }) {
                 </div>
                 <div className="catalog-character-title">
                   <h2>{character.name}</h2>
-                  <p>{character.series}</p>
+                  {character.primarySeries ? (
+                    <p>
+                      <a
+                        className="catalog-series-link"
+                        href={`/anime/${character.primarySeries.id}`}
+                        onClick={(event) => { event.preventDefault(); openAnime(character.primarySeries.id) }}
+                      >
+                        {character.primarySeries.title}
+                      </a>
+                      {character.seriesCount > 1 ? <span className="catalog-series-more"> · +{character.seriesCount - 1} anime khác</span> : null}
+                    </p>
+                  ) : <p>{character.series}</p>}
                 </div>
               </div>
               <div className="catalog-metadata-line">
-                {character.animeGenres.map((genre) => <span key={genre}>{genre}</span>)}
+                {(character.animeGenreLinks ?? []).map((genre) => (
+                  <button
+                    type="button"
+                    key={genre.id}
+                    className={`catalog-chip-button${genre.id === animeGenre ? ' is-active' : ''}`}
+                    title={`Lọc theo thể loại ${genre.label}`}
+                    onClick={() => { changeFilter(setAnimeGenre, genre.id); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                  >
+                    {genre.label}
+                  </button>
+                ))}
               </div>
               <div className="catalog-metadata-line catalog-editorial-line">
                 {character.contextGenres.map((genre) => <span key={genre.id}>{genre.label}</span>)}

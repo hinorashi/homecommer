@@ -1,7 +1,7 @@
 import express from 'express'
 import process from 'node:process'
 import { db, getDatabasePath, getMetadataFilterOptions, seedDatabase } from './db.js'
-import { searchCharacterCatalog } from './catalog-service.js'
+import { getAnimeDetail, searchCharacterCatalog } from './catalog-service.js'
 import { getMetadataSyncJob, startFullMetadataSync } from './admin-metadata-sync.js'
 import { searchAniListCharacters, syncAniListCharacterMetadataBatch } from './integrations/anilist.js'
 import { matchFromDatabase } from './match-service.js'
@@ -104,28 +104,6 @@ app.get('/api/catalog/characters', (request, response) => {
   }
 
   try {
-
-function requireLocalAdmin(request, response, next) {
-  if (!adminAllowed) {
-    return response.status(403).json({ error: 'Admin metadata sync is disabled for non-local API hosts.' })
-  }
-  return next()
-}
-
-app.get('/api/admin/metadata/sync', requireLocalAdmin, (_request, response) => {
-  return response.json({ job: getMetadataSyncJob() })
-})
-
-app.post('/api/admin/metadata/sync-all', requireLocalAdmin, (request, response) => {
-  const job = startFullMetadataSync({ force: Boolean(request.body?.force) })
-  return response.status(job.status === 'running' ? 202 : 200).json({ job })
-})
-
-app.get('/api/admin/metadata/sync/:jobId', requireLocalAdmin, (request, response) => {
-  const job = getMetadataSyncJob(request.params.jobId)
-  if (!job) return response.status(404).json({ error: 'Metadata sync job not found.' })
-  return response.json({ job })
-})
     return response.json(searchCharacterCatalog({
       searchText: q,
       contextGenre,
@@ -136,6 +114,20 @@ app.get('/api/admin/metadata/sync/:jobId', requireLocalAdmin, (request, response
     }))
   } catch (error) {
     return response.status(500).json({ error: `Catalog search failed: ${error.message}` })
+  }
+})
+
+app.get('/api/catalog/anime/:seriesId', (request, response) => {
+  const { seriesId } = request.params
+  if (!/^[a-z0-9-]{1,120}$/i.test(seriesId)) {
+    return response.status(400).json({ error: 'Invalid anime id.' })
+  }
+  try {
+    const anime = getAnimeDetail(seriesId)
+    if (!anime) return response.status(404).json({ error: 'Anime not found.' })
+    return response.json({ anime })
+  } catch (error) {
+    return response.status(500).json({ error: `Anime lookup failed: ${error.message}` })
   }
 })
 

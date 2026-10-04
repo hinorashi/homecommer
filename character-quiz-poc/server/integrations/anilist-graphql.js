@@ -75,6 +75,14 @@ const MEDIA_FIELDS = `
   favourites
   format
   seasonYear
+  season
+  episodes
+  status
+  averageScore
+  description(asHtml: false)
+  coverImage { extraLarge large }
+  bannerImage
+  studios(isMain: true) { nodes { name } }
   isAdult
 `
 

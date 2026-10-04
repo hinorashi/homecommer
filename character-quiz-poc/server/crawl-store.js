@@ -13,6 +13,14 @@ addColumnIfMissing('anime_series', 'format', 'TEXT')
 addColumnIfMissing('anime_series', 'season_year', 'INTEGER')
 addColumnIfMissing('anime_series', 'characters_synced_at', 'TEXT')
 addColumnIfMissing('characters', 'favourites', 'INTEGER')
+addColumnIfMissing('anime_series', 'cover_image', 'TEXT')
+addColumnIfMissing('anime_series', 'banner_image', 'TEXT')
+addColumnIfMissing('anime_series', 'description', 'TEXT')
+addColumnIfMissing('anime_series', 'episodes', 'INTEGER')
+addColumnIfMissing('anime_series', 'status', 'TEXT')
+addColumnIfMissing('anime_series', 'season', 'TEXT')
+addColumnIfMissing('anime_series', 'average_score', 'INTEGER')
+addColumnIfMissing('anime_series', 'studios_json', 'TEXT')
 db.exec('CREATE INDEX IF NOT EXISTS idx_anime_series_popularity ON anime_series(popularity DESC)')
 
 const anilistSourceId = () => upsertSourceRecord({
@@ -58,10 +66,12 @@ const findSeedSeriesByTitle = db.prepare(`
 const upsertSeries = db.prepare(`
   INSERT INTO anime_series (
     series_id, anilist_id, title, title_english, title_romaji, title_native, page_url,
-    source_id, synced_at, popularity, favourites, format, season_year
+    source_id, synced_at, popularity, favourites, format, season_year,
+    cover_image, banner_image, description, episodes, status, season, average_score, studios_json
   ) VALUES (
     @seriesId, @anilistId, @title, @titleEnglish, @titleRomaji, @titleNative, @pageUrl,
-    @sourceId, CURRENT_TIMESTAMP, @popularity, @favourites, @format, @seasonYear
+    @sourceId, CURRENT_TIMESTAMP, @popularity, @favourites, @format, @seasonYear,
+    @coverImage, @bannerImage, @description, @episodes, @status, @season, @averageScore, @studiosJson
   )
   ON CONFLICT(series_id) DO UPDATE SET
     anilist_id = excluded.anilist_id,
@@ -75,6 +85,14 @@ const upsertSeries = db.prepare(`
     favourites = excluded.favourites,
     format = excluded.format,
     season_year = excluded.season_year,
+    cover_image = COALESCE(excluded.cover_image, anime_series.cover_image),
+    banner_image = COALESCE(excluded.banner_image, anime_series.banner_image),
+    description = COALESCE(excluded.description, anime_series.description),
+    episodes = COALESCE(excluded.episodes, anime_series.episodes),
+    status = COALESCE(excluded.status, anime_series.status),
+    season = COALESCE(excluded.season, anime_series.season),
+    average_score = COALESCE(excluded.average_score, anime_series.average_score),
+    studios_json = COALESCE(excluded.studios_json, anime_series.studios_json),
     updated_at = CURRENT_TIMESTAMP
 `)
 const insertSeriesExternalId = db.prepare(`
@@ -87,6 +105,21 @@ const linkSeriesGenre = db.prepare('INSERT OR IGNORE INTO series_genres (series_
 
 function lower(value) {
   return String(value ?? '').toLocaleLowerCase('en')
+}
+
+export function cleanDescription(value) {
+  if (!value) return null
+  const text = String(value)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  return text ? text.slice(0, 5000) : null
 }
 
 function saveAnimeRecord(media, sourceId) {
@@ -109,6 +142,14 @@ function saveAnimeRecord(media, sourceId) {
     favourites: media.favourites ?? null,
     format: media.format ?? null,
     seasonYear: media.seasonYear ?? null,
+    coverImage: media.coverImage?.extraLarge || media.coverImage?.large || null,
+    bannerImage: media.bannerImage ?? null,
+    description: cleanDescription(media.description),
+    episodes: media.episodes ?? null,
+    status: media.status ?? null,
+    season: media.season ?? null,
+    averageScore: media.averageScore ?? null,
+    studiosJson: media.studios?.nodes ? JSON.stringify(media.studios.nodes.map((studio) => studio.name)) : null,
   })
   insertSeriesExternalId.run(seriesId, sourceId, String(media.id), pageUrl)
 

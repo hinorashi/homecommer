@@ -1,4 +1,5 @@
 import { db } from './db.js'
+import './crawl-store.js'
 
 function parseJson(value, fallback = []) {
   try {
@@ -59,10 +60,10 @@ export function searchCharacterCatalog({
     parameters.push(archetype)
   }
   if (animeGenre !== 'all') {
-    conditions.push(`EXISTS (
-      SELECT 1 FROM character_series cs
-      JOIN series_genres sg ON sg.series_id = cs.series_id
-      WHERE cs.character_id = c.id AND sg.genre_id = ?
+    conditions.push(`c.id IN (
+      SELECT cs.character_id FROM series_genres sg
+      JOIN character_series cs ON cs.series_id = sg.series_id
+      WHERE sg.genre_id = ?
     )`)
     parameters.push(animeGenre)
   }
@@ -99,6 +100,22 @@ export function searchCharacterCatalog({
         JOIN genres g ON g.genre_id = sg.genre_id
         WHERE cs.character_id = c.id
       ), '[]') AS animeGenresJson,
+      COALESCE((
+        SELECT json_group_array(DISTINCT json_object('id', g.genre_id, 'label', g.label))
+        FROM character_series cs
+        JOIN series_genres sg ON sg.series_id = cs.series_id
+        JOIN genres g ON g.genre_id = sg.genre_id
+        WHERE cs.character_id = c.id
+      ), '[]') AS animeGenreLinksJson,
+      (
+        SELECT json_object('id', s.series_id, 'title', s.title)
+        FROM character_series cs
+        JOIN anime_series s ON s.series_id = cs.series_id
+        WHERE cs.character_id = c.id
+        ORDER BY s.title = c.series DESC, s.popularity IS NULL, s.popularity DESC
+        LIMIT 1
+      ) AS primarySeriesJson,
+      (SELECT COUNT(DISTINCT cs.series_id) FROM character_series cs WHERE cs.character_id = c.id) AS seriesCount,
       COALESCE((
         SELECT json_object(
           'url', i.image_url, 'pageUrl', i.page_url, 'provider', i.provider,
@@ -137,6 +154,9 @@ export function searchCharacterCatalog({
     contextGenres: parseJson(row.contextGenresJson),
     archetypes: parseJson(row.archetypesJson),
     animeGenres: parseJson(row.animeGenresJson),
+    animeGenreLinks: parseJson(row.animeGenreLinksJson),
+    primarySeries: parseJson(row.primarySeriesJson, null),
+    seriesCount: row.seriesCount,
     image: parseJson(row.imageJson, null),
   }))
 
@@ -146,5 +166,62 @@ export function searchCharacterCatalog({
     limit: safeLimit,
     offset: safeOffset,
     hasMore: safeOffset + characters.length < total,
+  }
+}
+const ROLE_ORDER = "CASE cs.role WHEN 'MAIN' THEN 0 WHEN 'SUPPORTING' THEN 1 WHEN 'BACKGROUND' THEN 2 ELSE 3 END"
+
+export function getAnimeDetail(seriesId, { characterLimit = 500 } = {}) {
+  const id = String(seriesId ?? '').slice(0, 120)
+  const series = db.prepare(`
+    SELECT s.series_id AS id, s.anilist_id AS anilistId, s.title, s.title_english AS titleEnglish,
+      s.title_romaji AS titleRomaji, s.title_native AS titleNative, s.page_url AS pageUrl,
+      s.popularity, s.favourites, s.format, s.season, s.season_year AS seasonYear,
+      s.episodes, s.status, s.average_score AS averageScore, s.description,
+      s.cover_image AS coverImage, s.banner_image AS bannerImage, s.studios_json AS studiosJson,
+      s.characters_synced_at AS charactersSyncedAt
+    FROM anime_series s
+    WHERE s.series_id = ?
+  `).get(id)
+  if (!series) return null
+
+  const genres = db.prepare(`
+    SELECT DISTINCT g.genre_id AS id, g.label
+    FROM series_genres sg JOIN genres g ON g.genre_id = sg.genre_id
+    WHERE sg.series_id = ?
+    ORDER BY g.label
+  `).all(id)
+
+  const safeLimit = Math.max(1, Math.min(1000, Math.trunc(Number(characterLimit) || 500)))
+  const characterRows = db.prepare(`
+    SELECT c.id, c.anilist_id AS anilistId, c.name, c.native_name AS nativeName,
+      c.source_url AS sourceUrl, c.favourites, MIN(${ROLE_ORDER}) AS roleRank,
+      (
+        SELECT ei.image_url FROM character_external_images ei
+        WHERE ei.character_id = c.id ORDER BY ei.fetched_at DESC LIMIT 1
+      ) AS imageUrl,
+      (SELECT COUNT(DISTINCT other.series_id) FROM character_series other WHERE other.character_id = c.id) AS seriesCount
+    FROM character_series cs
+    JOIN characters c ON c.id = cs.character_id
+    WHERE cs.series_id = ?
+    GROUP BY c.id
+    ORDER BY roleRank, c.favourites IS NULL, c.favourites DESC, c.name COLLATE NOCASE
+    LIMIT ?
+  `).all(id, safeLimit)
+  const characterTotal = db.prepare(`
+    SELECT COUNT(DISTINCT character_id) AS count FROM character_series WHERE series_id = ?
+  `).get(id).count
+
+  const roleLabels = ['MAIN', 'SUPPORTING', 'BACKGROUND', null]
+  const { studiosJson, ...rest } = series
+  return {
+    ...rest,
+    studios: parseJson(studiosJson),
+    genres,
+    characterTotal,
+    characters: characterRows.map(({ roleRank, imageUrl, ...character }) => ({
+      ...character,
+      role: roleLabels[roleRank] ?? null,
+      image: imageUrl ? { url: imageUrl, provider: 'AniList' } : null,
+    })),
   }
 }

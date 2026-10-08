@@ -380,7 +380,7 @@ graph TD
 
     %% Định dạng màu sắc
     style Dev fill:#2ecc71,stroke:#27ae60,stroke-width:2px,color:#fff
-    style CI_Engine fill:#3498db,stroke:#2980b9,stroke-width:2px,color:#fff
+    style CI_Engine fill:#3498db,stroke:#2980b9,strok e-width:2px,color:#fff
     style GitOps fill:#e67e22,stroke:#d35400,stroke-width:2px,color:#fff
     style Infra fill:#9b59b6,stroke:#8e44ad,stroke-width:2px,color:#fff
 ```

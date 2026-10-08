@@ -2,12 +2,14 @@
 
 ## Enterprise Architecture Adoption Blueprint
 
-Tài liệu này hệ thống hóa lộ trình áp dụng theo thứ tự:
+Tài liệu này hệ thống hóa lộ trình theo bốn năng lực phát triển song hành:
 
-1. Foundation (chuẩn bị năng lực cấp doanh nghiệp)
-2. SRE (ổn định hệ thống)
-3. DevOps (tăng tốc phát triển và triển khai)
-4. Platform Engineering (mở rộng trải nghiệm lập trình viên)
+1. Foundation thiết lập ownership, governance và tiêu chuẩn tối thiểu.
+2. SRE bảo vệ critical user journey bằng SLO và recovery đã kiểm thử.
+3. DevOps tạo luồng thay đổi nhỏ, an toàn và có khả năng rollback.
+4. Platform Engineering đóng gói năng lực đã chứng minh thành golden path và self-service.
+
+Đây là **thứ tự ưu tiên năng lực**, không phải bốn silo hay stage gate nối đuôi. Sau 2-4 tuần foundation ban đầu, các workstream SRE, DevOps và Platform Engineering phải chạy chồng lấn trên cùng một vertical pilot.
 
 ## Mục Lục
 
@@ -15,7 +17,7 @@ Tài liệu này hệ thống hóa lộ trình áp dụng theo thứ tự:
 2. Cách tiếp cận (Approach) và nguyên tắc thiết kế
 3. Bản đồ năng lực 3 tầng (mindmap)
 4. Kiến trúc doanh nghiệp theo lớp
-5. Lộ trình triển khai 4 giai đoạn
+5. Lộ trình triển khai theo workstream
 6. Success Picture (Definition of Done)
 7. Maturity Rubric (thang trưởng thành)
 8. KPI và cơ chế đo lường
@@ -26,18 +28,19 @@ Tài liệu này hệ thống hóa lộ trình áp dụng theo thứ tự:
 
 ## 1) Tóm Tắt Điều Hành
 
-- Kết luận chính: hướng Foundation -> SRE -> DevOps -> Platform Engineering là hợp lý cho doanh nghiệp.
-- Lưu ý quan trọng: SRE và DevOps có phần chồng lấn khi thực thi, không nên coi là hai silo tách rời.
-- Mục tiêu cuối: đạt được vận hành ổn định, tốc độ giao hàng cao, và self-service ở quy mô lớn.
+- Kết luận chính: Foundation -> SRE -> DevOps -> Platform Engineering là thứ tự ưu tiên để xây năng lực, nhưng thực thi theo các workstream chồng lấn.
+- Đơn vị triển khai là một **vertical pilot**: 1-2 critical user journey, 2-3 product team và một workload archetype phổ biến, đi xuyên suốt ownership, SLO, CI/CD, observability, runbook và golden path.
+- Mục tiêu cuối: vận hành ổn định, thay đổi nhanh nhưng an toàn, và self-service có guardrail ở quy mô lớn.
 
 ## 2) Cách Tiếp Cận (Approach) Và Nguyên Tắc Thiết Kế
 
-### 2.1 Trình tự triển khai
+### 2.1 Mô hình triển khai
 
-1. Foundation trước để xây nền con người, quy trình, và công cụ dùng chung.
-2. SRE tiếp theo để tạo reliability guardrails cho hệ thống quan trọng.
-3. DevOps để tăng tốc luồng giao hàng bằng tự động hóa và thay đổi nhỏ, thường xuyên.
-4. Platform Engineering để đóng gói năng lực thành sản phẩm nội bộ (IDP) và mở rộng self-service.
+1. **Bootstrap Foundation** trong 2-4 tuần đầu: sponsor, funding, ownership, service tiering, baseline và guardrail tối thiểu.
+2. **Chọn vertical pilot** dựa trên giá trị kinh doanh, tần suất thay đổi, pain point đo được và mức rủi ro có thể kiểm soát.
+3. **Chạy SRE và DevOps đồng thời**: SLO/burn-rate alert cung cấp deployment guardrail; CI/CD, deployment marker và rollback làm SRE có thể vận hành.
+4. **Khởi động Platform Engineering từ pilot**: product discovery và một minimum viable golden path, chưa xây IDP portal lớn.
+5. **Scale sau khi có bằng chứng**: chuẩn hóa đa nhóm, bổ sung self-service/portal và mở rộng golden path chỉ khi pilot đạt exit criteria.
 
 ### 2.2 Nguyên tắc vận hành
 
@@ -46,6 +49,8 @@ Tài liệu này hệ thống hóa lộ trình áp dụng theo thứ tự:
 - Automation-by-default: giảm toil, tăng tính lặp lại và tính kiểm soát.
 - Platform-as-a-product: nền tảng nội bộ có backlog, roadmap, và KPI như sản phẩm thật.
 - Blameless learning: sự cố được xử lý bằng học tập hệ thống, không đổ lỗi cá nhân.
+- Evidence-gated: tài liệu hay công cụ được cài đặt không tự chứng minh năng lực; phải có kết quả test, metric hoặc workflow chạy thành công.
+- Paved road with escape hatch: golden path là đường được hỗ trợ, có ngoại lệ minh bạch và có thời hạn, không phải khuôn bắt buộc cho mọi workload.
 
 ## 3) Bản Đồ Năng Lực 3 Tầng (Mindmap)
 
@@ -55,6 +60,10 @@ Quy ước:
 - Level 3: keyword chi tiết
 
 ```mermaid
+---
+config:
+  layout: tidy-tree
+---
 mindmap
   root((Enterprise Adoption Model))
     Foundation
@@ -115,131 +124,195 @@ mindmap
 
 ```mermaid
 flowchart TB
-  A[Business Outcomes\nSpeed - Reliability - Cost - Trust] --> B[Governance Layer\nPolicy, Risk, Funding]
-  B --> C[Process Layer\nSDLC, Incident, Change]
-  C --> D[Platform Tooling Layer\nCI/CD, IaC, IDP, Observability]
-  D --> E[Reliability & Security Layer\nSLO, DR, Policy as Code]
-  E --> F[Insights Layer\nDORA, SLO, Adoption Metrics]
+  Outcome[Business Outcomes\nSpeed - Reliability - Cost - Trust]
 
-  FDN[Foundation] --> B
-  SRE[SRE] --> E
-  DVO[DevOps] --> C
-  DVO --> D
-  PE[Platform Engineering] --> D
+  subgraph Experience[Developer Experience & Interfaces]
+    Portal[Portal / API / CLI / Git workflows]
+    Golden[Golden paths / Templates / Documentation]
+  end
+
+  subgraph Delivery[Delivery & Runtime Capabilities]
+    CICD[CI/CD / Artifact / GitOps]
+    IaC[IaC / Environment provisioning]
+    Runtime[Runtime / Data / Network services]
+  end
+
+  subgraph Controls[Cross-cutting Reliability, Security & Governance]
+    Ownership[Ownership / Service tiering / Funding]
+    Reliability[SLI / SLO / Error budget / DR]
+    Security[Identity / Policy as code / Supply chain]
+    Operations[Observability / Incident / Runbook / Cost]
+  end
+
+  subgraph Insights[Evidence & Feedback]
+    Metrics[DORA / SLO / Adoption / DX / Cost]
+    Learning[Postmortem / User research / Experiments]
+  end
+
+  Outcome --> Experience --> Delivery
+  Controls -. Guardrails .-> Experience
+  Controls -. Guardrails .-> Delivery
+  Delivery --> Metrics
+  Metrics --> Learning
+  Learning --> Outcome
+  Learning --> Golden
+  Learning --> Controls
+
+  FDN[Foundation] --> Ownership
+  SRE[SRE] --> Reliability
+  SRE --> Operations
+  DVO[DevOps] --> CICD
+  PE[Platform Engineering] --> Portal
+  PE --> Golden
 ```
 
-## 5) Lộ Trình Triển Khai 4 Giai Đoạn
+## 5) Lộ Trình Triển Khai Theo Workstream
 
-### Giai đoạn 1: Foundation First (0-3 tháng)
-- Thiết lập sponsor, ngân sách, staffing model, governance cadence.
-- Chuẩn hóa service ownership, tiering, tiêu chuẩn tối thiểu.
-- Thiết lập baseline chung: observability, security scan, service catalog.
+### 5.1 Vertical pilot và workstream chồng lấn
 
-### Giai đoạn 2: SRE Stabilization (3-6 tháng)
-- Áp dụng SLI/SLO/error budget cho dịch vụ Tier 0/1.
-- Vận hành incident command, on-call chuẩn, postmortem không đổ lỗi.
-- Tự động hóa các tác vụ vận hành lặp lại để giảm toil.
-
-### Giai đoạn 3: DevOps Acceleration (6-9 tháng)
-- Chuẩn hóa CI/CD, automated test/security gates.
-- Áp dụng trunk-based development và small-batch changes.
-- Triển khai progressive delivery để giảm rủi ro phát hành.
-
-### Giai đoạn 4: Platform Engineering Scale (9-15 tháng)
-- Xây/hoàn thiện IDP như sản phẩm nội bộ.
-- Cung cấp golden paths cho stack chính.
-- Chuyển từ ticket-driven sang self-service-first.
+| Workstream | 0-3 tháng: Pilot | 3-6 tháng: Chuẩn hóa | 6-15 tháng: Mở rộng |
+| :--- | :--- | :--- | :--- |
+| Foundation | Sponsor, funding, RACI, service tiering, baseline và exception policy | Governance cadence, competency matrix, control ownership | Portfolio review, funding theo outcome và continuous improvement |
+| SRE | Critical journey, SLI/SLO, burn-rate alert, incident command, runbook, restore test | Error-budget policy, on-call, capacity/overload test, game day | Multi-service SLO, dependency resilience, DR exercise, toil automation |
+| DevOps | Pipeline pilot, immutable artifact, deployment marker, security scan, rollback | Pipeline template, progressive delivery, DORA instrumentation | Multi-team rollout, policy enforcement và supply-chain provenance |
+| Platform Engineering | Persona/JTBD, friction baseline, product charter, MVP golden path | Versioned golden path, platform SLO, support model, lifecycle/delete | Portal/catalog khi có nhu cầu, nhiều golden path và self-service scale |
 
 ```mermaid
-timeline
-  title Roadmap: Foundation -> SRE -> DevOps -> Platform Engineering
-  0-3 months : Foundation First
-              : Sponsor, budget, staffing, governance
-              : Tiering, ownership, baseline controls
-  3-6 months : SRE Stabilization
-              : SLO and error budget
-              : Incident and postmortem discipline
-  6-9 months : DevOps Acceleration
-              : CI CD gates and small-batch delivery
-              : Progressive delivery and feedback loops
-  9-15 months : Platform Engineering Scale
-               : IDP and golden paths
-               : Self-service and DX optimization
+gantt
+  title Roadmap workstream chồng lấn quanh vertical pilot
+  dateFormat  YYYY-MM-DD
+  axisFormat  Tháng %m
+
+  section Foundation
+  Bootstrap governance và baseline       :f1, 2026-09-01, 2026-11-30
+  Chuẩn hóa ownership và controls         :f2, 2026-12-01, 2027-02-28
+  Portfolio governance và cải tiến        :f3, 2027-03-01, 2027-11-30
+
+  section SRE
+  SLO, incident, runbook và restore pilot :s1, 2026-09-15, 2026-12-14
+  Error budget, capacity và game day      :s2, 2026-12-15, 2027-03-14
+  Resilience, DR và toil automation       :s3, 2027-03-15, 2027-11-30
+
+  section DevOps
+  CI/CD, scan, rollback cho pilot          :d1, 2026-09-15, 2026-12-14
+  Template và progressive delivery        :d2, 2026-12-15, 2027-03-14
+  Multi-team và supply-chain controls      :d3, 2027-03-15, 2027-11-30
+
+  section Platform Engineering
+  Discovery và MVP golden path             :p1, 2026-10-01, 2026-12-31
+  Platform SLO và golden path v1           :p2, 2027-01-01, 2027-03-31
+  Portal, catalog và self-service scale     :p3, 2027-04-01, 2027-11-30
 ```
+
+Ngày trong sơ đồ là mốc minh họa để biểu diễn độ chồng lấn; khi phê duyệt chương trình phải thay bằng ngày khởi động thực tế.
+
+### 5.2 Exit criteria theo chặng
+
+| Chặng | Exit criteria bắt buộc |
+| :--- | :--- |
+| Pilot, 0-3 tháng | Critical journey có SLI/SLO computable; pipeline deploy và rollback thành công; alert tới đúng owner; restore đạt RTO/RPO pilot; một service được tạo qua MVP golden path; baseline KPI được lưu |
+| Chuẩn hóa, 3-6 tháng | Error-budget policy được dùng trong quyết định release; progressive delivery chạy production; capacity/game-day có bằng chứng; golden path versioned có support SLO và workflow delete |
+| Mở rộng, 6-15 tháng | Tier 0/1 đạt reliability gates; DORA/SLO cải thiện qua hai quý; nhiều team dùng self-service; DR được diễn tập; adoption và DX đạt target đã phê duyệt |
+
 
 ## 6) Success Picture (Definition Of Done)
 
-Adoption được coi là hoàn tất khi đồng thời thỏa các điều kiện sau:
+Adoption chỉ được coi là hoàn tất khi đồng thời đạt outcome và có bằng chứng thực thi. Việc cài đặt công cụ hoặc xuất bản tài liệu không tự thỏa DoD.
 
-1. Foundation
-- Có sponsor điều hành, ngân sách duy trì, và mô hình nhân sự rõ ràng.
-- Có tiêu chuẩn ownership, service tiering, và governance định kỳ.
+### 6.1 Foundation
 
-2. SRE
-- 100% dịch vụ Tier 0/1 có SLI/SLO/error budget đã vận hành.
-- Incident process và postmortem action closure chạy ổn định.
+- Sponsor, ngân sách, platform product owner, service owner và RACI được phê duyệt.
+- 100% service Tier 0/1 có owner, tier, dependency owner, support model và escalation path trong catalog.
+- Governance review diễn ra đúng cadence trong ít nhất hai quý; ngoại lệ có owner, lý do, ngày hết hạn và phê duyệt.
 
-3. DevOps
-- CI/CD chuẩn hóa, có quality/security gate bắt buộc.
-- DORA metrics cải thiện bền vững qua ít nhất 2 quý.
+**Bằng chứng:** quyết định funding, service catalog export, RACI, biên bản review và exception register.
 
-4. Platform Engineering
-- IDP hoạt động với self-service cho các use case trọng tâm.
-- >= 80% service mới đi theo golden path.
+### 6.2 SRE
 
-5. Governance và rủi ro
-- Không còn critical control nào ở mức 0.
-- Chính sách ngoại lệ có thời hạn và được phê duyệt đúng quy trình.
+- 100% critical user journey Tier 0/1 có SLI computable: good/valid event, cửa sổ, nguồn dữ liệu, exclusion và missing-data behavior.
+- SLO và error-budget policy đã ảnh hưởng ít nhất một quyết định release hoặc reliability investment.
+- Multi-window burn-rate alert gửi đúng owner, có runbook và đã được test end-to-end.
+- Rollback, backup restore, dependency failure và DR/failover đạt RTO/RPO đã phê duyệt qua game day.
+- Incident command, on-call và post-incident review vận hành; corrective action quan trọng có owner, deadline và test chống tái diễn.
+
+**Bằng chứng:** SLO query/dashboard, alert test, incident timeline, game-day report, restore log và action tracker.
+
+### 6.3 DevOps
+
+- Pipeline chuẩn hóa tạo immutable artifact, chạy test/security gate và ghi deployment marker.
+- Progressive delivery và automatic/manual rollback được chạy thành công trên production workload đại diện.
+- DORA metrics cải thiện so với baseline trong ít nhất hai quý mà không làm xấu SLO hoặc tăng on-call load.
+- Database/config change có chiến lược tương thích ngược và rollback/roll-forward đã kiểm thử.
+
+**Bằng chứng:** pipeline runs, artifact provenance, deployment/rollback record, DORA dashboard và change review.
+
+### 6.4 Platform Engineering
+
+- Có platform product charter, persona/JTBD, eligible population, backlog, roadmap, owner và support SLO.
+- Ít nhất một golden path end-to-end tạo được service secure, observable, owned và deploy được; có workflow nâng cấp, exception và xóa tài nguyên.
+- Ít nhất 80% service mới **đủ điều kiện** dùng golden path; adoption không tính workload ngoài phạm vi hỗ trợ.
+- Self-service giảm fulfillment lead time và ticket/toil so với baseline; developer task-success và satisfaction đạt target đã phê duyệt.
+- Portal/catalog chỉ được coi là hoàn tất khi critical journey đạt platform SLO và metadata freshness target.
+
+**Bằng chứng:** timed onboarding test, workflow logs, adoption denominator, platform SLO, ticket/toil report và developer research.
+
+### 6.5 Governance và rủi ro
+
+- Không còn hard control bị thiếu: ownership Tier 0/1, SLO data source, actionable paging, rollback, restore/DR test, security gate, platform support và break-glass.
+- Rủi ro chấp nhận được ghi rõ owner, residual risk, control bù, ngày hết hạn và cấp phê duyệt.
+- Cost allocation và báo cáo cost-per-service/team hoạt động; capacity và budget được review theo quý.
 
 ## 7) Maturity Rubric (Thang Trưởng Thành)
 
-### 7.1 Thang điểm
+### 7.1 Quy tắc chấm điểm
 
-- 0: Chưa bắt đầu
-- 1: Đang thử nghiệm cục bộ
-- 2: Áp dụng một phần
-- 3: Chuẩn hóa đa nhóm
-- 4: Mở rộng toàn tổ chức
-- 5: Tối ưu hóa liên tục, có bằng chứng định lượng
+- Chấm từng ô `Domain x People/Process/Tool` bằng bằng chứng của kỳ review; không có bằng chứng thì dùng mức thấp hơn.
+- Điểm tổng dùng để theo dõi xu hướng, không cho phép điểm Tool bù cho hard control People/Process bị thiếu.
+- Hai assessor độc lập chấm trước, đối chiếu chênh lệch lớn hơn 1 điểm và ghi rationale/evidence link.
+- Chỉ tính phạm vi được định nghĩa: team/service đủ điều kiện, môi trường và kỳ đo.
 
-### 7.2 Rubric theo domain và PPT
+### 7.2 Rubric đầy đủ theo People, Process và Tool
+
+| Điểm | People | Process | Tool |
+| ---: | :--- | :--- | :--- |
+| **0** | Không có owner hoặc trách nhiệm | Không có quy trình; xử lý tùy hứng | Thủ công, không có toolchain kiểm soát |
+| **1** | Cá nhân tự nguyện, phụ thuộc key person | Thử nghiệm cục bộ, không lặp lại ổn định | Script/tool rời rạc, không support chính thức |
+| **2** | Có owner ở một số team, vai trò chưa nhất quán | Quy trình được ghi lại và áp dụng cho pilot | Tích hợp cơ bản cho một số team, còn nhiều bước ticket/manual |
+| **3** | RACI và competency rõ cho các team trong phạm vi | Quy trình chuẩn, versioned, đo được và có exception flow | Capability chuẩn hóa đa nhóm, có monitoring và support |
+| **4** | Ownership, on-call/support và đào tạo mở rộng toàn eligible population | Governance dựa trên outcome; audit và cải tiến theo cadence | Self-service với automated guardrail, SLO và lifecycle đầy đủ |
+| **5** | Năng lực kế thừa, community of practice và staffing tối ưu theo dữ liệu | Tối ưu liên tục bằng experiment, benchmark và feedback định lượng | Platform thích nghi theo telemetry/user research, loại bỏ toil và capability ít giá trị |
+
+### 7.3 Scorecard theo domain
 
 | Domain | People | Process | Tool | Điểm tối đa |
-|---|---|---|---|---|
+| :--- | ---: | ---: | ---: | ---: |
 | Foundation | 0-5 | 0-5 | 0-5 | 15 |
 | SRE | 0-5 | 0-5 | 0-5 | 15 |
 | DevOps | 0-5 | 0-5 | 0-5 | 15 |
 | Platform Engineering | 0-5 | 0-5 | 0-5 | 15 |
-| Tổng |  |  |  | 60 |
+| **Tổng** |  |  |  | **60** |
 
-### 7.3 Tiêu chí chấm nhanh từng ô PPT
+Mỗi điểm phải kèm `scope`, `evidence`, `owner`, `assessed_at` và `next gap`. Không dùng trung bình nhiều team nếu kết quả đó che khuất một Tier 0/1 chưa đạt hard gate.
 
-- People:
-  - 0: vai trò không rõ
-  - 3: vai trò rõ và có RACI
-  - 5: vai trò rõ, có career path, có năng lực kế thừa
+### 7.4 Hard gates theo domain
 
-- Process:
-  - 0: làm theo kinh nghiệm cá nhân
-  - 3: quy trình chuẩn và đo được
-  - 5: quy trình tối ưu bằng dữ liệu, cải tiến định kỳ
+| Domain | Hard gate không được bù điểm |
+| :--- | :--- |
+| Foundation | Tier 0/1 có owner/tier/escalation; sponsor/funding; exception có hạn |
+| SRE | SLI computable; paging có runbook/owner; rollback và restore/DR đã test; RTO/RPO được phê duyệt |
+| DevOps | Reproducible pipeline; immutable artifact; security gate; deployment verification và rollback |
+| Platform Engineering | Product owner; một golden path end-to-end; platform SLO/support; break-glass; workflow delete/decommission |
 
-- Tool:
-  - 0: thao tác thủ công là chủ đạo
-  - 3: công cụ chuẩn hóa, tích hợp cơ bản
-  - 5: self-service, policy-as-code, đo được hiệu quả sử dụng
-
-### 7.4 Ngưỡng hoàn thành adoption
+### 7.5 Ngưỡng hoàn thành adoption
 
 - Tổng điểm >= 48/60
 - Mỗi domain >= 10/15
 - Không domain nào có bất kỳ ô PPT < 2
-- Bắt buộc:
-  - SRE Process >= 4
-  - DevOps Tool >= 4
-  - Platform Engineering Tool >= 4
+- Tất cả hard gate tại mục 7.4 đạt và có evidence còn hiệu lực
+- SRE Process >= 4, DevOps Tool >= 4 và Platform Engineering Tool >= 4
+- Không có risk acceptance nghiêm trọng đã quá hạn
 
-### 7.5 Cổng quyết định DoD
+### 7.6 Cổng quyết định DoD
 
 ```mermaid
 flowchart TD
@@ -249,54 +322,95 @@ flowchart TD
   C -- No --> X
   C -- Yes --> D{Any PPT cell < 2?}
   D -- Yes --> X
-  D -- No --> E{Mandatory controls met?}
+  D -- No --> E{All hard gates have current evidence?}
   E -- No --> X
-  E -- Yes --> F[Adoption Done]
+  E -- Yes --> G{Any expired critical risk acceptance?}
+  G -- Yes --> X
+  G -- No --> F[Adoption Done]
 ```
 
 ## 8) KPI Và Cơ Chế Đo Lường
 
-### 8.1 KPI cốt lõi
+### 8.1 Measurement contract
 
-- Delivery:
-  - Deployment Frequency
-  - Lead Time for Changes
-  - Change Failure Rate
-  - MTTR
+Mỗi KPI phải có định nghĩa versioned gồm: mục đích, công thức, scope/population, nguồn dữ liệu, owner, baseline, target, cadence và cách xử lý dữ liệu thiếu. Target được phê duyệt sau 4-6 tuần baseline; không tự đặt target thiếu dữ liệu.
 
-- Reliability:
-  - SLO compliance rate
-  - Error budget burn rate
-  - Incident recurrence rate
+| KPI | Công thức/định nghĩa | Nguồn | Owner | Cadence và target |
+| :--- | :--- | :--- | :--- | :--- |
+| Deployment Frequency | Số production deployment thành công trên mỗi service trong kỳ | CI/CD + deployment events | DevOps capability owner | Tuần; cải thiện theo service tier so với baseline |
+| Lead Time for Changes | Median và P90 từ commit đầu tiên đến chạy thành công ở production | Git + CI/CD + deployment marker | Product team | Tuần; giảm median/P90, không làm xấu SLO |
+| Change Failure Rate | Deployment gây rollback, hotfix hoặc incident / tổng production deployment | CI/CD + incident system | Product team + SRE | Tháng; giảm so với baseline |
+| Failed Deployment Recovery Time | Median từ khi deployment failure được phát hiện đến khi service phục hồi | Deployment + SLI + incident timeline | Product team | Tháng; tách khỏi incident MTTR tổng quát |
+| SLO compliance | Good events / valid events trong rolling window, theo critical journey | SLO platform/telemetry | Service owner + SRE | Hằng ngày/tháng; đạt target theo tier |
+| Error-budget burn | Bad-event rate / allowed bad-event rate; theo short/long window | SLO platform | SRE | Liên tục; action theo error-budget policy |
+| Incident recurrence | Incident lặp lại cùng failure mode / tổng incident Sev1/2 | Incident + postmortem tracker | SRE lead | Quý; giảm và đóng corrective action đúng hạn |
+| Restore/DR attainment | Số exercise đạt RTO và RPO / tổng exercise đã lên lịch | Game-day/DR report | Service owner + SRE | Quý/nửa năm; 100% Tier 0/1 exercise đạt hoặc có risk acceptance |
+| Golden-path adoption | Service mới đủ điều kiện tạo qua golden path / tổng service mới đủ điều kiện | Catalog + workflow logs | Platform product owner | Tháng; target >= 80% sau giai đoạn scale |
+| Self-service success | Workflow self-service hoàn tất không cần platform ticket / tổng workflow hợp lệ | Portal/workflow + ticket system | Platform team | Tuần; tăng success, giảm P90 fulfillment time |
+| Time to first deploy | Thời gian từ yêu cầu hợp lệ đến service healthy đầu tiên qua golden path | Workflow + CI/CD + health signal | Platform product owner | Theo cohort; giảm so với baseline thủ công |
+| Developer task success | Người dùng hoàn thành journey không cần hỗ trợ / tổng người thử nghiệm | Usability test/survey | Developer Experience owner | Quý; target theo journey được phê duyệt |
+| Toil ratio | Giờ toil / tổng giờ vận hành của team trong kỳ | Time study + toil register | Engineering manager | Tháng; giảm mà không chuyển toil sang product team |
+| Cost per service/team | Chi phí phân bổ hợp lệ / active service hoặc team trong scope | Cloud billing + tags/catalog | FinOps + Platform | Tháng; nằm trong unit-cost guardrail |
 
-- Platform:
-  - Golden path adoption rate
-  - Self-service fulfillment rate
-  - Developer satisfaction score
+### 8.2 Cơ chế review và quyết định
 
-### 8.2 Cơ chế review
+| Cadence | Nội dung | Quyết định đầu ra |
+| :--- | :--- | :--- |
+| Hằng tuần | SLO burn, incident, change failure, pipeline/platform workflow | Mitigation, release guardrail, toil/corrective action |
+| Hằng tháng | DORA, SLO, platform adoption, fulfillment, support load và cost | Ưu tiên backlog, capacity và platform product investment |
+| Hằng quý | Maturity rubric, developer research, risk acceptance, DR/capacity evidence | Tiếp tục scale, sửa control gap hoặc dừng capability ít giá trị |
 
-- Hàng tuần: vận hành và sự cố
-- Hàng tháng: KPI delivery/reliability/platform
-- Hàng quý: maturity rubric + quyết định đầu tư tiếp theo
+Dashboard phải cho phép drill-down theo service tier, team, workload type và thời gian. Không dùng trung bình toàn doanh nghiệp nếu nó che khuất Tier 0/1 hoặc cohort không đạt.
 
 ## 9) Kế Hoạch 90 Ngày Đầu
 
-- Tuần 1-2: chốt sponsor, ngân sách, staffing, baseline metrics.
-- Tuần 3-4: phát hành chuẩn ownership/tiering/controls phiên bản 1.
-- Tuần 5-8: triển khai pilot SRE cho dịch vụ quan trọng.
-- Tuần 9-12: triển khai pilot DevOps acceleration cho 2-3 team.
+### Tuần 1-2: Bootstrap và chọn pilot
+
+- Chốt sponsor, funding, platform product owner, SRE/DevOps lead và RACI.
+- Chọn 1-2 critical user journey, 2-3 product team và một workload archetype.
+- Ghi baseline lead time, deployment frequency, incident, toil, fulfillment và developer task success.
+- Phát hành service tiering, minimum controls và exception policy phiên bản 1.
+
+### Tuần 3-4: Product discovery và reliability contract
+
+- Phỏng vấn persona, quan sát workflow và ưu tiên pain point có tần suất/impact cao.
+- Viết platform product charter, scope, support model và MVP golden-path contract.
+- Định nghĩa SLI good/valid events, SLO window, error-budget policy và alert owner cho pilot.
+- Lập failure-mode review, RTO/RPO pilot, rollback/restore test plan và dependency map.
+
+### Tuần 5-8: Xây vertical pilot end-to-end
+
+- DevOps: pipeline reproducible, immutable artifact, test/security scan, deployment marker và rollback.
+- SRE: SLO dashboard, multi-window burn-rate alert, incident runbook và synthetic check.
+- Platform: MVP golden path tạo repository, pipeline, environment, ownership metadata, dashboard, alert và runbook.
+- Chạy timed onboarding với một team không tham gia xây platform; ghi friction và support ticket.
+
+### Tuần 9-12: Chứng minh và quyết định scale
+
+- Chạy progressive deployment và rollback trên production workload đại diện.
+- Thực hiện load/overload test, dependency failure, alert delivery và backup restore theo RTO/RPO.
+- Tổ chức game day và post-incident-style review; đóng hoặc nhận rủi ro cho finding quan trọng.
+- So sánh KPI với baseline, chấm maturity bằng hai assessor và quyết định `scale`, `repair` hoặc `stop` cho từng capability.
+
+### Exit criteria ngày 90
+
+- Một service được onboard end-to-end qua golden path và có thể decommission sạch.
+- SLO/burn-rate alert, pipeline, rollback và restore có evidence chạy thành công.
+- Product team tự vận hành service; platform/SRE không trở thành đội làm thay.
+- Có backlog 3-6 tháng được ưu tiên bằng dữ liệu, owner, funding và target.
 
 ## 10) Rủi Ro Chính Và Biện Pháp Giảm Thiểu
 
-- Rủi ro: tập trung tool mà bỏ qua operating model.
-- Giảm thiểu: bắt buộc đi theo People -> Process -> Tool trong mọi sáng kiến.
-
-- Rủi ro: Platform team biến thành helpdesk ticket.
-- Giảm thiểu: định vị platform như product team, có self-service SLO.
-
-- Rủi ro: coi SRE là đội làm thay vận hành cho team sản phẩm.
-- Giảm thiểu: shared ownership, error budget quyết định nhịp phát hành.
+| Rủi ro | Dấu hiệu sớm | Biện pháp giảm thiểu | Owner |
+| :--- | :--- | :--- | :--- |
+| Tập trung tool, bỏ qua operating model | Tool được cài nhưng không có owner/SLO/adoption | Bắt buộc People -> Process -> Tool và evidence gate | Program sponsor |
+| Bốn domain trở thành silo | Handoff, backlog riêng và mục tiêu xung đột | Một vertical pilot, shared outcome và review chéo | Program lead |
+| Platform team thành helpdesk | Ticket tăng tuyến tính, self-service success thấp | Platform-as-a-product, workflow automation, support SLO và root-cause ticket review | Platform product owner |
+| SRE làm thay product team | SRE nhận mọi alert/deploy, product team thiếu runbook | Shared ownership, service owner on-call và error-budget policy | Engineering leadership |
+| Portal trước product discovery | Login cao nhưng task success/adoption thấp | MVP golden path trước portal; usability test và stop criterion | Platform product owner |
+| Alert fatigue | Page không action, false positive và after-hours load cao | SLO/symptom paging, runbook, alert review và delete policy | SRE lead |
+| Điểm maturity bị gaming | Điểm tăng nhưng hard control thiếu | Evidence link, hard gate, assessor độc lập và audit sample | Governance owner |
+| Self-service tạo rủi ro/cost | Resource thiếu owner/tag, policy violation | Policy-as-code, quota, cost guardrail, expiry và workflow delete | Platform + Security + FinOps |
 
 ## 11) Q&A Từ Quá Trình Thảo Luận
 
@@ -317,8 +431,7 @@ A: Foundation đứng đầu để chuẩn bị nguồn lực và chuẩn dùng 
 
 ### Q4: Thứ tự Foundation -> SRE -> DevOps -> Platform Engineering có đúng không?
 
-A: Đúng cho bối cảnh doanh nghiệp đang cần giảm rủi ro triển khai.
-Lưu ý: SRE và DevOps có chồng lấn khi thực thi; PE là bước scale bằng self-service.
+A: Đúng khi hiểu là thứ tự ưu tiên năng lực, không phải bốn giai đoạn bàn giao nối đuôi. Foundation bootstrap trước; SRE, DevOps và Platform Engineering sau đó chạy chồng lấn trên vertical pilot. Platform bắt đầu bằng product discovery/MVP golden path và chỉ scale portal/self-service sau khi có evidence.
 
 ### Q5: Tại sao cần rubric thay vì checklist thuần?
 

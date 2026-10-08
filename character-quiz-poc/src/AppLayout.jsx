@@ -1,14 +1,22 @@
 import { useEffect, useState } from 'react'
-import { Home, Search } from 'lucide-react'
+import { Clapperboard, Home, UserRound } from 'lucide-react'
+import QuickSearch from './QuickSearch'
 import './CharacterCatalog.css'
+import './QuickSearch.css'
 
 const NAV_ITEMS = [
   { path: '/', label: 'Làm bài', icon: Home, match: (pathname) => pathname === '/' },
   {
+    path: '/anime',
+    label: 'Anime',
+    icon: Clapperboard,
+    match: (pathname) => pathname === '/anime' || pathname.startsWith('/anime/'),
+  },
+  {
     path: '/characters',
-    label: 'Tìm nhân vật',
-    icon: Search,
-    match: (pathname) => pathname === '/characters' || pathname.startsWith('/anime/') || pathname.startsWith('/character/'),
+    label: 'Nhân vật',
+    icon: UserRound,
+    match: (pathname) => pathname === '/characters' || pathname.startsWith('/character/'),
   },
   { path: '/admin', label: 'Admin', match: (pathname) => pathname === '/admin' },
 ]
@@ -36,6 +44,7 @@ export default function AppLayout({ pathname, onNavigate, before = null, childre
           <span className="catalog-brand-mark">N<span>.</span></span>
           <span>NHÂN VẬT<br />GIỐNG MÌNH</span>
         </a>
+        <QuickSearch onNavigate={onNavigate} />
         <nav className="catalog-navigation" aria-label="Điều hướng chính">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon

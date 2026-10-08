@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ExternalLink, Eye, EyeOff, Heart, Star, Users } from 'lucide-react'
 import AppLayout from './AppLayout'
+import { FORMAT_LABELS, SEASON_LABELS, STATUS_LABELS } from './animeLabels'
 import './CharacterCatalog.css'
 import './AnimeDetail.css'
 
@@ -11,15 +12,6 @@ const ROLE_TABS = [
   { id: 'BACKGROUND', label: 'Nền' },
 ]
 const ROLE_LABELS = { MAIN: 'Chính', SUPPORTING: 'Phụ', BACKGROUND: 'Nền' }
-const FORMAT_LABELS = { TV: 'TV', TV_SHORT: 'TV ngắn', MOVIE: 'Movie', SPECIAL: 'Special', OVA: 'OVA', ONA: 'ONA', MUSIC: 'Music' }
-const STATUS_LABELS = {
-  FINISHED: 'Đã kết thúc',
-  RELEASING: 'Đang phát sóng',
-  NOT_YET_RELEASED: 'Chưa phát sóng',
-  CANCELLED: 'Đã hủy',
-  HIATUS: 'Tạm ngưng',
-}
-const SEASON_LABELS = { WINTER: 'Đông', SPRING: 'Xuân', SUMMER: 'Hè', FALL: 'Thu' }
 const RELATION_LABELS = {
   PREQUEL: 'Phần trước',
   SEQUEL: 'Phần sau',
@@ -74,7 +66,7 @@ function AnimeTags({ tags, onOpenTag }) {
               type="button"
               className={`anime-tag${tag.spoiler ? ' is-spoiler' : ''}`}
               style={{ '--tag-rank': `${Math.max(0, Math.min(100, tag.rank ?? 0))}%` }}
-              title={[tag.category, tag.description, 'Bấm để lọc nhân vật theo tag này'].filter(Boolean).join('\n')}
+              title={[tag.category, tag.description, 'Bấm để xem các anime cùng tag'].filter(Boolean).join('\n')}
               onClick={() => onOpenTag(tag.id)}
             >
               <span className="anime-tag-name">{tag.name}</span>
@@ -136,15 +128,15 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
 
   function backToCatalog() {
     if (window.history.state?.fromCatalog) window.history.back()
-    else onNavigate('/characters')
+    else onNavigate('/anime')
   }
 
   function openGenre(genreId) {
-    onNavigate(`/characters?animeGenre=${encodeURIComponent(genreId)}`)
+    onNavigate(`/anime?animeGenre=${encodeURIComponent(genreId)}`)
   }
 
   function openTag(tagId) {
-    onNavigate(`/characters?animeTag=${encodeURIComponent(tagId)}`)
+    onNavigate(`/anime?animeTag=${encodeURIComponent(tagId)}`)
   }
 
   function openCharacter(characterId) {
@@ -192,7 +184,7 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
       ) : null}
     >
         <nav className="anime-breadcrumb" aria-label="Breadcrumb">
-          <button type="button" onClick={backToCatalog}><ArrowLeft size={14} /> Thư viện nhân vật</button>
+          <button type="button" onClick={backToCatalog}><ArrowLeft size={14} /> Danh sách anime</button>
           {anime ? <><span aria-hidden="true">/</span><span>{anime.title}</span></> : null}
         </nav>
 
@@ -233,7 +225,7 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
                 {anime.genres.length ? (
                   <div className="catalog-metadata-line anime-genres">
                     {anime.genres.map((genre) => (
-                      <button type="button" key={genre.id} className="catalog-chip-button" title={`Xem nhân vật thể loại ${genre.label}`} onClick={() => openGenre(genre.id)}>
+                      <button type="button" key={genre.id} className="catalog-chip-button" title={`Xem các anime thể loại ${genre.label}`} onClick={() => openGenre(genre.id)}>
                         {genre.label}
                       </button>
                     ))}

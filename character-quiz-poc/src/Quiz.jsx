@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, ArrowRight, Award, Check, Download, ExternalLink, Flame, RotateCcw, Search, Sparkles, Tag, User, Zap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Award, Check, Clapperboard, Download, ExternalLink, Flame, RotateCcw, Search, Sparkles, Tag, User, Zap } from 'lucide-react'
 import { drillDownQuestions, issueLabels, questions, questionSetVersion } from './questions'
 import { buildUserTraits, summarizeUserPersonality } from './matching'
 import CharacterCatalog from './CharacterCatalog'
 import AnimeDetail from './AnimeDetail'
+import AnimeCatalog from './AnimeCatalog'
 import CharacterDetail from './CharacterDetail'
 import MetadataAdmin from './MetadataAdmin'
 import './Quiz.css'
@@ -149,7 +150,7 @@ export default function Quiz() {
   }
 
   useEffect(() => {
-    if (!results || pathname === '/characters' || pathname.startsWith('/anime/') || pathname.startsWith('/character/')) return undefined
+    if (!results || pathname === '/characters' || pathname === '/anime' || pathname.startsWith('/anime/') || pathname.startsWith('/character/')) return undefined
 
     const controller = new AbortController()
     let isCurrent = true
@@ -236,6 +237,9 @@ export default function Quiz() {
   if (pathname === '/characters') {
     return <CharacterCatalog key={routeKey} pathname={pathname} onNavigate={appNavigate} />
   }
+  if (pathname === '/anime') {
+    return <AnimeCatalog key={routeKey} pathname={pathname} onNavigate={appNavigate} />
+  }
   if (pathname.startsWith('/anime/')) {
     return <AnimeDetail
       key={pathname}
@@ -287,7 +291,8 @@ export default function Quiz() {
           <span>THỬ NGHIỆM / BỘ CÂU HỎI 06</span>
           <nav className="home-navigation" aria-label="Điều hướng chính">
             <a href="/" aria-current="page" onClick={(event) => { event.preventDefault(); setStep(0); navigateRoute('/') }}>Bộ câu hỏi</a>
-            <a href="/characters" onClick={(event) => { event.preventDefault(); navigateRoute('/characters') }}><Search size={14} /> Tìm nhân vật</a>
+            <a href="/anime" onClick={(event) => { event.preventDefault(); navigateRoute('/anime') }}><Clapperboard size={14} /> Anime</a>
+            <a href="/characters" onClick={(event) => { event.preventDefault(); navigateRoute('/characters') }}><Search size={14} /> Nhân vật</a>
             <a href="/admin" onClick={(event) => { event.preventDefault(); navigateRoute('/admin') }}>Admin</a>
           </nav>
           <span className="status"><i /> BẢN POC</span>

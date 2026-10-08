@@ -2,10 +2,14 @@ import express from 'express'
 import process from 'node:process'
 import { db, getDatabasePath, getMetadataFilterOptions, seedDatabase } from './db.js'
 import {
+  ANIME_SORTS,
   getAnimeDetail,
   getCharacterDetail,
+  listAnimeFacets,
   listStudios,
   listAnimeTags,
+  quickSearch,
+  searchAnimeCatalog,
   searchCharacterCatalog,
   syncAnimeRelationsIfMissing,
   syncCharacterDetailsIfMissing,
@@ -137,6 +141,55 @@ app.get('/api/catalog/characters', (request, response) => {
     }))
   } catch (error) {
     return response.status(500).json({ error: `Catalog search failed: ${error.message}` })
+  }
+})
+
+app.get('/api/catalog/anime', (request, response) => {
+  const {
+    q = '', animeGenre = 'all', animeTag = 'all', genreMode = 'all', studio = 'all',
+    format = 'all', status = 'all', yearFrom = '', yearTo = '', minScore = '', sort = 'popularity',
+  } = request.query
+  const limit = Number(request.query.limit ?? 24)
+  const offset = Number(request.query.offset ?? 0)
+  const strings = [q, animeGenre, animeTag, studio, format, status, yearFrom, yearTo, minScore, sort]
+  if (!strings.every((value) => typeof value === 'string' && value.length <= 1000) || q.length > 100) {
+    return response.status(400).json({ error: 'Filter values must be strings; q is limited to 100 characters.' })
+  }
+  if (!['all', 'any'].includes(genreMode)) {
+    return response.status(400).json({ error: 'genreMode must be "all" or "any".' })
+  }
+  if (!Object.hasOwn(ANIME_SORTS, sort)) {
+    return response.status(400).json({ error: `sort must be one of: ${Object.keys(ANIME_SORTS).join(', ')}.` })
+  }
+  if ([yearFrom, yearTo, minScore].some((value) => value !== '' && !/^\d{1,4}$/.test(value))) {
+    return response.status(400).json({ error: 'yearFrom, yearTo and minScore must be whole numbers.' })
+  }
+  if (!Number.isInteger(limit) || !Number.isInteger(offset) || limit < 1 || offset < 0) {
+    return response.status(400).json({ error: 'limit must be positive and offset must not be negative.' })
+  }
+  try {
+    return response.json(searchAnimeCatalog({
+      searchText: q, animeGenre, animeTag, genreMode, studio, format, status, yearFrom, yearTo, minScore, sort, limit, offset,
+    }))
+  } catch (error) {
+    return response.status(500).json({ error: `Anime search failed: ${error.message}` })
+  }
+})
+
+app.get('/api/metadata/anime-facets', (_request, response) => {
+  response.json(listAnimeFacets())
+})
+
+app.get('/api/search', (request, response) => {
+  const { q = '' } = request.query
+  const limit = Number(request.query.limit ?? 6)
+  if (typeof q !== 'string' || q.length > 100) {
+    return response.status(400).json({ error: 'q must be a string with at most 100 characters.' })
+  }
+  try {
+    return response.json(quickSearch(q, { limit }))
+  } catch (error) {
+    return response.status(500).json({ error: `Quick search failed: ${error.message}` })
   }
 })
 

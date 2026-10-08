@@ -309,6 +309,183 @@ export function listAnimeTags() {
   `).all().map((tag) => ({ ...tag, spoiler: Boolean(tag.spoiler) }))
 }
 
+export const ANIME_SORTS = {
+  popularity: 's.popularity IS NULL, s.popularity DESC, s.title COLLATE NOCASE',
+  score: 's.average_score IS NULL, s.average_score DESC, s.popularity DESC',
+  favourites: 's.favourites IS NULL, s.favourites DESC, s.title COLLATE NOCASE',
+  newest: 's.season_year IS NULL, s.season_year DESC, s.popularity DESC',
+  oldest: 's.season_year IS NULL, s.season_year ASC, s.popularity DESC',
+  title: 's.title COLLATE NOCASE',
+  characters: 'characterCount DESC, s.popularity DESC',
+}
+
+const ANIME_TITLE_MATCH_SQL = `(
+  instr(lower(s.title), ?) > 0
+  OR instr(lower(COALESCE(s.title_english, '')), ?) > 0
+  OR instr(lower(COALESCE(s.title_romaji, '')), ?) > 0
+  OR instr(lower(COALESCE(s.title_native, '')), ?) > 0
+)`
+
+function toAnimeCard(row) {
+  const { genresJson, studiosNamesJson, tagsJson, ...rest } = row
+  return {
+    ...rest,
+    genres: parseJson(genresJson),
+    studios: parseJson(studiosNamesJson),
+    tags: parseJson(tagsJson),
+  }
+}
+
+const ANIME_CARD_COLUMNS = `
+  s.series_id AS id, s.anilist_id AS anilistId, s.title, s.title_english AS titleEnglish,
+  s.title_native AS titleNative, s.format, s.season, s.season_year AS seasonYear, s.episodes,
+  s.status, s.average_score AS averageScore, s.popularity, s.favourites, s.cover_image AS coverImage,
+  (SELECT COUNT(DISTINCT cs.character_id) FROM character_series cs WHERE cs.series_id = s.series_id) AS characterCount,
+  COALESCE((
+    SELECT json_group_array(json_object('id', g.genre_id, 'label', g.label))
+    FROM series_genres sg JOIN genres g ON g.genre_id = sg.genre_id WHERE sg.series_id = s.series_id
+  ), '[]') AS genresJson,
+  COALESCE((
+    SELECT json_group_array(json_object('id', st.studio_id, 'name', st.name))
+    FROM series_studios ss JOIN studios st ON st.studio_id = ss.studio_id WHERE ss.series_id = s.series_id
+  ), '[]') AS studiosNamesJson,
+  COALESCE((
+    SELECT json_group_array(json_object('id', x.tag_id, 'name', x.name)) FROM (
+      SELECT t.tag_id, t.name FROM series_tags st2 JOIN anime_tags t ON t.tag_id = st2.tag_id
+      WHERE st2.series_id = s.series_id AND st2.is_media_spoiler = 0 AND t.is_general_spoiler = 0
+      ORDER BY st2.rank DESC LIMIT 4
+    ) x
+  ), '[]') AS tagsJson`
+
+/** Anime-level search: title text plus genre/tag/studio/format/status/year/score facets. */
+export function searchAnimeCatalog({
+  searchText = '',
+  animeGenre = 'all',
+  animeTag = 'all',
+  genreMode = 'all',
+  studio = 'all',
+  format = 'all',
+  status = 'all',
+  yearFrom = null,
+  yearTo = null,
+  minScore = null,
+  sort = 'popularity',
+  limit = 24,
+  offset = 0,
+} = {}) {
+  const conditions = []
+  const parameters = []
+  const query = String(searchText ?? '').trim().slice(0, 100).toLocaleLowerCase('en')
+  if (query) {
+    conditions.push(ANIME_TITLE_MATCH_SQL)
+    parameters.push(query, query, query, query)
+  }
+  const addSetCondition = (table, column, values) => {
+    const strict = genreMode !== 'any' && values.length > 1
+    conditions.push(`s.series_id IN (
+      SELECT x.series_id FROM ${table} x WHERE x.${column} IN (${values.map(() => '?').join(', ')})
+      ${strict ? `GROUP BY x.series_id HAVING COUNT(DISTINCT x.${column}) = ?` : ''}
+    )`)
+    parameters.push(...values)
+    if (strict) parameters.push(values.length)
+  }
+  const genres = parseFilterList(animeGenre)
+  const tags = parseFilterList(animeTag)
+  const studios = parseFilterList(studio)
+  if (genres.length) addSetCondition('series_genres', 'genre_id', genres)
+  if (tags.length) addSetCondition('series_tags', 'tag_id', tags)
+  if (studios.length) {
+    conditions.push(`s.series_id IN (SELECT ss.series_id FROM series_studios ss WHERE ss.studio_id IN (${studios.map(() => '?').join(', ')}))`)
+    parameters.push(...studios)
+  }
+  const formats = parseFilterList(format).map((value) => value.toUpperCase())
+  if (formats.length) {
+    conditions.push(`s.format IN (${formats.map(() => '?').join(', ')})`)
+    parameters.push(...formats)
+  }
+  const statuses = parseFilterList(status).map((value) => value.toUpperCase())
+  if (statuses.length) {
+    conditions.push(`s.status IN (${statuses.map(() => '?').join(', ')})`)
+    parameters.push(...statuses)
+  }
+  const toInt = (value) => (value === null || value === undefined || value === '' ? null : Math.trunc(Number(value)))
+  const from = toInt(yearFrom)
+  const to = toInt(yearTo)
+  const score = toInt(minScore)
+  if (Number.isFinite(from)) { conditions.push('s.season_year >= ?'); parameters.push(from) }
+  if (Number.isFinite(to)) { conditions.push('s.season_year <= ?'); parameters.push(to) }
+  if (Number.isFinite(score) && score > 0) { conditions.push('s.average_score >= ?'); parameters.push(score) }
+
+  const where = conditions.length ? conditions.join(' AND ') : '1 = 1'
+  const total = db.prepare(`SELECT COUNT(*) AS count FROM anime_series s WHERE ${where}`).get(...parameters).count
+  const safeLimit = Math.max(1, Math.min(50, Math.trunc(Number(limit) || 24)))
+  const safeOffset = Math.max(0, Math.trunc(Number(offset) || 0))
+  const orderBy = ANIME_SORTS[sort] ?? ANIME_SORTS.popularity
+  const anime = db.prepare(`
+    SELECT ${ANIME_CARD_COLUMNS}
+    FROM anime_series s
+    WHERE ${where}
+    ORDER BY ${orderBy}
+    LIMIT ? OFFSET ?
+  `).all(...parameters, safeLimit, safeOffset).map(toAnimeCard)
+  return { anime, total, limit: safeLimit, offset: safeOffset, hasMore: safeOffset + anime.length < total }
+}
+
+export function listAnimeFacets() {
+  const formats = db.prepare(`
+    SELECT format AS id, COUNT(*) AS seriesCount FROM anime_series WHERE format IS NOT NULL GROUP BY format ORDER BY seriesCount DESC
+  `).all()
+  const statuses = db.prepare(`
+    SELECT status AS id, COUNT(*) AS seriesCount FROM anime_series WHERE status IS NOT NULL GROUP BY status ORDER BY seriesCount DESC
+  `).all()
+  const years = db.prepare('SELECT MIN(season_year) AS min, MAX(season_year) AS max FROM anime_series').get()
+  return { formats, statuses, years }
+}
+
+/** Global quick search: top anime and top characters for one query, ranked by match quality then popularity. */
+export function quickSearch(searchText, { limit = 6 } = {}) {
+  const query = String(searchText ?? '').trim().slice(0, 100).toLocaleLowerCase('en')
+  if (query.length < 2) return { query, anime: [], animeTotal: 0, characters: [], characterTotal: 0 }
+  const safeLimit = Math.max(1, Math.min(12, Math.trunc(Number(limit) || 6)))
+  const prefix = `${query}%`
+
+  const animeWhere = ANIME_TITLE_MATCH_SQL
+  const animeParams = [query, query, query, query]
+  const animeTotal = db.prepare(`SELECT COUNT(*) AS count FROM anime_series s WHERE ${animeWhere}`).get(...animeParams).count
+  const anime = db.prepare(`
+    SELECT s.series_id AS id, s.title, s.title_english AS titleEnglish, s.format, s.season_year AS seasonYear,
+      s.average_score AS averageScore, s.popularity, s.cover_image AS coverImage
+    FROM anime_series s
+    WHERE ${animeWhere}
+    ORDER BY (lower(s.title) = ? OR lower(COALESCE(s.title_english, '')) = ?) DESC,
+      (lower(s.title) LIKE ? OR lower(COALESCE(s.title_english, '')) LIKE ?) DESC,
+      s.popularity IS NULL, s.popularity DESC
+    LIMIT ?
+  `).all(...animeParams, query, query, prefix, prefix, safeLimit)
+
+  const characterWhere = `(
+    instr(lower(c.name), ?) > 0
+    OR instr(lower(COALESCE(c.native_name, '')), ?) > 0
+    OR EXISTS (SELECT 1 FROM character_aliases ca WHERE ca.character_id = c.id AND ca.spoiler = 0 AND instr(lower(ca.alias), ?) > 0)
+  )`
+  const characterParams = [query, query, query]
+  const characterTotal = db.prepare(`SELECT COUNT(*) AS count FROM characters c WHERE ${characterWhere}`).get(...characterParams).count
+  const characters = db.prepare(`
+    SELECT c.id, c.name, c.native_name AS nativeName, c.favourites, c.series,
+      ${CHARACTER_IMAGE_SQL} AS imageUrl,
+      ${PRIMARY_SERIES_SQL} AS primarySeriesJson
+    FROM characters c
+    WHERE ${characterWhere}
+    ORDER BY lower(c.name) = ? DESC, lower(c.name) LIKE ? DESC,
+      (' ' || lower(c.name)) LIKE ? DESC,
+      c.favourites IS NULL, c.favourites DESC, c.name COLLATE NOCASE
+    LIMIT ?
+  `).all(...characterParams, query, prefix, `% ${query}%`, safeLimit)
+    .map(({ primarySeriesJson, ...row }) => ({ ...row, primarySeries: parseJson(primarySeriesJson, null) }))
+
+  return { query, anime, animeTotal, characters, characterTotal }
+}
+
 const CHARACTER_IMAGE_SQL = `COALESCE(
   (SELECT i.image_url FROM character_images i WHERE i.character_id = c.id AND i.license_verified = 1 ORDER BY i.id DESC LIMIT 1),
   (SELECT ei.image_url FROM character_external_images ei WHERE ei.character_id = c.id ORDER BY ei.fetched_at DESC LIMIT 1)

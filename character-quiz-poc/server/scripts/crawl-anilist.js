@@ -32,7 +32,7 @@ Commands:
   anime         Crawl popular anime (POPULARITY_DESC) per genre into SQLite.
   characters    Crawl characters for anime already in SQLite, most popular anime first.
   details       Crawl character descriptions + bio and parse relation links (most favourited first).
-  anime-relations  Crawl anime relations (prequel, sequel, side story, spin-off, adaptation...).
+  anime-relations  Crawl anime relations, tags and MAL id (prequel, sequel, spin-off, adaptation...).
   all           Run genres -> anime -> characters.
   stats         Print database counts.
 

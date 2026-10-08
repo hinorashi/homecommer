@@ -5,6 +5,7 @@ import {
   getAnimeDetail,
   getCharacterDetail,
   listStudios,
+  listAnimeTags,
   searchCharacterCatalog,
   syncAnimeRelationsIfMissing,
   syncCharacterDetailsIfMissing,
@@ -100,16 +101,20 @@ app.get('/api/metadata/studios', (_request, response) => {
   response.json({ studios: listStudios() })
 })
 
+app.get('/api/metadata/anime-tags', (_request, response) => {
+  response.json({ tags: listAnimeTags() })
+})
+
 app.get('/api/catalog/characters', (request, response) => {
-  const { q = '', contextGenre = 'all', archetype = 'all', animeGenre = 'all', genreMode = 'all', studio = 'all' } = request.query
+  const { q = '', contextGenre = 'all', archetype = 'all', animeGenre = 'all', genreMode = 'all', animeTag = 'all', studio = 'all' } = request.query
   const limit = Number(request.query.limit ?? 24)
   const offset = Number(request.query.offset ?? 0)
   if (typeof q !== 'string' || q.length > 100) {
     return response.status(400).json({ error: 'q must be a string with at most 100 characters.' })
   }
   if (![contextGenre, archetype].every((value) => typeof value === 'string' && value.length <= 100)
-    || ![animeGenre, studio].every((value) => typeof value === 'string' && value.length <= 1000)) {
-    return response.status(400).json({ error: 'Filter values must be strings (comma-separated lists for animeGenre/studio).' })
+    || ![animeGenre, animeTag, studio].every((value) => typeof value === 'string' && value.length <= 1000)) {
+    return response.status(400).json({ error: 'Filter values must be strings (comma-separated lists for animeGenre/animeTag/studio).' })
   }
   if (!['all', 'any'].includes(genreMode)) {
     return response.status(400).json({ error: 'genreMode must be "all" or "any".' })
@@ -125,6 +130,7 @@ app.get('/api/catalog/characters', (request, response) => {
       archetype,
       animeGenre,
       genreMode,
+      animeTag,
       studio,
       limit,
       offset,

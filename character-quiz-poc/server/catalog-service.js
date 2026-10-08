@@ -21,6 +21,7 @@ export function searchCharacterCatalog({
   archetype = 'all',
   animeGenre = 'all',
   genreMode = 'all',
+  animeTag = 'all',
   studio = 'all',
   limit = 24,
   offset = 0,
@@ -68,29 +69,35 @@ export function searchCharacterCatalog({
     parameters.push(archetype)
   }
   const animeGenres = parseFilterList(animeGenre)
-  if (animeGenres.length) {
-    const placeholders = animeGenres.map(() => '?').join(', ')
-    // "all" mode requires a single anime carrying every selected genre; "any" matches any of them.
-    const having = genreMode === 'any' || animeGenres.length === 1 ? '' : 'GROUP BY sg.series_id HAVING COUNT(DISTINCT sg.genre_id) = ?'
+  const animeTags = parseFilterList(animeTag)
+  const studios = parseFilterList(studio)
+  // Genre, tag and studio constraints must hold on the same anime. "all" mode requires every selected
+  // genre/tag on that anime; "any" needs at least one per dimension.
+  const seriesConditions = []
+  const seriesParameters = []
+  const addSetCondition = (table, column, values) => {
+    const placeholders = values.map(() => '?').join(', ')
+    const strict = genreMode !== 'any' && values.length > 1
+    seriesConditions.push(`s.series_id IN (
+      SELECT x.series_id FROM ${table} x WHERE x.${column} IN (${placeholders})
+      ${strict ? `GROUP BY x.series_id HAVING COUNT(DISTINCT x.${column}) = ?` : ''}
+    )`)
+    seriesParameters.push(...values)
+    if (strict) seriesParameters.push(values.length)
+  }
+  if (animeGenres.length) addSetCondition('series_genres', 'genre_id', animeGenres)
+  if (animeTags.length) addSetCondition('series_tags', 'tag_id', animeTags)
+  if (studios.length) {
+    seriesConditions.push(`s.series_id IN (SELECT ss.series_id FROM series_studios ss WHERE ss.studio_id IN (${studios.map(() => '?').join(', ')}))`)
+    seriesParameters.push(...studios)
+  }
+  if (seriesConditions.length) {
     conditions.push(`c.id IN (
       SELECT cs.character_id FROM character_series cs
-      WHERE cs.series_id IN (
-        SELECT sg.series_id FROM series_genres sg
-        WHERE sg.genre_id IN (${placeholders})
-        ${having}
-      )
+      JOIN anime_series s ON s.series_id = cs.series_id
+      WHERE ${seriesConditions.join(' AND ')}
     )`)
-    parameters.push(...animeGenres)
-    if (having) parameters.push(animeGenres.length)
-  }
-  const studios = parseFilterList(studio)
-  if (studios.length) {
-    conditions.push(`c.id IN (
-      SELECT cs.character_id FROM series_studios ss
-      JOIN character_series cs ON cs.series_id = ss.series_id
-      WHERE ss.studio_id IN (${studios.map(() => '?').join(', ')})
-    )`)
-    parameters.push(...studios)
+    parameters.push(...seriesParameters)
   }
 
   const where = conditions.length ? conditions.join(' AND ') : '1 = 1'
@@ -250,9 +257,17 @@ export function getAnimeDetail(seriesId, { characterLimit = 500 } = {}) {
       WHEN 'SPIN_OFF' THEN 4 WHEN 'ALTERNATIVE' THEN 5 WHEN 'SUMMARY' THEN 6 WHEN 'SOURCE' THEN 7 WHEN 'ADAPTATION' THEN 8 ELSE 9 END,
       r.related_season_year IS NULL, r.related_season_year, r.related_title
   `).all(id)
+  const tags = db.prepare(`
+    SELECT t.tag_id AS id, t.name, t.category, t.description, st.rank,
+      (st.is_media_spoiler OR t.is_general_spoiler) AS spoiler
+    FROM series_tags st JOIN anime_tags t ON t.tag_id = st.tag_id
+    WHERE st.series_id = ?
+    ORDER BY st.rank IS NULL, st.rank DESC, t.name COLLATE NOCASE
+  `).all(id).map((tag) => ({ ...tag, spoiler: Boolean(tag.spoiler) }))
   return {
     ...rest,
     relations,
+    tags,
     studios: studios.length ? studios : parseJson(studiosJson).map((name) => ({ id: null, name })),
     genres,
     characterTotal,
@@ -282,6 +297,16 @@ export function listStudios() {
     GROUP BY st.studio_id
     ORDER BY st.name COLLATE NOCASE
   `).all()
+}
+
+export function listAnimeTags() {
+  return db.prepare(`
+    SELECT t.tag_id AS id, t.name, t.category, t.description, t.is_general_spoiler AS spoiler,
+      COUNT(DISTINCT st.series_id) AS seriesCount
+    FROM anime_tags t JOIN series_tags st ON st.tag_id = t.tag_id
+    GROUP BY t.tag_id
+    ORDER BY seriesCount DESC, t.name COLLATE NOCASE
+  `).all().map((tag) => ({ ...tag, spoiler: Boolean(tag.spoiler) }))
 }
 
 const CHARACTER_IMAGE_SQL = `COALESCE(
@@ -495,7 +520,10 @@ const relationSyncAttempts = new Map()
 
 /** Fetches prequel/sequel/spin-off links from AniList the first time an anime page is opened. */
 export async function syncAnimeRelationsIfMissing(seriesId, { timeoutMs = 8000 } = {}) {
-  const row = db.prepare('SELECT anilist_id AS anilistId, relations_synced_at AS syncedAt FROM anime_series WHERE series_id = ?').get(seriesId)
+  const row = db.prepare(`
+    SELECT anilist_id AS anilistId, relations_synced_at IS NOT NULL AND tags_synced_at IS NOT NULL AS syncedAt
+    FROM anime_series WHERE series_id = ?
+  `).get(seriesId)
   if (!row?.anilistId || row.syncedAt) return false
   const lastAttempt = relationSyncAttempts.get(seriesId)
   if (lastAttempt && Date.now() - lastAttempt < DETAIL_RETRY_MS) return false

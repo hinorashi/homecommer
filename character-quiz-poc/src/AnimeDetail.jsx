@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ExternalLink, Heart, Star, Users } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Eye, EyeOff, Heart, Star, Users } from 'lucide-react'
 import AppLayout from './AppLayout'
 import './CharacterCatalog.css'
 import './AnimeDetail.css'
@@ -46,6 +46,50 @@ function groupRelations(relations = []) {
     groups.get(key).push(relation)
   }
   return [...groups.entries()].map(([type, items]) => ({ type, label: RELATION_LABELS[type] ?? type, items }))
+}
+
+const TAG_PREVIEW_COUNT = 12
+
+function AnimeTags({ tags, onOpenTag }) {
+  const [showSpoilers, setShowSpoilers] = useState(false)
+  const [showAll, setShowAll] = useState(false)
+  const spoilerCount = tags.filter((tag) => tag.spoiler).length
+  const visible = tags.filter((tag) => showSpoilers || !tag.spoiler)
+  const shown = showAll ? visible : visible.slice(0, TAG_PREVIEW_COUNT)
+  return (
+    <div className="anime-tags">
+      <div className="anime-tags-head">
+        <span>Tag AniList</span>
+        {spoilerCount ? (
+          <button type="button" className="anime-tags-toggle" aria-pressed={showSpoilers} onClick={() => setShowSpoilers((value) => !value)}>
+            {showSpoilers ? <EyeOff size={12} /> : <Eye size={12} />}
+            {showSpoilers ? 'Ẩn' : 'Hiện'} {spoilerCount} tag spoiler
+          </button>
+        ) : null}
+      </div>
+      <ul className="anime-tag-list">
+        {shown.map((tag) => (
+          <li key={tag.id}>
+            <button
+              type="button"
+              className={`anime-tag${tag.spoiler ? ' is-spoiler' : ''}`}
+              style={{ '--tag-rank': `${Math.max(0, Math.min(100, tag.rank ?? 0))}%` }}
+              title={[tag.category, tag.description, 'Bấm để lọc nhân vật theo tag này'].filter(Boolean).join('\n')}
+              onClick={() => onOpenTag(tag.id)}
+            >
+              <span className="anime-tag-name">{tag.name}</span>
+              {tag.rank != null ? <span className="anime-tag-rank">{tag.rank}%</span> : null}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {visible.length > TAG_PREVIEW_COUNT ? (
+        <button type="button" className="anime-tags-more" onClick={() => setShowAll((value) => !value)}>
+          {showAll ? 'Thu gọn' : `Xem tất cả ${visible.length} tag`}
+        </button>
+      ) : null}
+    </div>
+  )
 }
 
 export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
@@ -97,6 +141,10 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
 
   function openGenre(genreId) {
     onNavigate(`/characters?animeGenre=${encodeURIComponent(genreId)}`)
+  }
+
+  function openTag(tagId) {
+    onNavigate(`/characters?animeTag=${encodeURIComponent(tagId)}`)
   }
 
   function openCharacter(characterId) {
@@ -190,6 +238,10 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
                       </button>
                     ))}
                   </div>
+                ) : null}
+
+                {anime.tags?.length ? (
+                  <AnimeTags tags={anime.tags} onOpenTag={openTag} />
                 ) : null}
 
                 {anime.description ? (

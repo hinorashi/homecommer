@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, ArrowRight, Building2, Filter, RefreshCw, Search, X } from 'lucide-react'
 import AppLayout from './AppLayout'
+import AnimeTagPicker from './AnimeTagPicker'
 import './CharacterCatalog.css'
 import './AnimeDetail.css'
 
@@ -11,12 +12,13 @@ function splitList(value) {
   return [...new Set(value.split(',').map((item) => item.trim().toLowerCase()).filter(Boolean))].slice(0, 20)
 }
 
-function buildCatalogUrl({ query, contextGenre, archetype, animeGenres, genreMode, studio, offset }) {
+function buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, offset }) {
   const params = new URLSearchParams({
     q: query,
     contextGenre,
     archetype,
     animeGenre: animeGenres.length ? animeGenres.join(',') : 'all',
+    animeTag: animeTags.length ? animeTags.join(',') : 'all',
     genreMode,
     studio,
     limit: String(PAGE_SIZE),
@@ -33,17 +35,19 @@ function readInitialState() {
     contextGenre: params.get('contextGenre') || 'all',
     archetype: params.get('archetype') || 'all',
     animeGenres: splitList(params.get('animeGenre')),
+    animeTags: splitList(params.get('animeTag')),
     genreMode: params.get('genreMode') === 'any' ? 'any' : 'all',
     studio: params.get('studio') || 'all',
     offset: offset - (offset % PAGE_SIZE),
   }
 }
 
-function buildPageUrl({ query, contextGenre, archetype, animeGenres, genreMode, studio, offset }) {
+function buildPageUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, offset }) {
   const params = new URLSearchParams()
   if (query) params.set('q', query)
   if (animeGenres.length) params.set('animeGenre', animeGenres.join(','))
-  if (animeGenres.length > 1 && genreMode === 'any') params.set('genreMode', 'any')
+  if (animeTags.length) params.set('animeTag', animeTags.join(','))
+  if (animeGenres.length + animeTags.length > 1 && genreMode === 'any') params.set('genreMode', 'any')
   if (studio !== 'all') params.set('studio', studio)
   if (contextGenre !== 'all') params.set('contextGenre', contextGenre)
   if (archetype !== 'all') params.set('archetype', archetype)
@@ -59,12 +63,14 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
   const [contextGenre, setContextGenre] = useState(initialState.contextGenre)
   const [archetype, setArchetype] = useState(initialState.archetype)
   const [animeGenres, setAnimeGenres] = useState(initialState.animeGenres)
+  const [animeTags, setAnimeTags] = useState(initialState.animeTags)
   const [genreMode, setGenreMode] = useState(initialState.genreMode)
   const [studio, setStudio] = useState(initialState.studio)
   const [offset, setOffset] = useState(initialState.offset)
   const [catalog, setCatalog] = useState({ characters: [], total: 0, hasMore: false })
-  const [filterOptions, setFilterOptions] = useState({ contextGenres: [], archetypes: [], animeGenres: [], studios: [] })
+  const [filterOptions, setFilterOptions] = useState({ contextGenres: [], archetypes: [], animeGenres: [], studios: [], animeTags: [] })
   const animeGenreKey = animeGenres.join(',')
+  const animeTagKey = animeTags.join(',')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [syncProgress, setSyncProgress] = useState(null)
@@ -76,8 +82,9 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
       fetch('/api/metadata/filters', { signal: controller.signal }).then((response) => response.ok ? response.json() : null),
       fetch('/api/metadata/anime-genres', { signal: controller.signal }).then((response) => response.ok ? response.json() : null),
       fetch('/api/metadata/studios', { signal: controller.signal }).then((response) => response.ok ? response.json() : null),
-    ]).then(([metadata, genres, studios]) => {
-      if (metadata) setFilterOptions({ ...metadata, animeGenres: genres?.genres ?? [], studios: studios?.studios ?? [] })
+      fetch('/api/metadata/anime-tags', { signal: controller.signal }).then((response) => response.ok ? response.json() : null),
+    ]).then(([metadata, genres, studios, tags]) => {
+      if (metadata) setFilterOptions({ ...metadata, animeGenres: genres?.genres ?? [], studios: studios?.studios ?? [], animeTags: tags?.tags ?? [] })
     }).catch((fetchError) => {
       if (fetchError.name !== 'AbortError') setError(fetchError.message)
     })
@@ -85,15 +92,15 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
   }, [])
 
   useEffect(() => {
-    const pageUrl = buildPageUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), genreMode, studio, offset })
+    const pageUrl = buildPageUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), animeTags: splitList(animeTagKey), genreMode, studio, offset })
     if (window.location.pathname + window.location.search !== pageUrl) {
       window.history.replaceState(window.history.state, '', pageUrl)
     }
-  }, [query, contextGenre, archetype, animeGenreKey, genreMode, studio, offset])
+  }, [query, contextGenre, archetype, animeGenreKey, animeTagKey, genreMode, studio, offset])
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), genreMode, studio, offset }), { signal: controller.signal })
+    fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), animeTags: splitList(animeTagKey), genreMode, studio, offset }), { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.error ?? `Catalog API returned ${response.status}`)
@@ -107,7 +114,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [query, contextGenre, archetype, animeGenreKey, genreMode, studio, offset])
+  }, [query, contextGenre, archetype, animeGenreKey, animeTagKey, genreMode, studio, offset])
 
   useEffect(() => () => syncController.current?.abort(), [])
 
@@ -123,9 +130,16 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
       : [...animeGenres, genreId].slice(0, 20))
   }
 
+  function toggleAnimeTag(tagId) {
+    changeFilter(setAnimeTags, animeTags.includes(tagId)
+      ? animeTags.filter((id) => id !== tagId)
+      : [...animeTags, tagId].slice(0, 20))
+  }
+
   function clearFilters() {
     setLoading(true)
     setAnimeGenres([])
+    setAnimeTags([])
     setGenreMode('all')
     setStudio('all')
     setContextGenre('all')
@@ -142,7 +156,8 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
   }
 
   const genreLabel = (id) => filterOptions.animeGenres.find((genre) => genre.id === id)?.label ?? id
-  const hasActiveFilters = animeGenres.length > 0 || studio !== 'all' || contextGenre !== 'all' || archetype !== 'all'
+  const tagLabel = (id) => filterOptions.animeTags.find((tag) => tag.id === id)?.name ?? id
+  const hasActiveFilters = animeGenres.length > 0 || animeTags.length > 0 || studio !== 'all' || contextGenre !== 'all' || archetype !== 'all'
 
   async function syncCurrentPage() {
     const characters = catalog.characters
@@ -190,7 +205,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
     syncController.current = null
     setSyncProgress((current) => ({ ...current, running: false }))
     try {
-      const response = await fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres, genreMode, studio, offset }))
+      const response = await fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, offset }))
       if (response.ok) setCatalog(await response.json())
     } catch {
       // Keep the current page if refreshing after sync fails.
@@ -238,8 +253,8 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
 
         <section className="catalog-genre-panel" aria-label="Lọc theo anime genre">
           <div className="catalog-genre-panel-head">
-            <span className="catalog-genre-panel-title"><Filter size={13} /> Anime genre {animeGenres.length ? <em>{animeGenres.length} đã chọn</em> : null}</span>
-            <div className="catalog-genre-mode" role="radiogroup" aria-label="Cách kết hợp thể loại">
+            <span className="catalog-genre-panel-title"><Filter size={13} /> Anime genre &amp; tag {animeGenres.length + animeTags.length ? <em>{animeGenres.length + animeTags.length} đã chọn</em> : null}</span>
+            <div className="catalog-genre-mode" role="radiogroup" aria-label="Cách kết hợp thể loại và tag">
               <button
                 type="button"
                 role="radio"
@@ -279,6 +294,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
               )
             })}
           </div>
+          <AnimeTagPicker tags={filterOptions.animeTags} selected={animeTags} onToggle={toggleAnimeTag} />
         </section>
 
         <section className="catalog-filter-bar" aria-label="Bộ lọc nhân vật">
@@ -307,18 +323,21 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
           <span className="catalog-result-count">{catalog.total} hồ sơ</span>
         </section>
 
-        {animeGenres.length || studio !== 'all' ? (
+        {animeGenres.length || animeTags.length || studio !== 'all' ? (
           <p className="catalog-active-filters" aria-live="polite">
             Đang lọc:{' '}
-            {animeGenres.map((id, index) => (
-              <span key={id}>
+            {[
+              ...animeGenres.map((id) => ({ key: `g:${id}`, label: genreLabel(id), remove: () => toggleAnimeGenre(id), title: 'Bỏ thể loại này' })),
+              ...animeTags.map((id) => ({ key: `t:${id}`, label: `#${tagLabel(id)}`, remove: () => toggleAnimeTag(id), title: 'Bỏ tag này' })),
+            ].map((item, index) => (
+              <span key={item.key}>
                 {index > 0 ? <i>{genreMode === 'all' ? ' và ' : ' hoặc '}</i> : null}
-                <button type="button" onClick={() => toggleAnimeGenre(id)} title="Bỏ thể loại này">{genreLabel(id)} <X size={11} /></button>
+                <button type="button" onClick={item.remove} title={item.title}>{item.label} <X size={11} /></button>
               </span>
             ))}
             {studio !== 'all' ? (
               <span>
-                {animeGenres.length ? <i> · </i> : null}
+                {animeGenres.length || animeTags.length ? <i> · </i> : null}
                 <button type="button" onClick={() => changeFilter(setStudio, 'all')} title="Bỏ lọc studio">
                   Studio: {filterOptions.studios.find((item) => item.id === studio)?.name ?? studio} <X size={11} />
                 </button>

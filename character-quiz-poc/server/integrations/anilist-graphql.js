@@ -66,6 +66,8 @@ export async function fetchGenreCollection() {
   return data.GenreCollection ?? []
 }
 
+const TAG_FIELDS = 'tags { id name rank category description isMediaSpoiler isGeneralSpoiler isAdult }'
+
 const MEDIA_FIELDS = `
   id
   title { romaji english native userPreferred }
@@ -84,6 +86,8 @@ const MEDIA_FIELDS = `
   bannerImage
   studios(isMain: true) { nodes { id name } }
   isAdult
+  idMal
+  ${TAG_FIELDS}
 `
 
 export async function fetchPopularAnimePage({ page = 1, perPage = 50, genre = null } = {}) {
@@ -174,6 +178,8 @@ export async function fetchCharacterDetails(characterId) {
 
 const RELATION_FIELDS = `
   id
+  idMal
+  ${TAG_FIELDS}
   relations {
     edges {
       relationType(version: 2)

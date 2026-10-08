@@ -36,25 +36,42 @@ function Avatar({ src, name, className = '' }) {
 
 function SpoilerText({ text, revealAll }) {
   const [revealed, setRevealed] = useState(() => new Set())
+  const toggle = (index) => setRevealed((current) => {
+    const next = new Set(current)
+    if (next.has(index)) next.delete(index)
+    else next.add(index)
+    return next
+  })
   return splitSpoilers(text).map((segment, index) => {
     if (!segment.spoiler) return <span key={index}>{segment.text}</span>
     const open = revealAll || revealed.has(index)
+    const onKeyDown = (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        toggle(index)
+      }
+    }
+    if (!open) {
+      // Hidden spoilers never put their text in the DOM, so it cannot leak via copy, find-in-page or CSS overrides.
+      return (
+        <span key={index} role="button" tabIndex={0} className="detail-spoiler" title="Bấm để xem đoạn spoiler này" onClick={() => toggle(index)} onKeyDown={onKeyDown}>
+          <EyeOff size={11} aria-hidden="true" /> Spoiler · {segment.text.trim().split(/\s+/).length} từ
+        </span>
+      )
+    }
     return (
-      <button
-        type="button"
+      <span
         key={index}
-        className={`detail-spoiler${open ? ' is-open' : ''}`}
-        title={open ? undefined : 'Nội dung spoiler — bấm để xem'}
-        aria-label={open ? undefined : 'Hiện spoiler'}
-        onClick={() => setRevealed((current) => new Set(current).add(index))}
+        className="detail-spoiler is-open"
+        {...(revealAll ? {} : { role: 'button', tabIndex: 0, title: 'Bấm để ẩn lại', onClick: () => toggle(index), onKeyDown })}
       >
         {segment.text}
-      </button>
+      </span>
     )
   })
 }
 
-function RelationGraph({ relations, showSpoilers, onOpenCharacter, onOpenAnime, center }) {
+function RelationGraph({ relations, showSpoilers, onToggleSpoilers, onOpenCharacter, onOpenAnime, center }) {
   const [showDirect, setShowDirect] = useState(true)
   const [showClusters, setShowClusters] = useState(true)
   const [hovered, setHovered] = useState(null)
@@ -85,7 +102,12 @@ function RelationGraph({ relations, showSpoilers, onOpenCharacter, onOpenAnime, 
       <p className="detail-section-note">
         AniList không có API quan hệ nhân vật; cây được suy ra từ liên kết trong mô tả nhân vật (quan hệ trực tiếp)
         và dàn nhân vật nổi bật của các anime mà nhân vật xuất hiện.
-        {hiddenSpoilers ? ` ${hiddenSpoilers} quan hệ đang ẩn vì có spoiler.` : ''}
+        {hiddenSpoilers ? (
+          <>
+            {` ${hiddenSpoilers} quan hệ đang ẩn vì có spoiler. `}
+            <button type="button" className="detail-inline-link" onClick={onToggleSpoilers}>Hiện spoiler</button>
+          </>
+        ) : null}
       </p>
 
       {graph.leafCount === 0 ? (
@@ -247,7 +269,9 @@ export default function CharacterDetail({ characterId, pathname, onNavigate }) {
   ].filter(Boolean) : []
   const direct = character?.relations?.direct ?? []
   const coStars = character?.relations?.coStars ?? []
-  const hasSpoilerContent = Boolean(character?.description?.includes('~!')) || direct.some((item) => item.spoiler)
+  const hiddenRelationSpoilers = direct.filter((item) => item.spoiler).length
+  const bioSpoilerCount = useMemo(() => splitSpoilers(character?.description ?? '').filter((segment) => segment.spoiler).length, [character?.description])
+  const hasSpoilerContent = bioSpoilerCount > 0 || hiddenRelationSpoilers > 0
 
   return (
     <AppLayout pathname={pathname} onNavigate={onNavigate} mainClassName="character-detail-main">
@@ -328,9 +352,34 @@ export default function CharacterDetail({ characterId, pathname, onNavigate }) {
                 </div>
               ) : null}
 
+              {character.description || hasSpoilerContent ? (
+                <div className="detail-bio-head">
+                  <h2>Tiểu sử</h2>
+                  {hasSpoilerContent ? (
+                    <div className="detail-spoiler-switch">
+                      <span>
+                        {[bioSpoilerCount && `${bioSpoilerCount} đoạn spoiler`, hiddenRelationSpoilers && `${hiddenRelationSpoilers} quan hệ spoiler`].filter(Boolean).join(' · ')}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        className="detail-spoiler-toggle"
+                        aria-checked={showSpoilers}
+                        onClick={() => setShowSpoilers((value) => !value)}
+                        title="Áp dụng cho tiểu sử, cây quan hệ và danh sách quan hệ"
+                      >
+                        {showSpoilers ? <Eye size={14} /> : <EyeOff size={14} />}
+                        {showSpoilers ? 'Đang hiện spoiler' : 'Đang ẩn spoiler'}
+                        <span className="detail-switch-track" aria-hidden="true"><span /></span>
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               {character.description ? (
                 <div className={`anime-description detail-description${expanded ? ' is-expanded' : ''}`}>
-                  <p><SpoilerText text={character.description} revealAll={showSpoilers} /></p>
+                  <p><SpoilerText key={showSpoilers ? 'shown' : 'hidden'} text={character.description} revealAll={showSpoilers} /></p>
                   {character.description.length > 420 ? (
                     <button type="button" className="detail-expand" onClick={() => setExpanded((value) => !value)}>{expanded ? 'Thu gọn' : 'Xem thêm'}</button>
                   ) : null}
@@ -340,11 +389,6 @@ export default function CharacterDetail({ characterId, pathname, onNavigate }) {
               )}
 
               <div className="detail-hero-actions">
-                {hasSpoilerContent ? (
-                  <button type="button" className="detail-spoiler-toggle" aria-pressed={showSpoilers} onClick={() => setShowSpoilers((value) => !value)}>
-                    {showSpoilers ? <EyeOff size={14} /> : <Eye size={14} />} {showSpoilers ? 'Ẩn spoiler' : 'Hiện spoiler'}
-                  </button>
-                ) : null}
                 {character.sourceUrl ? (
                   <a className="anime-external-link" href={character.sourceUrl} target="_blank" rel="noreferrer">Xem trên AniList <ExternalLink size={13} /></a>
                 ) : null}
@@ -355,6 +399,7 @@ export default function CharacterDetail({ characterId, pathname, onNavigate }) {
           <RelationGraph
             relations={character.relations}
             showSpoilers={showSpoilers}
+            onToggleSpoilers={() => setShowSpoilers(true)}
             onOpenCharacter={openCharacter}
             onOpenAnime={openAnime}
             center={{ name: character.name, image: character.image?.url }}

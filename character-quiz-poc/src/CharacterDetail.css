@@ -9,11 +9,22 @@
 .detail-description p { -webkit-line-clamp: 8; }
 .detail-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 14px; }
 .detail-hero-actions .anime-external-link { margin-top: 0; }
-.detail-spoiler-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 11px; border: 1px solid #e2c9bd; border-radius: 15px; background: #fbf5f1; color: #8a4f37; font: 700 11px 'Manrope', sans-serif; cursor: pointer; }
-.detail-spoiler-toggle[aria-pressed='true'] { border-color: #c98a6d; background: #c98a6d; color: #fff; }
-.detail-spoiler { display: inline; padding: 0 2px; border: 0; border-radius: 3px; background: #3b4f48; color: transparent; font: inherit; line-height: inherit; text-align: left; cursor: pointer; white-space: pre-line; }
-.detail-spoiler:hover { background: #4e665c; }
-.detail-spoiler.is-open { background: #fbf1ec; color: #6b3f2c; cursor: text; }
+.detail-bio-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 18px; padding-bottom: 8px; border-bottom: 1px solid #e3ebe7; }
+.detail-bio-head h2 { margin: 0; color: #203a32; font: 600 19px 'Newsreader', Georgia, serif; }
+.detail-bio-head + .anime-description { margin-top: 10px; }
+.detail-spoiler-switch { display: inline-flex; align-items: center; gap: 10px; }
+.detail-spoiler-switch > span { color: #8a6a5c; font-size: 11px; font-weight: 700; }
+.detail-spoiler-toggle { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 6px 0 11px; border: 1px solid #e2c9bd; border-radius: 15px; background: #fbf5f1; color: #8a4f37; font: 700 11px 'Manrope', sans-serif; cursor: pointer; }
+.detail-spoiler-toggle[aria-checked='true'] { border-color: #c98a6d; background: #fff1ea; }
+.detail-switch-track { position: relative; width: 28px; height: 16px; border-radius: 8px; background: #cdb8ad; transition: background .15s; }
+.detail-switch-track span { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.detail-spoiler-toggle[aria-checked='true'] .detail-switch-track { background: #c0603b; }
+.detail-spoiler-toggle[aria-checked='true'] .detail-switch-track span { transform: translateX(12px); }
+.anime-description .detail-spoiler { display: inline-flex; align-items: center; gap: 4px; margin: 0 1px; padding: 0 7px; border-radius: 9px; background: #3b4f48; color: #e8efec; font-size: 11px; font-weight: 700; line-height: 18px; vertical-align: 1px; white-space: nowrap; cursor: pointer; }
+.anime-description .detail-spoiler:hover, .anime-description .detail-spoiler:focus-visible { background: #2a6f62; outline: none; }
+.anime-description .detail-spoiler.is-open { display: inline; padding: 1px 2px; border-radius: 3px; background: #fbf1ec; box-shadow: inset 2px 0 0 #d9a58d; color: #6b3f2c; font-size: inherit; font-weight: inherit; line-height: inherit; white-space: pre-line; vertical-align: baseline; cursor: default; }
+.anime-description .detail-spoiler.is-open[role='button'] { cursor: pointer; }
+.detail-inline-link { padding: 0; border: 0; background: none; color: #2a6f62; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 
 .detail-section { margin-top: 26px; }
 .detail-section > h2, .detail-section-head h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: #203a32; font: 600 26px 'Newsreader', Georgia, serif; }

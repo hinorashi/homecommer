@@ -67,6 +67,50 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_anime_series_anilist ON anime_series(anilist_id);
 `)
 addColumnIfMissing('anime_series', 'relations_synced_at', 'TEXT')
+addColumnIfMissing('anime_series', 'tags_synced_at', 'TEXT')
+addColumnIfMissing('anime_series', 'mal_id', 'INTEGER')
+db.exec(`
+  CREATE TABLE IF NOT EXISTS anime_tags (
+    tag_id TEXT PRIMARY KEY,
+    anilist_tag_id INTEGER,
+    name TEXT NOT NULL,
+    category TEXT,
+    description TEXT,
+    is_general_spoiler INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE TABLE IF NOT EXISTS series_tags (
+    series_id TEXT NOT NULL REFERENCES anime_series(series_id) ON DELETE CASCADE,
+    tag_id TEXT NOT NULL REFERENCES anime_tags(tag_id) ON DELETE CASCADE,
+    rank INTEGER,
+    is_media_spoiler INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (series_id, tag_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_series_tags_tag ON series_tags(tag_id, series_id);
+`)
+
+const upsertTag = db.prepare(`
+  INSERT INTO anime_tags (tag_id, anilist_tag_id, name, category, description, is_general_spoiler)
+  VALUES (?, ?, ?, ?, ?, ?)
+  ON CONFLICT(tag_id) DO UPDATE SET
+    anilist_tag_id = excluded.anilist_tag_id, name = excluded.name, category = excluded.category,
+    description = excluded.description, is_general_spoiler = excluded.is_general_spoiler
+`)
+const deleteSeriesTags = db.prepare('DELETE FROM series_tags WHERE series_id = ?')
+const linkSeriesTag = db.prepare('INSERT OR REPLACE INTO series_tags (series_id, tag_id, rank, is_media_spoiler) VALUES (?, ?, ?, ?)')
+const markTagsSynced = db.prepare('UPDATE anime_series SET tags_synced_at = CURRENT_TIMESTAMP, mal_id = COALESCE(?, mal_id) WHERE series_id = ?')
+
+/** Stores AniList Media.tags (Youkai, Ninja, Isekai...); adult tags are skipped. No-op when the query did not request tags. */
+function saveSeriesTags(seriesId, media) {
+  if (!Array.isArray(media.tags)) return
+  deleteSeriesTags.run(seriesId)
+  for (const tag of media.tags) {
+    const tagId = normalizeId(tag?.name)
+    if (!tagId || tag.isAdult) continue
+    upsertTag.run(tagId, tag.id ?? null, tag.name, tag.category ?? null, tag.description ?? null, tag.isGeneralSpoiler ? 1 : 0)
+    linkSeriesTag.run(seriesId, tagId, tag.rank ?? null, tag.isMediaSpoiler ? 1 : 0)
+  }
+  markTagsSynced.run(media.idMal ?? null, seriesId)
+}
 
 const insertStudio = db.prepare(`
   INSERT INTO studios (studio_id, name) VALUES (?, ?)
@@ -234,6 +278,7 @@ function saveAnimeRecord(media, sourceId) {
   })
   insertSeriesExternalId.run(seriesId, sourceId, String(media.id), pageUrl)
   if (media.studios?.nodes) saveSeriesStudios(seriesId, media.studios.nodes.map((studio) => studio.name).filter(Boolean))
+  saveSeriesTags(seriesId, media)
 
   deleteSeriesGenres.run(seriesId, sourceId)
   for (const label of new Set(media.genres ?? [])) {
@@ -385,6 +430,9 @@ export function getCrawlStats() {
     charactersWithDetails: count('SELECT COUNT(*) AS count FROM characters WHERE details_synced_at IS NOT NULL'),
     characterRelations: count('SELECT COUNT(*) AS count FROM character_relations'),
     studios: count('SELECT COUNT(*) AS count FROM studios'),
+    animeRelations: count('SELECT COUNT(*) AS count FROM anime_relations'),
+    animeTags: count('SELECT COUNT(*) AS count FROM anime_tags'),
+    animeWithTags: count('SELECT COUNT(*) AS count FROM anime_series WHERE tags_synced_at IS NOT NULL'),
   }
 }
 
@@ -491,6 +539,7 @@ export function saveAnimeRelations(mediaList) {
         relations += 1
       }
       markRelationsSynced.run(seriesId)
+      saveSeriesTags(seriesId, media)
       saved += 1
     }
   })()
@@ -501,7 +550,7 @@ export function findAnimeForRelationCrawl({ limit = 100000, force = false } = {}
   return db.prepare(`
     SELECT s.series_id AS seriesId, s.anilist_id AS anilistId, s.title
     FROM anime_series s
-    WHERE s.anilist_id IS NOT NULL ${force ? '' : 'AND s.relations_synced_at IS NULL'}
+    WHERE s.anilist_id IS NOT NULL ${force ? '' : 'AND (s.relations_synced_at IS NULL OR s.tags_synced_at IS NULL)'}
     ORDER BY s.popularity IS NULL, s.popularity DESC
     LIMIT ?
   `).all(limit)

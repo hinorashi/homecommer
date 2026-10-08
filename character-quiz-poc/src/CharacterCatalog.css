@@ -114,3 +114,19 @@
   .catalog-search-form button { grid-column: 1 / -1; }
   .catalog-pagination { gap: 8px; }
 }
+.tag-picker { display: flex; align-items: flex-start; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #d8e2dd; }
+.tag-picker-label { display: inline-flex; align-items: center; gap: 5px; flex: none; min-height: 30px; color: #45625a; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+.tag-picker-box { display: flex; flex: 1; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.tag-picker-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 26px; padding: 0 8px; border: 1px solid #2a6f62; border-radius: 4px; background: #2a6f62; color: #fff; font: 700 11px 'Manrope', sans-serif; cursor: pointer; }
+.tag-picker-chip:hover { background: #1f574c; }
+.tag-picker-input { position: relative; flex: 1; min-width: 200px; }
+.tag-picker-input input { width: 100%; min-height: 30px; padding: 0 10px; border: 1px solid #d0ddd6; border-radius: 4px; background: #fff; color: #1f2c28; font: 600 12px 'Manrope', sans-serif; }
+.tag-picker-input input:focus { outline: 2px solid #8cc0ae; outline-offset: 0; border-color: #2a6f62; }
+.tag-picker-suggestions { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30; max-height: 320px; margin: 0; padding: 4px; overflow-y: auto; border: 1px solid #d0ddd6; border-radius: 6px; background: #fff; box-shadow: 0 10px 28px rgba(20, 40, 34, .14); list-style: none; }
+.tag-picker-suggestions li { display: grid; grid-template-columns: 14px 1fr auto auto; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; color: #2b3f39; font-size: 12px; cursor: pointer; }
+.tag-picker-suggestions li.is-active { background: #eef6f2; }
+.tag-picker-name { font-weight: 700; }
+.tag-picker-name em { margin-left: 6px; padding: 0 5px; border-radius: 3px; background: #fbeee7; color: #8a4f37; font-size: 9px; font-style: normal; text-transform: uppercase; }
+.tag-picker-suggestions small { overflow: hidden; max-width: 180px; color: #7d8f88; font-size: 10px; white-space: nowrap; text-overflow: ellipsis; }
+.tag-picker-suggestions b { color: #2a6f62; font-size: 11px; }
+@media (max-width: 640px) { .tag-picker { flex-direction: column; } .tag-picker-input { min-width: 0; width: 100%; } .tag-picker-suggestions small { display: none; } }

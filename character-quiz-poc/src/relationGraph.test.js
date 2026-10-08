@@ -56,3 +56,11 @@ test('splitSpoilers separates AniList spoiler markers', () => {
   assert.deepEqual(splitSpoilers('plain'), [{ spoiler: false, text: 'plain' }])
   assert.deepEqual(splitSpoilers(''), [])
 })
+
+test('splitSpoilers hides everything after an unclosed marker and drops stray closers', () => {
+  assert.deepEqual(splitSpoilers('Intro ~!truncated secret'), [
+    { spoiler: false, text: 'Intro ' },
+    { spoiler: true, text: 'truncated secret' },
+  ])
+  assert.deepEqual(splitSpoilers('odd !~ closer'), [{ spoiler: false, text: 'odd  closer' }])
+})

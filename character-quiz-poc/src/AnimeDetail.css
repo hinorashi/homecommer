@@ -44,6 +44,19 @@
 .anime-relations > h2 { margin: 0 0 12px; color: #203a32; font: 600 26px 'Newsreader', Georgia, serif; }
 .anime-relations > h2 span { color: #8a9a93; font-size: 18px; }
 .anime-relation-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.anime-tags { margin-top: 14px; }
+.anime-tags-head { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.anime-tags-head > span { color: #6b7f77; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+.anime-tags-toggle { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid #e2c9bd; border-radius: 10px; background: #fbf5f1; color: #8a4f37; font: 700 10px 'Manrope', sans-serif; cursor: pointer; }
+.anime-tags-toggle[aria-pressed='true'] { background: #fff1ea; border-color: #c98a6d; }
+.anime-tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.anime-tag { position: relative; display: inline-flex; align-items: center; gap: 6px; overflow: hidden; min-height: 26px; padding: 0 9px; border: 1px solid #d0ddd6; border-radius: 4px; background: #fff; color: #31544a; font: 700 11px 'Manrope', sans-serif; cursor: pointer; isolation: isolate; }
+.anime-tag::before { content: ''; position: absolute; inset: auto auto 0 0; z-index: -1; width: var(--tag-rank, 0%); height: 3px; background: #8cc0ae; }
+.anime-tag:hover { border-color: #2a6f62; background: #f1f8f5; }
+.anime-tag-rank { color: #8a9a93; font-size: 10px; font-weight: 600; }
+.anime-tag.is-spoiler { border-style: dashed; border-color: #d9a58d; color: #8a4f37; }
+.anime-tag.is-spoiler::before { background: #e0b29c; }
+.anime-tags .anime-tags-more { margin-top: 6px; padding: 0; border: 0; background: none; color: #2a6f62; font: 700 11px 'Manrope', sans-serif; cursor: pointer; }
 .anime-relation-card { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 11px; min-width: 0; padding: 8px; border: 1px solid #d7e1dc; border-radius: 5px; background: #fff; color: inherit; text-decoration: none; transition: border-color .15s, box-shadow .15s; }
 .anime-relation-card:hover { border-color: #9cc6b7; box-shadow: 0 4px 14px rgba(30, 55, 47, .08); }
 .anime-relation-card.is-internal { border-left: 3px solid #2a6f62; }

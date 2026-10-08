@@ -181,13 +181,26 @@ export function buildRelationGraph(relations, {
 export function splitSpoilers(text) {
   if (!text) return []
   const segments = []
+  const pushPlain = (value) => {
+    const clean = value.replace(/!~/g, '')
+    if (clean) segments.push({ spoiler: false, text: clean })
+  }
   const pattern = /~!([\s\S]*?)!~/g
   let last = 0
   for (const match of text.matchAll(pattern)) {
-    if (match.index > last) segments.push({ spoiler: false, text: text.slice(last, match.index) })
+    if (match.index > last) pushPlain(text.slice(last, match.index))
     if (match[1].trim()) segments.push({ spoiler: true, text: match[1] })
     last = match.index + match[0].length
   }
-  if (last < text.length) segments.push({ spoiler: false, text: text.slice(last) })
+  const rest = text.slice(last)
+  // An unclosed "~!" (truncated or malformed AniList markup) hides everything after it rather than leaking it.
+  const unclosed = rest.indexOf('~!')
+  if (unclosed >= 0) {
+    pushPlain(rest.slice(0, unclosed))
+    const spoilerText = rest.slice(unclosed + 2)
+    if (spoilerText.trim()) segments.push({ spoiler: true, text: spoilerText })
+  } else {
+    pushPlain(rest)
+  }
   return segments
 }

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ArrowRight, Building2, Filter, RefreshCw, Search, X } from 'lucide-react'
+import { ArrowDownUp, ArrowLeft, ArrowRight, Building2, Filter, RefreshCw, Search, Sparkles, UserRound, X } from 'lucide-react'
 import AppLayout from './AppLayout'
 import AnimeTagPicker from './AnimeTagPicker'
 import './CharacterCatalog.css'
 import './AnimeDetail.css'
+import { CHARACTER_GENDER_OPTIONS, CHARACTER_ROLE_OPTIONS, CHARACTER_SORT_OPTIONS, DEFAULT_CHARACTER_SORT, genderLabel, roleLabel } from './characterLabels'
 
 const PAGE_SIZE = 24
 
@@ -12,7 +13,7 @@ function splitList(value) {
   return [...new Set(value.split(',').map((item) => item.trim().toLowerCase()).filter(Boolean))].slice(0, 20)
 }
 
-function buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, offset }) {
+function buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, traits, roles, genders, sort, offset }) {
   const params = new URLSearchParams({
     q: query,
     contextGenre,
@@ -21,6 +22,10 @@ function buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTag
     animeTag: animeTags.length ? animeTags.join(',') : 'all',
     genreMode,
     studio,
+    trait: traits.length ? traits.join(',') : 'all',
+    role: roles.length ? roles.join(',') : 'all',
+    gender: genders.length ? genders.join(',') : 'all',
+    sort,
     limit: String(PAGE_SIZE),
     offset: String(offset),
   })
@@ -38,17 +43,25 @@ function readInitialState() {
     animeTags: splitList(params.get('animeTag')),
     genreMode: params.get('genreMode') === 'any' ? 'any' : 'all',
     studio: params.get('studio') || 'all',
+    traits: splitList(params.get('trait')),
+    roles: splitList(params.get('role')).filter((role) => CHARACTER_ROLE_OPTIONS.some((option) => option.value === role)),
+    genders: splitList(params.get('gender')).filter((gender) => CHARACTER_GENDER_OPTIONS.some((option) => option.value === gender)),
+    sort: CHARACTER_SORT_OPTIONS.some((option) => option.value === params.get('sort')) ? params.get('sort') : DEFAULT_CHARACTER_SORT,
     offset: offset - (offset % PAGE_SIZE),
   }
 }
 
-function buildPageUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, offset }) {
+function buildPageUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, traits, roles, genders, sort, offset }) {
   const params = new URLSearchParams()
   if (query) params.set('q', query)
   if (animeGenres.length) params.set('animeGenre', animeGenres.join(','))
   if (animeTags.length) params.set('animeTag', animeTags.join(','))
   if (animeGenres.length + animeTags.length > 1 && genreMode === 'any') params.set('genreMode', 'any')
   if (studio !== 'all') params.set('studio', studio)
+  if (traits.length) params.set('trait', traits.join(','))
+  if (roles.length) params.set('role', roles.join(','))
+  if (genders.length) params.set('gender', genders.join(','))
+  if (sort !== DEFAULT_CHARACTER_SORT) params.set('sort', sort)
   if (contextGenre !== 'all') params.set('contextGenre', contextGenre)
   if (archetype !== 'all') params.set('archetype', archetype)
   if (offset) params.set('offset', String(offset))
@@ -66,11 +79,19 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
   const [animeTags, setAnimeTags] = useState(initialState.animeTags)
   const [genreMode, setGenreMode] = useState(initialState.genreMode)
   const [studio, setStudio] = useState(initialState.studio)
+  const [traits, setTraits] = useState(initialState.traits)
+  const [roles, setRoles] = useState(initialState.roles)
+  const [genders, setGenders] = useState(initialState.genders)
+  const [sort, setSort] = useState(initialState.sort)
+  const [traitGroups, setTraitGroups] = useState([])
   const [offset, setOffset] = useState(initialState.offset)
   const [catalog, setCatalog] = useState({ characters: [], total: 0, hasMore: false })
   const [filterOptions, setFilterOptions] = useState({ contextGenres: [], archetypes: [], animeGenres: [], studios: [], animeTags: [] })
   const animeGenreKey = animeGenres.join(',')
   const animeTagKey = animeTags.join(',')
+  const traitKey = traits.join(',')
+  const roleKey = roles.join(',')
+  const genderKey = genders.join(',')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [syncProgress, setSyncProgress] = useState(null)
@@ -83,7 +104,9 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
       fetch('/api/metadata/anime-genres', { signal: controller.signal }).then((response) => response.ok ? response.json() : null),
       fetch('/api/metadata/studios', { signal: controller.signal }).then((response) => response.ok ? response.json() : null),
       fetch('/api/metadata/anime-tags', { signal: controller.signal }).then((response) => response.ok ? response.json() : null),
-    ]).then(([metadata, genres, studios, tags]) => {
+      fetch('/api/metadata/character-traits', { signal: controller.signal }).then((response) => response.ok ? response.json() : null),
+    ]).then(([metadata, genres, studios, tags, traitMetadata]) => {
+      setTraitGroups(traitMetadata?.groups ?? [])
       if (metadata) setFilterOptions({ ...metadata, animeGenres: genres?.genres ?? [], studios: studios?.studios ?? [], animeTags: tags?.tags ?? [] })
     }).catch((fetchError) => {
       if (fetchError.name !== 'AbortError') setError(fetchError.message)
@@ -92,15 +115,15 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
   }, [])
 
   useEffect(() => {
-    const pageUrl = buildPageUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), animeTags: splitList(animeTagKey), genreMode, studio, offset })
+    const pageUrl = buildPageUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), animeTags: splitList(animeTagKey), genreMode, studio, traits: splitList(traitKey), roles: splitList(roleKey), genders: splitList(genderKey), sort, offset })
     if (window.location.pathname + window.location.search !== pageUrl) {
       window.history.replaceState(window.history.state, '', pageUrl)
     }
-  }, [query, contextGenre, archetype, animeGenreKey, animeTagKey, genreMode, studio, offset])
+  }, [query, contextGenre, archetype, animeGenreKey, animeTagKey, genreMode, studio, traitKey, roleKey, genderKey, sort, offset])
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), animeTags: splitList(animeTagKey), genreMode, studio, offset }), { signal: controller.signal })
+    fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), animeTags: splitList(animeTagKey), genreMode, studio, traits: splitList(traitKey), roles: splitList(roleKey), genders: splitList(genderKey), sort, offset }), { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.error ?? `Catalog API returned ${response.status}`)
@@ -114,7 +137,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [query, contextGenre, archetype, animeGenreKey, animeTagKey, genreMode, studio, offset])
+  }, [query, contextGenre, archetype, animeGenreKey, animeTagKey, genreMode, studio, traitKey, roleKey, genderKey, sort, offset])
 
   useEffect(() => () => syncController.current?.abort(), [])
 
@@ -136,12 +159,23 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
       : [...animeTags, tagId].slice(0, 20))
   }
 
+  function toggleListValue(setter, list, value) {
+    changeFilter(setter, list.includes(value) ? list.filter((item) => item !== value) : [...list, value].slice(0, 20))
+  }
+
+  function toggleTrait(traitId) {
+    toggleListValue(setTraits, traits, traitId)
+  }
+
   function clearFilters() {
     setLoading(true)
     setAnimeGenres([])
     setAnimeTags([])
     setGenreMode('all')
     setStudio('all')
+    setTraits([])
+    setRoles([])
+    setGenders([])
     setContextGenre('all')
     setArchetype('all')
     setOffset(0)
@@ -157,7 +191,10 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
 
   const genreLabel = (id) => filterOptions.animeGenres.find((genre) => genre.id === id)?.label ?? id
   const tagLabel = (id) => filterOptions.animeTags.find((tag) => tag.id === id)?.name ?? id
-  const hasActiveFilters = animeGenres.length > 0 || animeTags.length > 0 || studio !== 'all' || contextGenre !== 'all' || archetype !== 'all'
+  const traitById = new Map(traitGroups.flatMap((group) => group.traits.map((trait) => [trait.id, trait])))
+  const traitLabel = (id) => traitById.get(id)?.label ?? id
+  const hasCharacterFilters = traits.length > 0 || roles.length > 0 || genders.length > 0
+  const hasActiveFilters = animeGenres.length > 0 || animeTags.length > 0 || studio !== 'all' || contextGenre !== 'all' || archetype !== 'all' || hasCharacterFilters
 
   async function syncCurrentPage() {
     const characters = catalog.characters
@@ -205,7 +242,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
     syncController.current = null
     setSyncProgress((current) => ({ ...current, running: false }))
     try {
-      const response = await fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, offset }))
+      const response = await fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, traits: splitList(traitKey), roles: splitList(roleKey), genders: splitList(genderKey), sort, offset }))
       if (response.ok) setCatalog(await response.json())
     } catch {
       // Keep the current page if refreshing after sync fails.
@@ -224,7 +261,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
           <div>
             <p className="catalog-eyebrow">THƯ VIỆN NHÂN VẬT</p>
             <h1>Tìm nhân vật anime</h1>
-            <p className="catalog-subtitle">Tìm theo tên, bí danh hoặc series; lọc theo thể loại và hình mẫu.</p>
+            <p className="catalog-subtitle">Tìm theo tên, bí danh hoặc series; lọc theo anime, vai trò, giới tính và đặc điểm tính cách.</p>
           </div>
           <button
             type="button"
@@ -297,7 +334,69 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
           <AnimeTagPicker tags={filterOptions.animeTags} selected={animeTags} onToggle={toggleAnimeTag} />
         </section>
 
+        <section className="catalog-character-filters" aria-label="Lọc theo đặc điểm nhân vật">
+          <div className="catalog-chip-row" role="group" aria-label="Vai trò trong anime">
+            <span className="catalog-chip-row-label"><UserRound size={13} /> Vai trò</span>
+            {CHARACTER_ROLE_OPTIONS.map((option) => (
+              <button
+                type="button"
+                key={option.value}
+                aria-pressed={roles.includes(option.value)}
+                className={`catalog-genre-chip${roles.includes(option.value) ? ' is-active' : ''}`}
+                onClick={() => toggleListValue(setRoles, roles, option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="catalog-chip-row" role="group" aria-label="Giới tính">
+            <span className="catalog-chip-row-label">Giới tính</span>
+            {CHARACTER_GENDER_OPTIONS.map((option) => (
+              <button
+                type="button"
+                key={option.value}
+                aria-pressed={genders.includes(option.value)}
+                className={`catalog-genre-chip${genders.includes(option.value) ? ' is-active' : ''}`}
+                onClick={() => toggleListValue(setGenders, genders, option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <details className="catalog-trait-panel" open={traits.length > 0 || undefined}>
+            <summary>
+              <Sparkles size={13} /> Đặc điểm &amp; hình mẫu {traits.length ? <em>{traits.length} đã chọn</em> : null}
+              <small>Tự động trích từ mô tả AniList · có thể chưa chính xác · chọn nhiều = phải có tất cả</small>
+            </summary>
+            {traitGroups.map((group) => (
+              <div className="catalog-chip-row" role="group" aria-label={group.label} key={group.id}>
+                <span className="catalog-chip-row-label">{group.label}</span>
+                {group.traits.map((trait) => {
+                  const active = traits.includes(trait.id)
+                  return (
+                    <button
+                      type="button"
+                      key={trait.id}
+                      aria-pressed={active}
+                      className={`catalog-genre-chip${active ? ' is-active' : ''}`}
+                      onClick={() => toggleTrait(trait.id)}
+                    >
+                      {trait.label}
+                      <small>{trait.characterCount}</small>
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </details>
+        </section>
+
         <section className="catalog-filter-bar" aria-label="Bộ lọc nhân vật">
+          <label className="catalog-filter"><span><ArrowDownUp size={13} /> Sắp xếp</span>
+            <select value={sort} onChange={(event) => changeFilter(setSort, event.target.value)}>
+              {CHARACTER_SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
           <label className="catalog-filter"><span><Building2 size={13} /> Studio</span>
             <select value={studio} onChange={(event) => changeFilter(setStudio, event.target.value)}>
               <option value="all">Tất cả studio</option>
@@ -323,7 +422,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
           <span className="catalog-result-count">{catalog.total} hồ sơ</span>
         </section>
 
-        {animeGenres.length || animeTags.length || studio !== 'all' ? (
+        {animeGenres.length || animeTags.length || studio !== 'all' || hasCharacterFilters ? (
           <p className="catalog-active-filters" aria-live="polite">
             Đang lọc:{' '}
             {[
@@ -343,6 +442,16 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
                 </button>
               </span>
             ) : null}
+            {[
+              ...roles.map((value) => ({ key: `r:${value}`, label: CHARACTER_ROLE_OPTIONS.find((option) => option.value === value)?.label ?? value, remove: () => toggleListValue(setRoles, roles, value) })),
+              ...genders.map((value) => ({ key: `s:${value}`, label: `Giới tính: ${CHARACTER_GENDER_OPTIONS.find((option) => option.value === value)?.label ?? value}`, remove: () => toggleListValue(setGenders, genders, value) })),
+              ...traits.map((id) => ({ key: `c:${id}`, label: `✦ ${traitLabel(id)}`, remove: () => toggleTrait(id) })),
+            ].map((item, index) => (
+              <span key={item.key}>
+                {index > 0 || animeGenres.length || animeTags.length || studio !== 'all' ? <i> · </i> : null}
+                <button type="button" onClick={item.remove} title="Bỏ bộ lọc này">{item.label} <X size={11} /></button>
+              </span>
+            ))}
           </p>
         ) : null}
 
@@ -409,6 +518,29 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
                   </button>
                 ))}
               </div>
+              {roleLabel(character.role) || genderLabel(character.gender) || character.favourites ? (
+                <div className="catalog-character-facts">
+                  {roleLabel(character.role) ? <span>Vai {roleLabel(character.role).toLowerCase()}</span> : null}
+                  {genderLabel(character.gender) ? <span>{genderLabel(character.gender)}</span> : null}
+                  {character.favourites ? <span title="Lượt yêu thích trên AniList">♥ {character.favourites.toLocaleString('vi-VN')}</span> : null}
+                </div>
+              ) : null}
+              {character.traits?.length ? (
+                <div className="catalog-metadata-line catalog-trait-line">
+                  {character.traits.map((trait) => (
+                    <button
+                      type="button"
+                      key={trait.id}
+                      aria-pressed={traits.includes(trait.id)}
+                      className={`catalog-chip-button${traits.includes(trait.id) ? ' is-active' : ''}`}
+                      title={traits.includes(trait.id) ? `Bỏ lọc ${trait.label}` : `Lọc nhân vật "${trait.label}" (tự động từ mô tả)`}
+                      onClick={() => { toggleTrait(trait.id); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                    >
+                      ✦ {trait.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <div className="catalog-metadata-line catalog-editorial-line">
                 {character.contextGenres.map((genre) => <span key={genre.id}>{genre.label}</span>)}
                 {character.archetypes.map((item) => <span key={item.id}>{item.label}</span>)}

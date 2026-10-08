@@ -1,6 +1,7 @@
 import { db } from './db.js'
 import { saveCharacterDetails, saveAnimeRelations } from './crawl-store.js'
 import { fetchAnimeRelations, fetchCharacterDetails } from './integrations/anilist-graphql.js'
+import { TRAIT_GROUPS, TRAIT_LEXICON, getTrait } from './character-traits.js'
 
 function parseJson(value, fallback = []) {
   try {
@@ -8,6 +9,37 @@ function parseJson(value, fallback = []) {
   } catch {
     return fallback
   }
+}
+
+const CHARACTER_ROLES = ['MAIN', 'SUPPORTING', 'BACKGROUND']
+const ROLE_LABELS = [...CHARACTER_ROLES, null]
+export const CHARACTER_SORTS = {
+  name: 'c.name COLLATE NOCASE',
+  favourites: 'c.favourites IS NULL, c.favourites DESC, c.name COLLATE NOCASE',
+}
+const NORMALIZED_GENDER = "lower(trim(COALESCE(c.gender, '')))"
+const GENDER_SQL = {
+  male: `(${NORMALIZED_GENDER} = 'male')`,
+  female: `(${NORMALIZED_GENDER} = 'female')`,
+  other: `(${NORMALIZED_GENDER} NOT IN ('male', 'female', 'unknown', ''))`,
+  unknown: `(${NORMALIZED_GENDER} IN ('unknown', ''))`,
+}
+
+function toTraitChips(traitIds) {
+  return traitIds.map((traitId) => getTrait(traitId)).filter(Boolean)
+    .map(({ id, label, group }) => ({ id, label, group }))
+}
+
+/** Derived-trait lexicon grouped for the character filter, with character counts. */
+export function listCharacterTraits() {
+  const counts = new Map(db.prepare('SELECT trait_id AS id, COUNT(*) AS count FROM character_derived_traits GROUP BY trait_id').all()
+    .map((row) => [row.id, row.count]))
+  return TRAIT_GROUPS.map((group) => ({
+    ...group,
+    traits: TRAIT_LEXICON.filter((entry) => entry.group === group.id)
+      .map((entry) => ({ id: entry.id, label: entry.label, characterCount: counts.get(entry.id) ?? 0 }))
+      .filter((entry) => entry.characterCount > 0),
+  })).filter((group) => group.traits.length)
 }
 
 export function parseFilterList(value) {
@@ -23,6 +55,10 @@ export function searchCharacterCatalog({
   genreMode = 'all',
   animeTag = 'all',
   studio = 'all',
+  trait = 'all',
+  role = 'all',
+  gender = 'all',
+  sort = 'name',
   limit = 24,
   offset = 0,
 } = {}) {
@@ -91,6 +127,11 @@ export function searchCharacterCatalog({
     seriesConditions.push(`s.series_id IN (SELECT ss.series_id FROM series_studios ss WHERE ss.studio_id IN (${studios.map(() => '?').join(', ')}))`)
     seriesParameters.push(...studios)
   }
+  const roles = parseFilterList(role).map((value) => value.toUpperCase()).filter((value) => CHARACTER_ROLES.includes(value))
+  if (roles.length) {
+    seriesConditions.push(`cs.role IN (${roles.map(() => '?').join(', ')})`)
+    seriesParameters.push(...roles)
+  }
   if (seriesConditions.length) {
     conditions.push(`c.id IN (
       SELECT cs.character_id FROM character_series cs
@@ -99,6 +140,14 @@ export function searchCharacterCatalog({
     )`)
     parameters.push(...seriesParameters)
   }
+
+  const traits = parseFilterList(trait).filter((value) => getTrait(value))
+  for (const traitId of traits) {
+    conditions.push('c.id IN (SELECT dt.character_id FROM character_derived_traits dt WHERE dt.trait_id = ?)')
+    parameters.push(traitId)
+  }
+  const genders = parseFilterList(gender).filter((value) => GENDER_SQL[value])
+  if (genders.length) conditions.push(`(${genders.map((value) => GENDER_SQL[value]).join(' OR ')})`)
 
   const where = conditions.length ? conditions.join(' AND ') : '1 = 1'
   const total = db.prepare(`
@@ -112,7 +161,9 @@ export function searchCharacterCatalog({
   const rows = db.prepare(`
     SELECT c.id, c.anilist_id AS anilistId, c.name, c.native_name AS nativeName,
       c.series, c.source_url AS sourceUrl, c.latest_release AS releaseMilestone,
-      c.latest_release_url AS releaseSourceUrl,
+      c.latest_release_url AS releaseSourceUrl, c.gender, c.favourites,
+      (SELECT MIN(${ROLE_ORDER}) FROM character_series cs WHERE cs.character_id = c.id) AS roleRank,
+      COALESCE((SELECT json_group_array(dt.trait_id) FROM character_derived_traits dt WHERE dt.character_id = c.id), '[]') AS traitIdsJson,
       COALESCE((
         SELECT json_group_array(DISTINCT json_object('id', cg.genre_id, 'label', g.label))
         FROM character_context_genres cg
@@ -170,7 +221,7 @@ export function searchCharacterCatalog({
       )) AS imageJson
     FROM characters c
     WHERE ${where}
-    ORDER BY c.name COLLATE NOCASE
+    ORDER BY ${CHARACTER_SORTS[sort] ?? CHARACTER_SORTS.name}
     LIMIT ? OFFSET ?
   `).all(...parameters, safeLimit, safeOffset)
 
@@ -189,6 +240,10 @@ export function searchCharacterCatalog({
     animeGenreLinks: parseJson(row.animeGenreLinksJson),
     primarySeries: parseJson(row.primarySeriesJson, null),
     seriesCount: row.seriesCount,
+    gender: row.gender,
+    favourites: row.favourites,
+    role: ROLE_LABELS[row.roleRank] ?? null,
+    traits: toTraitChips(parseJson(row.traitIdsJson)),
     image: parseJson(row.imageJson, null),
   }))
 
@@ -210,7 +265,9 @@ export function getAnimeDetail(seriesId, { characterLimit = 500 } = {}) {
       s.popularity, s.favourites, s.format, s.season, s.season_year AS seasonYear,
       s.episodes, s.status, s.average_score AS averageScore, s.description,
       s.cover_image AS coverImage, s.banner_image AS bannerImage, s.studios_json AS studiosJson,
-      s.characters_synced_at AS charactersSyncedAt, s.relations_synced_at AS relationsSyncedAt
+      s.characters_synced_at AS charactersSyncedAt, s.relations_synced_at AS relationsSyncedAt,
+      s.imdb_id AS imdbId, s.imdb_rating AS imdbRating, s.imdb_votes AS imdbVotes,
+      (SELECT COUNT(*) FROM anime_series x WHERE x.imdb_id = s.imdb_id) AS imdbSharedCount
     FROM anime_series s
     WHERE s.series_id = ?
   `).get(id)
@@ -317,6 +374,7 @@ export const ANIME_SORTS = {
   oldest: 's.season_year IS NULL, s.season_year ASC, s.popularity DESC',
   title: 's.title COLLATE NOCASE',
   characters: 'characterCount DESC, s.popularity DESC',
+  imdb: 's.imdb_rating IS NULL, s.imdb_rating DESC, s.imdb_votes DESC, s.popularity DESC',
 }
 
 const ANIME_TITLE_MATCH_SQL = `(
@@ -340,6 +398,8 @@ const ANIME_CARD_COLUMNS = `
   s.series_id AS id, s.anilist_id AS anilistId, s.title, s.title_english AS titleEnglish,
   s.title_native AS titleNative, s.format, s.season, s.season_year AS seasonYear, s.episodes,
   s.status, s.average_score AS averageScore, s.popularity, s.favourites, s.cover_image AS coverImage,
+  s.imdb_id AS imdbId, s.imdb_rating AS imdbRating, s.imdb_votes AS imdbVotes,
+  (SELECT COUNT(*) FROM anime_series x WHERE x.imdb_id = s.imdb_id) AS imdbSharedCount,
   (SELECT COUNT(DISTINCT cs.character_id) FROM character_series cs WHERE cs.series_id = s.series_id) AS characterCount,
   COALESCE((
     SELECT json_group_array(json_object('id', g.genre_id, 'label', g.label))
@@ -369,6 +429,7 @@ export function searchAnimeCatalog({
   yearFrom = null,
   yearTo = null,
   minScore = null,
+  minImdb = null,
   sort = 'popularity',
   limit = 24,
   offset = 0,
@@ -415,6 +476,8 @@ export function searchAnimeCatalog({
   if (Number.isFinite(from)) { conditions.push('s.season_year >= ?'); parameters.push(from) }
   if (Number.isFinite(to)) { conditions.push('s.season_year <= ?'); parameters.push(to) }
   if (Number.isFinite(score) && score > 0) { conditions.push('s.average_score >= ?'); parameters.push(score) }
+  const imdb = minImdb === null || minImdb === undefined || minImdb === '' ? null : Number(minImdb)
+  if (Number.isFinite(imdb) && imdb > 0) { conditions.push('s.imdb_rating >= ?'); parameters.push(imdb) }
 
   const where = conditions.length ? conditions.join(' AND ') : '1 = 1'
   const total = db.prepare(`SELECT COUNT(*) AS count FROM anime_series s WHERE ${where}`).get(...parameters).count
@@ -647,6 +710,8 @@ export function getCharacterDetail(characterId) {
     dateOfBirth: character.dateOfBirth,
     bloodType: character.bloodType,
     detailsSyncedAt: character.detailsSyncedAt,
+    traits: db.prepare('SELECT trait_id AS id, evidence FROM character_derived_traits WHERE character_id = ?').all(id)
+      .map((row) => ({ ...toTraitChips([row.id])[0], evidence: row.evidence })).filter((item) => item.label),
     image: character.imageUrl ? { url: character.imageUrl, provider: 'AniList' } : null,
     aliases,
     anime,

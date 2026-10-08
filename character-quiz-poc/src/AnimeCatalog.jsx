@@ -18,6 +18,12 @@ function splitList(value) {
 
 const intOrEmpty = (value) => (/^\d{1,4}$/.test(value ?? '') ? value : '')
 
+const IMDB_OPTIONS = ['9', '8.5', '8', '7.5', '7']
+
+function imdbOrEmpty(value) {
+  return IMDB_OPTIONS.includes(value) ? value : ''
+}
+
 function readInitialState() {
   const params = new URLSearchParams(window.location.search)
   const offset = Math.max(0, Math.trunc(Number(params.get('offset')) || 0))
@@ -33,6 +39,7 @@ function readInitialState() {
     yearFrom: intOrEmpty(params.get('yearFrom')),
     yearTo: intOrEmpty(params.get('yearTo')),
     minScore: intOrEmpty(params.get('minScore')),
+    minImdb: imdbOrEmpty(params.get('minImdb')),
     sort: ANIME_SORT_OPTIONS.some((option) => option.id === sort) ? sort : 'popularity',
     offset: offset - (offset % PAGE_SIZE),
   }
@@ -47,7 +54,7 @@ function toParams(filters, { forApi }) {
   for (const key of ['studio', 'format', 'status']) {
     if (filters[key] !== 'all') params.set(key, filters[key])
   }
-  for (const key of ['yearFrom', 'yearTo', 'minScore']) {
+  for (const key of ['yearFrom', 'yearTo', 'minScore', 'minImdb']) {
     if (filters[key]) params.set(key, filters[key])
   }
   if (forApi || filters.sort !== 'popularity') params.set('sort', filters.sort)
@@ -115,7 +122,7 @@ export default function AnimeCatalog({ pathname = '/anime', onNavigate }) {
   })
 
   function clearFilters() {
-    update({ genres: [], tags: [], genreMode: 'all', studio: 'all', format: 'all', status: 'all', yearFrom: '', yearTo: '', minScore: '' })
+    update({ genres: [], tags: [], genreMode: 'all', studio: 'all', format: 'all', status: 'all', yearFrom: '', yearTo: '', minScore: '', minImdb: '' })
   }
 
   function openAnime(seriesId) {
@@ -147,6 +154,7 @@ export default function AnimeCatalog({ pathname = '/anime', onNavigate }) {
       remove: () => update({ yearFrom: '', yearTo: '' }),
     },
     filters.minScore && { key: 'score', text: `Điểm ≥ ${filters.minScore}%`, remove: () => update({ minScore: '' }) },
+    filters.minImdb && { key: 'imdb', text: `IMDb ≥ ${filters.minImdb}`, remove: () => update({ minImdb: '' }) },
   ].filter(Boolean)
   const hasActiveFilters = setChips.length + otherChips.length > 0
 
@@ -261,6 +269,12 @@ export default function AnimeCatalog({ pathname = '/anime', onNavigate }) {
             {SCORE_OPTIONS.map((score) => <option key={score} value={String(score)}>≥ {score}%</option>)}
           </select>
         </label>
+        <label className="catalog-filter"><span>IMDb tối thiểu</span>
+          <select value={filters.minImdb} onChange={(event) => update({ minImdb: event.target.value })}>
+            <option value="">Bất kỳ</option>
+            {IMDB_OPTIONS.map((score) => <option key={score} value={score}>≥ {score}</option>)}
+          </select>
+        </label>
         <label className="catalog-filter"><span>Sắp xếp</span>
           <select value={filters.sort} onChange={(event) => update({ sort: event.target.value })}>
             {ANIME_SORT_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
@@ -306,6 +320,11 @@ export default function AnimeCatalog({ pathname = '/anime', onNavigate }) {
             >
               {anime.coverImage ? <img src={anime.coverImage} alt="" loading="lazy" /> : <span>{anime.title.slice(0, 1)}</span>}
               {anime.averageScore ? <b className="anime-card-score"><Star size={10} /> {anime.averageScore}%</b> : null}
+              {anime.imdbRating ? (
+                <b className="anime-imdb-badge" title={anime.imdbSharedCount > 1 ? `Điểm IMDb chung cho cả series (${anime.imdbSharedCount} phần)` : 'Điểm IMDb'}>
+                  <b>IMDb</b> {anime.imdbRating.toFixed(1)}
+                </b>
+              ) : null}
             </a>
             <div className="anime-card-body">
               <p className="anime-card-meta">

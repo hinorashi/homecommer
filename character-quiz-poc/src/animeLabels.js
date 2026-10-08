@@ -10,6 +10,7 @@ export const SEASON_LABELS = { WINTER: 'Đông', SPRING: 'Xuân', SUMMER: 'Hè',
 export const ANIME_SORT_OPTIONS = [
   { id: 'popularity', label: 'Phổ biến nhất' },
   { id: 'score', label: 'Điểm cao nhất' },
+  { id: 'imdb', label: 'Điểm IMDb' },
   { id: 'favourites', label: 'Nhiều yêu thích' },
   { id: 'newest', label: 'Mới nhất' },
   { id: 'oldest', label: 'Cũ nhất' },

@@ -1,5 +1,6 @@
 import { db, normalizeId, upsertSourceRecord } from './db.js'
 import { cleanCharacterDescription, parseCharacterMentions } from './character-relations.js'
+import { deriveTraits } from './character-traits.js'
 
 function addColumnIfMissing(table, column, definition) {
   const columns = db.pragma(`table_info(${table})`)
@@ -86,7 +87,81 @@ db.exec(`
     PRIMARY KEY (series_id, tag_id)
   );
   CREATE INDEX IF NOT EXISTS idx_series_tags_tag ON series_tags(tag_id, series_id);
+  CREATE TABLE IF NOT EXISTS character_derived_traits (
+    character_id TEXT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+    trait_id TEXT NOT NULL,
+    evidence TEXT,
+    PRIMARY KEY (character_id, trait_id)
+  );
+  CREATE INDEX IF NOT EXISTS idx_character_derived_traits_trait ON character_derived_traits(trait_id, character_id);
+  CREATE INDEX IF NOT EXISTS idx_character_series_role ON character_series(role, character_id);
 `)
+addColumnIfMissing('anime_series', 'imdb_id', 'TEXT')
+addColumnIfMissing('anime_series', 'imdb_rating', 'REAL')
+addColumnIfMissing('anime_series', 'imdb_votes', 'INTEGER')
+addColumnIfMissing('anime_series', 'imdb_synced_at', 'TEXT')
+db.exec('CREATE INDEX IF NOT EXISTS idx_anime_series_imdb ON anime_series(imdb_id)')
+
+const deleteDerivedTraits = db.prepare('DELETE FROM character_derived_traits WHERE character_id = ?')
+const insertDerivedTrait = db.prepare('INSERT OR REPLACE INTO character_derived_traits (character_id, trait_id, evidence) VALUES (?, ?, ?)')
+
+function replaceDerivedTraits(characterId, description) {
+  deleteDerivedTraits.run(characterId)
+  const traits = deriveTraits(description)
+  for (const entry of traits) insertDerivedTrait.run(characterId, entry.traitId, entry.evidence)
+  return traits.length
+}
+
+export function rebuildDerivedTraits() {
+  const rows = db.prepare('SELECT id, description FROM characters WHERE description IS NOT NULL').all()
+  let links = 0
+  db.transaction(() => {
+    db.exec('DELETE FROM character_derived_traits')
+    for (const row of rows) links += replaceDerivedTraits(row.id, row.description)
+  })()
+  return { characters: rows.length, links }
+}
+
+// Fribb/anime-lists entries: { anilist_id, mal_id, imdb_id: string | string[] }.
+export function saveImdbMapping(entries) {
+  const byAniList = new Map()
+  const byMal = new Map()
+  for (const entry of entries) {
+    const imdbIds = (Array.isArray(entry.imdb_id) ? entry.imdb_id : [entry.imdb_id]).filter((id) => /^tt\d+$/.test(String(id ?? '')))
+    if (!imdbIds.length) continue
+    if (entry.anilist_id && !byAniList.has(entry.anilist_id)) byAniList.set(Number(entry.anilist_id), imdbIds[0])
+    if (entry.mal_id && !byMal.has(entry.mal_id)) byMal.set(Number(entry.mal_id), imdbIds[0])
+  }
+  const rows = db.prepare('SELECT series_id AS seriesId, anilist_id AS anilistId, mal_id AS malId FROM anime_series').all()
+  const update = db.prepare('UPDATE anime_series SET imdb_id = ? WHERE series_id = ?')
+  let mapped = 0
+  db.transaction(() => {
+    for (const row of rows) {
+      const imdbId = byAniList.get(Number(row.anilistId)) ?? byMal.get(Number(row.malId)) ?? null
+      update.run(imdbId, row.seriesId)
+      if (imdbId) mapped += 1
+    }
+  })()
+  return { series: rows.length, mapped }
+}
+
+export function listMappedImdbIds() {
+  return new Set(db.prepare('SELECT DISTINCT imdb_id FROM anime_series WHERE imdb_id IS NOT NULL').pluck().all())
+}
+
+export function saveImdbRatings(ratings) {
+  const rows = db.prepare('SELECT series_id AS seriesId, imdb_id AS imdbId FROM anime_series').all()
+  const update = db.prepare('UPDATE anime_series SET imdb_rating = ?, imdb_votes = ?, imdb_synced_at = CURRENT_TIMESTAMP WHERE series_id = ?')
+  let rated = 0
+  db.transaction(() => {
+    for (const row of rows) {
+      const rating = row.imdbId ? ratings.get(row.imdbId) : null
+      update.run(rating?.rating ?? null, rating?.votes ?? null, row.seriesId)
+      if (rating) rated += 1
+    }
+  })()
+  return { rated }
+}
 
 const upsertTag = db.prepare(`
   INSERT INTO anime_tags (tag_id, anilist_tag_id, name, category, description, is_general_spoiler)
@@ -466,9 +541,11 @@ export function saveCharacterDetails(nodes) {
     for (const node of nodes) {
       const characterId = findCharacterByAniListId.get(node.id, String(node.id))?.id
       if (!characterId) continue
+      const description = cleanCharacterDescription(node.description)
+      replaceDerivedTraits(characterId, description)
       updateCharacterDetails.run({
         id: characterId,
-        description: cleanCharacterDescription(node.description),
+        description,
         gender: node.gender ?? null,
         age: node.age ? String(node.age).slice(0, 60) : null,
         dateOfBirth: formatDateOfBirth(node.dateOfBirth),

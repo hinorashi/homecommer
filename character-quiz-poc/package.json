@@ -19,6 +19,8 @@
     "crawl:details": "node server/scripts/crawl-anilist.js details",
     "crawl:anime-relations": "node server/scripts/crawl-anilist.js anime-relations",
     "crawl:all": "node server/scripts/crawl-anilist.js all",
+    "crawl:imdb": "node server/scripts/enrich-catalog.js imdb",
+    "derive:traits": "node server/scripts/enrich-catalog.js traits",
     "preview": "vite preview"
   },
   "dependencies": {

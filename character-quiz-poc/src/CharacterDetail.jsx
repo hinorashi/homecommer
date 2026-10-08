@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Building2, Eye, EyeOff, ExternalLink, Heart, Network, Users } from 'lucide-react'
+import { ArrowLeft, Building2, Eye, EyeOff, ExternalLink, Heart, Network, Sparkles, Users } from 'lucide-react'
 import AppLayout from './AppLayout'
 import { buildRelationGraph, relationLabelVi, splitSpoilers } from './relationGraph'
 import './CharacterCatalog.css'
@@ -349,6 +349,25 @@ export default function CharacterDetail({ characterId, pathname, onNavigate }) {
                       {genre.label}
                     </button>
                   ))}
+                </div>
+              ) : null}
+
+              {character.traits?.length ? (
+                <div className="detail-traits">
+                  <span className="detail-traits-label"><Sparkles size={12} /> Đặc điểm <small>(tự động từ mô tả)</small></span>
+                  <div className="catalog-metadata-line catalog-trait-line">
+                    {character.traits.map((trait) => (
+                      <a
+                        key={trait.id}
+                        className="catalog-chip-button"
+                        href={`/characters?trait=${encodeURIComponent(trait.id)}`}
+                        title={trait.evidence ? `Căn cứ: ${trait.evidence}\n\nBấm để xem nhân vật cùng đặc điểm` : 'Xem nhân vật cùng đặc điểm'}
+                        onClick={linkTo(`/characters?trait=${encodeURIComponent(trait.id)}`)}
+                      >
+                        ✦ {trait.label}
+                      </a>
+                    ))}
+                  </div>
                 </div>
               ) : null}
 

@@ -212,6 +212,19 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
                   {anime.averageScore ? <span><Star size={14} /> {anime.averageScore}%</span> : null}
                   {anime.popularity ? <span><Users size={14} /> {numberFormat.format(anime.popularity)} thành viên</span> : null}
                   {anime.favourites ? <span><Heart size={14} /> {numberFormat.format(anime.favourites)} yêu thích</span> : null}
+                  {anime.imdbRating ? (
+                    <a
+                      className="anime-imdb-stat"
+                      href={`https://www.imdb.com/title/${anime.imdbId}/`}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={anime.imdbSharedCount > 1 ? `Điểm IMDb chung cho cả series (${anime.imdbSharedCount} phần trong database dùng chung mã ${anime.imdbId})` : `IMDb ${anime.imdbId}`}
+                    >
+                      <b>IMDb</b> {anime.imdbRating.toFixed(1)}
+                      {anime.imdbVotes ? <small>({numberFormat.format(anime.imdbVotes)} lượt)</small> : null}
+                      {anime.imdbSharedCount > 1 ? <small>· chung cả series</small> : null}
+                    </a>
+                  ) : null}
                 </div>
 
                 {facts.length ? (
@@ -249,6 +262,9 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
                   <a className="anime-external-link" href={anime.pageUrl} target="_blank" rel="noreferrer">
                     Xem trên AniList <ExternalLink size={13} />
                   </a>
+                ) : null}
+                {anime.imdbRating ? (
+                  <p className="anime-imdb-attribution">Information courtesy of IMDb (<a href="https://www.imdb.com" target="_blank" rel="noreferrer">https://www.imdb.com</a>). Used with permission.</p>
                 ) : null}
               </div>
             </section>

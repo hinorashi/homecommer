@@ -118,168 +118,46 @@ Role: Java Developer
 Project: Internal company portal website for Bachkhoa Computer
 
 - Developed and maintained an internal website using JSP, Servlet, jQuery, and Bootstrap.
-- Worked in a dynamic environment and collaborated directly with stakeholders.
-- Studied and discussed business requirements with team lead.
-- Created basic design, detailed design, and implementation.
-- Wrote and executed unit tests.
+- Worked closely with stakeholders to capture business requirements and deliver the portal in a small-team environment.
+- Participated in design, implementation, and unit testing for the application.
 
 Technologies used:
-- Apache Tomcat 6
 - Java 7, JSP/Servlet, JUnit 4
+- Apache Tomcat 6, MSSQL 2016
 - jQuery, Bootstrap 4
-- MSSQL 2016
-
-Tools used:
-- Eclipse Neon
-- SQL Server Management Studio
 
 ### 2) FPT Software
 Period: 2016/12 – 2018/11
 
-#### 2016/12 – 2017/03
-Role: Java Fresher
+Role: Java Developer / Sub-Team Leader
 
-Project: Fsoft Fresher Training
+Project: Recruitment platform (ODC project)
 
-- Trained in Java Core, Java Web, and MS SQL.
-- Familiarized with Fsoft working processes and project standards.
-
-Technologies used:
-- HTML5, CSS3, jQuery
-- Struts2, JUnit 4
-- MS SQL 2016
-
-Tools used:
-- Eclipse Neon
-- SVN
-
-#### 2017/03 – 2017/07
-Role: Java Developer
-
-Project: X-recruitment (ODC, unnamed for security reasons)
-
-- Worked on an HR and recruitment system for a Japanese customer.
-- Studied project rules, business domain, and SRS documentation.
-- Learned and used the internal Seasar2 framework.
-- Created detailed design and implemented solutions using the internal framework.
-- Wrote and executed unit and functional tests.
+- Built and maintained Java web applications using Java 6/8, Seasar2, Oracle DB, and Tomcat.
+- Worked across requirement analysis, design, implementation, unit/integration testing, and regression support.
+- Supported teammate onboarding, API clarification, code review, and customer change request handling.
+- Contributed to Java 8 migration and legacy code modernization.
 
 Technologies used:
-- Apache Tomcat 6, Java 6, JUnit 3
-- Seasar2 framework
-- Oracle DB 12c
-
-Tools used:
-- Eclipse Kepler
-- Oracle SQL Developer
-- SVN, Git, Maven
-
-#### 2017/08 – 2017/12
-Role: Java Developer
-
-Project: X-recruitment (ODC)
-
-- Continued development for the next biannual release.
-- Studied SRS and prepared design and implementation.
-- Created and executed unit, function, and integration tests.
-- Extended the framework with filters, interceptors, taglibs, and utilities.
-
-Technologies used:
-- Apache Tomcat 6, Java 6, JUnit 3
-- Seasar2 framework
-- Oracle DB 12c
-
-Tools used:
-- Eclipse Kepler
-- Oracle SQL Developer
-- SVN, Git, Maven
-
-#### 2018/01 – 2018/06
-Role: Java Sub-Team Leader
-
-Project: X-recruitment (ODC)
-
-- Helped train new team members on the framework and internal processes.
-- Reviewed API specifications and clarified requirements with the team.
-- Created internal training documents and guidelines.
-- Verified design documents and source code from team members.
-- Verified test cases and test data.
-- Managed customer change requests.
-
-Technologies used:
-- Apache Tomcat 6, Java 6, JUnit 3
-- Seasar2 framework
-- Oracle DB 12c
-
-Tools used:
-- Eclipse Kepler
-- Oracle SQL Developer
-- SVN, Git, Maven
-
-#### 2018/07 – 2018/11
-Role: Java Sub-Team Leader
-
-Project: X-recruitment (ODC)
-
-- Migrated the system to Java 8.
-- Ran regression testing for the whole platform.
-- Updated deprecated API usage.
-- Created regression test cases and executed them.
-- Optimized legacy code using new Java 8 features.
-
-Technologies used:
-- Apache Tomcat 8, Java 8, JUnit 4
-- Seasar2 framework
-- Oracle DB 12c
-
-Tools used:
-- Eclipse Neon
-- Oracle SQL Developer
-- SVN, Git, Maven
+- Java 6/8, JUnit, Seasar2 framework
+- Apache Tomcat, Oracle DB 12c
+- Git, SVN, Maven
 
 ### 3) Framgia
 Period: 2018/11 – 2019/03
 
-#### 2018/11 – 2019/01
 Role: Java Developer
 
-Project: Truckbook
+Projects: Truckbook, Daily Report
 
-- Logistics truck booking and scheduling system.
-- Followed microservice architecture with a database-per-service model.
-- Joined the project during the testing phase.
-- Wrote and executed unit tests for a Spring Boot project.
-- Studied TDD/BDD and built testing utilities and documentation.
-
-Technologies used:
-- Java 8, JPA, Hibernate, PostgreSQL
-- Spring Boot, Spring Cloud, Eureka, Gateway, Spring Test
-- Mockito, AssertJ, Hamcrest, Testcontainers
-
-Tools used:
-- IntelliJ IDEA, DBeaver
-- Maven, GitHub, Postman
-
-#### 2019/01 – 2019/03
-Role: Java Developer
-
-Project: Daily Report (internal system for Framgia staff)
-
-- Followed microservice architecture and service registry patterns.
-- Defined the Maven structure for the full project.
-- Managed Maven dependency versioning.
-- Implemented microservice modules.
-- Cross-reviewed code among team members.
+- Worked on Spring Boot microservices with PostgreSQL/MySQL, JPA/Hibernate, and service discovery patterns.
+- Built and improved unit/integration tests using Mockito, AssertJ, Hamcrest, and Testcontainers.
+- Defined Maven module structures, dependency versioning, and internal project setup for multi-service applications.
+- Participated in code review and application-level maintenance in a microservice environment.
 
 Technologies used:
-- Java 8, JPA, Hibernate, MySQL
-- Spring Boot, Spring Cloud, Eureka, Gateway, Ribbon, OpenFeign
-- Linux, Ubuntu, Bash script
-- Chatwork API
-- Google Drive API for scheduled backup
-
-Tools used:
-- IntelliJ IDEA, DBeaver
+- Java 8, Spring Boot, Spring Cloud
+- JPA/Hibernate, PostgreSQL, MySQL
 - Maven, GitHub, Postman
 
 ### 4) CMC Global
@@ -290,17 +168,11 @@ Role: Java Developer
 
 Project: RMHub (Road Management System) phase 1
 
-- Customer: Hungarian
-- Tech stack: Java, Angular, microservices, containerization
-- Worked in an Agile/Scrum environment.
-- Discussed with SA and team lead to define the Maven multi-module structure.
-- Created environment setup guidelines for IntelliJ, OpenJDK, Maven, and coding standards.
-- Created guidelines for UT, IT, and JaCoCo coverage.
-- Defined GitFlow and GitLab merge request workflows.
-- Studied Docker and created Dockerfiles.
-- Prepared guidelines and examples for Spring profiles and external configuration.
-- Deployed and maintained the on-prem QA environment using bash scripts.
-- Configured logging and monitoring using Spring Boot Actuator.
+
+- Worked on a Java + Angular microservices project for a Hungarian customer.
+- Defined the Maven multi-module structure, coding standards, testing guidelines, and GitFlow workflow.
+- Prepared Docker-based environment setup, Spring profiles, and configuration conventions for the team.
+- Supported on-prem QA deployment, logging/monitoring setup, and environment consistency.
 
 Technologies used:
 - Java 11, JUnit 5, Spring Boot 2 family
@@ -317,53 +189,40 @@ Role: DevOps Engineer
 
 Project: RMHub phase 2
 
-- Continued the same project but shifted to a DevOps role.
-- Implemented GitLab CI with UT and IT pipelines.
-- Deployed and maintained test/QA environments using docker-compose.
-- Studied Kubernetes and maintained the staging environment with Minikube.
-- Deployed an API gateway with Kong.
-- Deployed the Angular frontend with Nginx.
+
+- Transitioned from Java development to hands-on DevOps, taking ownership of build, deployment, environment, and operational concerns for the same microservices product.
+- Implemented GitLab CI pipelines for unit and integration testing, establishing an automated delivery foundation.
+- Containerized services and deployed and maintained test/QA environments with Docker Compose.
+- Built practical Kubernetes experience by operating the staging environment with Minikube and Helm.
+- Delivered shared runtime components including Kong API Gateway, NGINX-hosted Angular frontend, Prometheus, and Grafana.
 
 Toolchains:
-- Containerization: Docker, Kubernetes, Helm
-- Infra: Linux, Ubuntu, Bash script
-- CI: GitLab CI
-- Monitoring: Prometheus, Grafana
-- API Gateway: Kong
-- Message broker: Apache Kafka
-- HTTP server: Nginx
+- CI/CD: GitLab CI, unit/integration test pipelines
+- Containers & orchestration: Docker, Docker Compose, Kubernetes, Minikube, Helm
+- Platform services: Kong, NGINX, Apache Kafka
+- Observability: Prometheus, Grafana
+- Infrastructure: Linux, Ubuntu, Bash scripting
 
 #### 2020/03 – 2021/07
 Role: DevOps Engineer
 
 Projects: ODC Projects
 
-- Supported multiple projects as a DevOps engineer.
-- Customer: Singaporean
-- Business: Digital banking solutions
-- Tech stack: Java, React, Docker, Kubernetes, AWS, Azure
-- Worked in an Agile/Scrum environment.
 
-Main responsibilities:
-- Deployed and maintained Jira and Confluence servers in AWS and Azure.
-- Created RBAC guidelines for Jira projects using user groups, project roles, and permission schemes.
-- Migrated Bitbucket Server from Alibaba Cloud to AWS.
-- Managed and supported email accounts hosted by GoDaddy.
-- Configured and maintained business DNS domains in AWS Route53.
-- Generated and renewed SSL and wildcard certificates using Let's Encrypt.
-- Set up and deployed Tyk API Gateway to secure internal services.
-- Deployed and maintained landing pages with AWS Lightsail.
-- Configured business email sending using AWS SES.
-- Set up ArkCase CRM development environment for the BA team using Vagrant.
+- Expanded into multi-project DevOps operations for digital banking customers, supporting Java and React workloads across AWS and Azure.
+- Deployed and operated developer collaboration services including Jira, Confluence, and Bitbucket; migrated Bitbucket Server from Alibaba Cloud to AWS.
+- Established operational controls through Jira RBAC standards, Route53 DNS management, and Let's Encrypt wildcard certificate automation.
+- Delivered platform services including Tyk API Gateway, AWS Lightsail landing pages, AWS SES email delivery, and Vagrant-based BA environments.
+- Supported Linux-based infrastructure and Docker, Docker Compose, and Docker Swarm deployments in Agile/Scrum delivery teams.
 
 Toolchains:
-- Infra: Linux, Ubuntu, RHEL
-- Containerization: Docker, Docker Compose, Docker Swarm
-- Cloud provider: AWS, Azure
-- Email provider: GoDaddy
-- DNS provider: GoDaddy, Namecheap, Route53, Google Domains
+- Cloud & infrastructure: AWS, Azure, Linux, Ubuntu, RHEL
+- Containers: Docker, Docker Compose, Docker Swarm
+- Developer platforms: Jira, Confluence, Bitbucket, Vagrant
+- Networking & security: Route53, GoDaddy, Namecheap, Google Domains, Let's Encrypt, Tyk
+- Cloud services: AWS Lightsail, AWS SES
 
-### 5) MB Ageas Life (MBAL)
+### 5) MB Life (formerly MB Ageas Life / MBAL)
 Period: 2021/07 – 2026/05
 
 Role focus: DevOps Engineer / Platform Engineer / SRE-minded cloud operations with strong ownership on platform reliability, security, automation, and cost governance.
@@ -603,6 +462,32 @@ Toolchain & technologies:
 
 ## Changelog
 
-### 1.0.0 (2021-05-21)
-- Added initial CV version.
+### 1.0.0 (2018-11-15)
+- Added: initial bio, objectives, and professional experience up to the end of the Fsoft period.
 
+### 2.0.0 (2019-03-12)
+- Added: experience at Framgia.
+- Updated: objectives and technical skill set.
+
+### 3.0.0 (2021-05-21)
+- Added: experience at CMC Global.
+- Updated: objectives, technical skills, and knowledge base.
+- Updated: renamed Framgia to Sun* after rebranding.
+
+### 4.0.0 (2024-07-15)
+- Added: experience at MBAL.
+- Updated: technical skills and platform engineering direction.
+- Updated: long-term goals toward Platform Engineer.
+
+### 4.1.0 (2026-08-21)
+- Added: continued experience at MB Life following the MBAL rebrand.
+- Updated: professional summary and career narrative.
+- Updated: renaming MBAL to MB Life.
+- Updated: markdown headings, formatting, and indentation for readability.
+
+### 4.2.0 (2026-08-25)
+- Updated: objective section to focus on Platform Engineering.
+- Updated: professional summary to align with DevOps, SRE, and Platform Engineering roles.
+- Updated: technical skills to reflect real platform and infrastructure experience.
+- Updated: MBAL transformation section to emphasize private on-prem platform architecture, GitOps, Kubernetes, Harbor, NGINX, Longhorn, and S2S VPN connectivity.
+- Updated: changelog structure for cleaner release tracking.

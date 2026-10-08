@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, RefreshCw } from 'lucide-react'
 import AppLayout from './AppLayout'
+import AdminCrawlPanel from './AdminCrawlPanel'
 import './CharacterCatalog.css'
 
 export default function MetadataAdmin({ pathname = '/admin', onNavigate }) {
@@ -114,6 +115,8 @@ export default function MetadataAdmin({ pathname = '/admin', onNavigate }) {
             </div>
           </section>
         ) : null}
+
+        <AdminCrawlPanel />
 
         <button type="button" className="text-action admin-back" onClick={() => onNavigate('/characters')}><ArrowLeft size={15} /> Về thư viện nhân vật</button>
     </AppLayout>

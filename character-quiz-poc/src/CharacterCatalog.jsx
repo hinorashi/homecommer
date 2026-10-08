@@ -378,7 +378,9 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
                       type="button"
                       key={trait.id}
                       aria-pressed={active}
-                      className={`catalog-genre-chip${active ? ' is-active' : ''}`}
+                      className={`catalog-genre-chip${active ? ' is-active' : ''}${trait.description ? ' trait-tip' : ''}`}
+                      data-tip={trait.description ?? undefined}
+                      aria-description={trait.description ?? undefined}
                       onClick={() => toggleTrait(trait.id)}
                     >
                       {trait.label}
@@ -532,8 +534,9 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
                       type="button"
                       key={trait.id}
                       aria-pressed={traits.includes(trait.id)}
-                      className={`catalog-chip-button${traits.includes(trait.id) ? ' is-active' : ''}`}
-                      title={traits.includes(trait.id) ? `Bỏ lọc ${trait.label}` : `Lọc nhân vật "${trait.label}" (tự động từ mô tả)`}
+                      className={`catalog-chip-button${traits.includes(trait.id) ? ' is-active' : ''}${trait.description ? ' trait-tip' : ''}`}
+                      data-tip={trait.description ? `${trait.description}\n\n${traits.includes(trait.id) ? 'Bấm để bỏ lọc' : 'Bấm để lọc nhân vật cùng đặc điểm'}` : undefined}
+                      aria-description={trait.description ?? undefined}
                       onClick={() => { toggleTrait(trait.id); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                     >
                       ✦ {trait.label}

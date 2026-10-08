@@ -263,11 +263,14 @@ async function main() {
   }
 
   seedDatabase()
-  process.on('SIGINT', () => {
+  const requestStop = () => {
     if (stopRequested) process.exit(130)
     stopRequested = true
     console.log('\nStopping after the current request (press Ctrl+C again to force)...')
-  })
+  }
+  process.on('SIGINT', requestStop)
+  // When launched from the admin UI the API asks for a graceful stop over IPC.
+  process.on('message', (message) => { if (message === 'stop') requestStop() })
 
   if (options.command === 'genres') await crawlGenres()
   else if (options.command === 'anime') await crawlAnime(options)
@@ -290,4 +293,5 @@ try {
   process.exitCode = 1
 } finally {
   db.close()
+  if (process.connected) process.disconnect()
 }

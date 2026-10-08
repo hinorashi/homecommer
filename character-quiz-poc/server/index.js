@@ -17,6 +17,8 @@ import {
   syncCharacterDetailsIfMissing,
 } from './catalog-service.js'
 import { getMetadataSyncJob, startFullMetadataSync } from './admin-metadata-sync.js'
+import { getCrawlJob, listCrawlCommands, shutdownCrawlJob, startCrawlJob, stopCrawlJob } from './admin-crawl-runner.js'
+import { getCrawlStats } from './crawl-store.js'
 import { searchAniListCharacters, syncAniListCharacterMetadataBatch } from './integrations/anilist.js'
 import { matchFromDatabase } from './match-service.js'
 
@@ -260,6 +262,34 @@ app.get('/api/admin/metadata/sync/:jobId', (request, response) => {
   return response.json({ job })
 })
 
+app.get('/api/admin/crawl/commands', (_request, response) => {
+  if (!adminAllowed) return response.status(403).json({ error: 'Admin crawl is disabled for non-local API hosts.' })
+  return response.json({ commands: listCrawlCommands() })
+})
+
+app.get('/api/admin/crawl/status', (_request, response) => {
+  if (!adminAllowed) return response.status(403).json({ error: 'Admin crawl is disabled for non-local API hosts.' })
+  return response.json({ job: getCrawlJob(), stats: getCrawlStats() })
+})
+
+app.post('/api/admin/crawl', (request, response) => {
+  if (!adminAllowed) return response.status(403).json({ error: 'Admin crawl is disabled for non-local API hosts.' })
+  if (getMetadataSyncJob()?.status === 'running') {
+    return response.status(409).json({ error: 'Đang đồng bộ metadata character, hãy đợi xong rồi chạy crawl.' })
+  }
+  try {
+    const job = startCrawlJob(String(request.body?.command ?? ''), request.body?.options)
+    return response.status(202).json({ job })
+  } catch (error) {
+    return response.status(error.status ?? 400).json({ error: error.message })
+  }
+})
+
+app.post('/api/admin/crawl/stop', (_request, response) => {
+  if (!adminAllowed) return response.status(403).json({ error: 'Admin crawl is disabled for non-local API hosts.' })
+  return response.json({ job: stopCrawlJob() })
+})
+
 app.use((error, request, response, next) => {
   console.error(`${request.method} ${request.path}`, error)
   if (error.type === 'entity.too.large') return response.status(413).json({ error: 'Request body is too large.' })
@@ -273,6 +303,7 @@ const server = app.listen(port, host, () => {
 })
 
 function shutdown() {
+  shutdownCrawlJob()
   server.close(() => {
     db.close()
     process.exit(0)

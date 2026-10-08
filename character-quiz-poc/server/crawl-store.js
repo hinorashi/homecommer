@@ -508,6 +508,8 @@ export function getCrawlStats() {
     animeRelations: count('SELECT COUNT(*) AS count FROM anime_relations'),
     animeTags: count('SELECT COUNT(*) AS count FROM anime_tags'),
     animeWithTags: count('SELECT COUNT(*) AS count FROM anime_series WHERE tags_synced_at IS NOT NULL'),
+    animeWithImdb: count('SELECT COUNT(*) AS count FROM anime_series WHERE imdb_rating IS NOT NULL'),
+    characterTraitLinks: count('SELECT COUNT(*) AS count FROM character_derived_traits'),
   }
 }
 

@@ -359,9 +359,10 @@ export default function CharacterDetail({ characterId, pathname, onNavigate }) {
                     {character.traits.map((trait) => (
                       <a
                         key={trait.id}
-                        className="catalog-chip-button"
+                        className="catalog-chip-button trait-tip"
                         href={`/characters?trait=${encodeURIComponent(trait.id)}`}
-                        title={trait.evidence ? `Căn cứ: ${trait.evidence}\n\nBấm để xem nhân vật cùng đặc điểm` : 'Xem nhân vật cùng đặc điểm'}
+                        data-tip={[trait.description, trait.evidence ? `Căn cứ trong mô tả: “${trait.evidence}”` : null, 'Bấm để xem nhân vật cùng đặc điểm'].filter(Boolean).join('\n\n')}
+                        aria-description={trait.description ?? undefined}
                         onClick={linkTo(`/characters?trait=${encodeURIComponent(trait.id)}`)}
                       >
                         ✦ {trait.label}

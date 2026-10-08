@@ -102,4 +102,5 @@ try {
   process.exitCode = 1
 } finally {
   db.close()
+  if (process.connected) process.disconnect()
 }

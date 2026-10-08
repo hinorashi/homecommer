@@ -27,7 +27,7 @@ const GENDER_SQL = {
 
 function toTraitChips(traitIds) {
   return traitIds.map((traitId) => getTrait(traitId)).filter(Boolean)
-    .map(({ id, label, group }) => ({ id, label, group }))
+    .map(({ id, label, group, description }) => ({ id, label, group, description }))
 }
 
 /** Derived-trait lexicon grouped for the character filter, with character counts. */
@@ -37,7 +37,7 @@ export function listCharacterTraits() {
   return TRAIT_GROUPS.map((group) => ({
     ...group,
     traits: TRAIT_LEXICON.filter((entry) => entry.group === group.id)
-      .map((entry) => ({ id: entry.id, label: entry.label, characterCount: counts.get(entry.id) ?? 0 }))
+      .map((entry) => ({ id: entry.id, label: entry.label, description: entry.description, characterCount: counts.get(entry.id) ?? 0 }))
       .filter((entry) => entry.characterCount > 0),
   })).filter((group) => group.traits.length)
 }

@@ -320,11 +320,6 @@ export default function AnimeCatalog({ pathname = '/anime', onNavigate }) {
             >
               {anime.coverImage ? <img src={anime.coverImage} alt="" loading="lazy" /> : <span>{anime.title.slice(0, 1)}</span>}
               {anime.averageScore ? <b className="anime-card-score"><Star size={10} /> {anime.averageScore}%</b> : null}
-              {anime.imdbRating ? (
-                <b className="anime-imdb-badge" title={anime.imdbSharedCount > 1 ? `Điểm IMDb chung cho cả series (${anime.imdbSharedCount} phần)` : 'Điểm IMDb'}>
-                  <b>IMDb</b> {anime.imdbRating.toFixed(1)}
-                </b>
-              ) : null}
             </a>
             <div className="anime-card-body">
               <p className="anime-card-meta">
@@ -341,6 +336,11 @@ export default function AnimeCatalog({ pathname = '/anime', onNavigate }) {
               </h2>
               {anime.titleEnglish && anime.titleEnglish !== anime.title ? <p className="anime-card-alt">{anime.titleEnglish}</p> : null}
               <p className="anime-card-stats">
+                {anime.imdbRating ? (
+                  <span className="anime-imdb-badge" title={anime.imdbSharedCount > 1 ? `Điểm IMDb chung cho cả series (${anime.imdbSharedCount} phần)` : 'Điểm IMDb'}>
+                    <b>IMDb</b> {anime.imdbRating.toFixed(1)}
+                  </span>
+                ) : null}
                 {anime.popularity ? <span title="Thành viên AniList"><Users size={11} /> {numberFormat.format(anime.popularity)}</span> : null}
                 {anime.favourites ? <span title="Yêu thích"><Heart size={11} /> {numberFormat.format(anime.favourites)}</span> : null}
                 {anime.characterCount ? <span>{anime.characterCount} nhân vật</span> : null}

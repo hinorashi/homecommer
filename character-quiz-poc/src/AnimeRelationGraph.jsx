@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Minus, Network, Plus } from 'lucide-react'
-import { buildAnimeRelationGraph, groupAnimeRelations } from './animeRelationLayout'
+import { ANIME_RELATION_LABELS, buildAnimeRelationGraph, groupAnimeRelations } from './animeRelationLayout'
 import { FORMAT_LABELS } from './animeLabels'
 
 export default function AnimeRelationGraph({ anime, onNavigate }) {
@@ -38,35 +38,32 @@ export default function AnimeRelationGraph({ anime, onNavigate }) {
           <button type="button" aria-label="Phóng to đồ thị" disabled={zoom >= 1.4} onClick={() => setZoom((value) => Math.min(1.4, value + 0.2))}><Plus size={14} /></button>
         </div>
       </div>
-      <p className="anime-graph-note">Quan hệ tính từ anime đang xem đến tác phẩm ở bên phải. Cuộn để xem toàn bộ; bấm một anime để mở chi tiết.</p>
+      <p className="anime-graph-note">Prequel ở trước → anime hiện tại → sequel ở sau. Spin-off và các quan hệ khác rẽ nhánh bên dưới; không phải thứ tự năm phát hành.</p>
       {graph.nodes.length ? (
         <div className="anime-graph-viewport" tabIndex={0} role="region" aria-label="Đồ thị quan hệ anime có thể cuộn">
           <div style={{ width: graph.width * scale, height: graph.height * scale }}>
             <div className="anime-graph-canvas" style={{ width: graph.width, height: graph.height, transform: `scale(${scale})` }}>
               <svg width={graph.width} height={graph.height} aria-hidden="true">
-                {graph.hubs.map((hub) => (
-                  <path key={hub.type} className="anime-graph-trunk" d={`M 250 ${centerY} C 305 ${centerY}, 305 ${hub.y}, 365 ${hub.y}`} />
-                ))}
+                <defs><marker id="anime-timeline-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6" fill="#93baaa" /></marker></defs>
                 {graph.nodes.map((node) => {
-                  const hub = graph.hubs.find((item) => item.type === (node.relationType ?? 'OTHER'))
                   const y = node.y + node.height / 2
-                  return <path key={node.key} className="anime-graph-branch" d={`M 550 ${hub.y} C 595 ${hub.y}, 595 ${y}, 640 ${y}`} />
+                  const path = node.lane === 'before'
+                    ? `M 260 ${y} C 300 ${y}, 300 ${centerY}, 335 ${centerY}`
+                    : node.lane === 'after'
+                      ? `M 575 ${centerY} C 610 ${centerY}, 610 ${y}, 650 ${y}`
+                      : `M 455 118 L 455 ${y} L ${node.x < 335 ? 260 : 650} ${y}`
+                  return <path key={node.key} className="anime-graph-branch" markerEnd="url(#anime-timeline-arrow)" d={path} />
                 })}
               </svg>
               <div className="anime-graph-node anime-graph-center" style={{ left: graph.center.x, top: graph.center.y, width: graph.center.width }}>
                 {anime.coverImage ? <img src={anime.coverImage} alt="" /> : null}
                 <div><small>Đang xem</small><strong>{anime.title}</strong></div>
               </div>
-              {graph.hubs.map((hub) => (
-                <div key={hub.type} className="anime-graph-hub" style={{ left: hub.x, top: hub.y - 26 }}>
-                  <strong>{hub.label}</strong><small>{hub.count} tác phẩm</small>
-                </div>
-              ))}
               {graph.nodes.map((node) => {
                 const href = node.seriesId ? `/anime/${encodeURIComponent(node.seriesId)}` : node.siteUrl
                 const content = <>
                   {node.coverImage ? <img src={node.coverImage} alt="" loading="lazy" /> : null}
-                  <div><strong>{node.title}</strong><small>{[FORMAT_LABELS[node.format] ?? node.format ?? node.mediaType, node.seasonYear, !node.seriesId && href ? 'AniList ↗' : null].filter(Boolean).join(' · ')}</small></div>
+                  <div><small className="anime-graph-relation-label">{ANIME_RELATION_LABELS[node.relationType] ?? node.relationType ?? 'Khác'}</small><strong>{node.title}</strong><small>{[FORMAT_LABELS[node.format] ?? node.format ?? node.mediaType, node.seasonYear, !node.seriesId && href ? 'AniList ↗' : null].filter(Boolean).join(' · ')}</small></div>
                 </>
                 const style = { left: node.x, top: node.y, width: node.width }
                 return href ? (

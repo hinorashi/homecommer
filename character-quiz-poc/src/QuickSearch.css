@@ -21,6 +21,9 @@
 .quick-search-text { display: grid; min-width: 0; }
 .quick-search-text strong { overflow: hidden; color: #203a32; font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
 .quick-search-text small { overflow: hidden; color: #7d8f88; font-size: 10px; white-space: nowrap; text-overflow: ellipsis; }
+.quick-search-anime-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; min-width: 0; }
+.quick-search-imdb { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; color: #7a4b12; font-size: 10px; font-weight: 800; }
+.quick-search-imdb b { padding: 0 4px; border-radius: 3px; background: #f5c518; color: #111; font-size: 8px; line-height: 1.6; }
 .quick-search-note { margin: 6px; color: #7d8f88; font-size: 11px; }
 .quick-search-more { align-self: flex-start; margin: 6px 4px 2px; padding: 0; border: 0; background: none; color: #2a6f62; font: 700 11px 'Manrope', sans-serif; cursor: pointer; }
 .quick-search-more:hover { text-decoration: underline; }

@@ -68,6 +68,8 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
   const [loading, setLoading] = useState(true)
   const [role, setRole] = useState('all')
   const [expanded, setExpanded] = useState(false)
+  const [relationView, setRelationView] = useState({ seriesId, mode: 'cards' })
+  const showRelationGraph = relationView.seriesId === seriesId && relationView.mode === 'graph'
 
   useEffect(() => {
     const controller = new AbortController()
@@ -249,8 +251,15 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
 
             {relationGroups.length ? (
               <section className="anime-relations" aria-labelledby="anime-relations-heading">
-                <h2 id="anime-relations-heading">Liên quan <span>({anime.relations.length})</span></h2>
-                <AnimeRelationGraph key={anime.id} anime={anime} onNavigate={onNavigate} />
+                <div className="anime-relations-heading">
+                  <h2 id="anime-relations-heading">Liên quan <span>({anime.relations.length})</span></h2>
+                  <div className="anime-role-tabs" role="group" aria-label="Chế độ xem tác phẩm liên quan">
+                    <button type="button" className={!showRelationGraph ? 'is-active' : ''} aria-pressed={!showRelationGraph} aria-controls="anime-relations-content" onClick={() => setRelationView({ seriesId, mode: 'cards' })}>Thẻ</button>
+                    <button type="button" className={showRelationGraph ? 'is-active' : ''} aria-pressed={showRelationGraph} aria-controls="anime-relations-content" onClick={() => setRelationView({ seriesId, mode: 'graph' })}>Đồ thị</button>
+                  </div>
+                </div>
+                <div id="anime-relations-content">
+                {showRelationGraph ? <AnimeRelationGraph key={anime.id} anime={anime} onNavigate={onNavigate} /> : (
                 <div className="anime-relation-list">
                   {relationGroups.flatMap((group) => group.items.map((relation) => {
                     const internal = Boolean(relation.seriesId)
@@ -277,6 +286,8 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
                       </a>
                     )
                   }))}
+                </div>
+                )}
                 </div>
               </section>
             ) : null}

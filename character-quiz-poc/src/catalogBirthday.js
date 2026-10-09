@@ -16,3 +16,16 @@ export function birthdayMonthDay(date) {
 export function initialBirthdayFilter(params) {
   return params.get('birthday') === 'today' || params.size === 0
 }
+
+export function parseBirthdayQuery(query) {
+  const match = /^(\d{1,2})[/-](\d{1,2})$/.exec(String(query).trim())
+  if (!match) return null
+  const date = `2000-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`
+  try {
+    return birthdayMonthDay(date)
+  } catch {
+    const error = new Error('Ngày sinh không hợp lệ. Hãy nhập ngày/tháng, ví dụ 09/10.')
+    error.status = 400
+    throw error
+  }
+}

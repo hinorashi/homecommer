@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { birthdayMonthDay, initialBirthdayFilter, localDateString } from './catalogBirthday.js'
+import { birthdayMonthDay, initialBirthdayFilter, localDateString, parseBirthdayQuery } from './catalogBirthday.js'
 
 test('birthday matches month/day without depending on year', () => {
   assert.equal(birthdayMonthDay('2026-10-09'), '10-09')
@@ -8,6 +8,14 @@ test('birthday matches month/day without depending on year', () => {
   for (const value of ['2026-02-29', '2026-04-31', '2026-13-01', '2026-1-1', '', null, ['2026-10-09']]) {
     assert.throws(() => birthdayMonthDay(value), /valid date/)
   }
+})
+
+test('search accepts day/month and rejects impossible birthdays', () => {
+  assert.equal(parseBirthdayQuery('9/10'), '10-09')
+  assert.equal(parseBirthdayQuery('09-10'), '10-09')
+  assert.equal(parseBirthdayQuery('29/2'), '02-29')
+  assert.equal(parseBirthdayQuery('Naruto'), null)
+  assert.throws(() => parseBirthdayQuery('31/2'), { status: 400 })
 })
 
 test('bare catalog defaults to birthdays while filtered links remain unrestricted', () => {

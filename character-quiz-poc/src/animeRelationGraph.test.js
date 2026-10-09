@@ -12,7 +12,8 @@ const relations = [
 test('graph preserves links, groups and filters without inferring relation types', () => {
   const graph = buildAnimeRelationGraph(relations)
   assert.equal(graph.nodes.length, 3)
-  assert.deepEqual(graph.hubs.map((hub) => hub.type), ['PREQUEL', 'SEQUEL'])
+  assert.ok(graph.nodes.filter((node) => node.relationType === 'PREQUEL').every((node) => node.x < graph.center.x))
+  assert.ok(graph.nodes.filter((node) => node.relationType === 'SEQUEL').every((node) => node.x > graph.center.x))
   assert.equal(graph.nodes[0].seriesId, 'before')
   assert.equal(buildAnimeRelationGraph(relations, { animeOnly: false }).nodes.length, 4)
   assert.equal(buildAnimeRelationGraph(relations, { type: 'SEQUEL' }).nodes.length, 1)
@@ -33,7 +34,16 @@ test('graph keeps all nodes inside its canvas with non-overlapping cards', () =>
   sorted.forEach((node, index) => {
     assert.ok(node.x + node.width <= graph.width)
     assert.ok(node.y + node.height <= graph.height)
-    if (index) assert.ok(sorted[index - 1].y + sorted[index - 1].height < node.y)
+    for (const other of sorted.slice(0, index)) {
+      assert.ok(other.x + other.width <= node.x || node.x + node.width <= other.x || other.y + other.height <= node.y || node.y + node.height <= other.y)
+    }
   })
+
   assert.equal(buildAnimeRelationGraph([]).nodes.length, 0)
+})
+
+test('spin-offs branch below current anime and small timelines stay compact', () => {
+  const graph = buildAnimeRelationGraph([...relations, { anilistId: 10, mediaType: 'ANIME', relationType: 'SPIN_OFF' }])
+  assert.ok(graph.nodes.find((node) => node.relationType === 'SPIN_OFF').y > graph.center.y + graph.center.height)
+  assert.ok(buildAnimeRelationGraph(relations.slice(0, 2)).height <= 160)
 })

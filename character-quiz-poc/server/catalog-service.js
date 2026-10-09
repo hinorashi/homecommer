@@ -2,7 +2,7 @@ import { db } from './db.js'
 import { saveCharacterDetails, saveAnimeRelations } from './crawl-store.js'
 import { fetchAnimeRelations, fetchCharacterDetails } from './integrations/anilist-graphql.js'
 import { TRAIT_GROUPS, TRAIT_LEXICON, getTrait } from './character-traits.js'
-import { birthdayMonthDay, localDateString } from '../src/catalogBirthday.js'
+import { birthdayMonthDay, localDateString, parseBirthdayQuery } from '../src/catalogBirthday.js'
 
 function parseJson(value, fallback = []) {
   try {
@@ -68,12 +68,17 @@ export function searchCharacterCatalog({
   const conditions = []
   const parameters = []
   const query = String(searchText ?? '').trim().slice(0, 100).toLocaleLowerCase('en')
+  const searchedBirthday = parseBirthdayQuery(query)
+  if (searchedBirthday) {
+    conditions.push('substr(c.date_of_birth, -5) = ?')
+    parameters.push(searchedBirthday)
+  }
   if (birthday === 'today') {
     conditions.push('substr(c.date_of_birth, -5) = ?')
     parameters.push(birthdayMonthDay(birthdayDate))
   }
 
-  if (query) {
+  if (query && !searchedBirthday) {
     conditions.push(`(
       instr(lower(c.name), ?) > 0
       OR instr(lower(COALESCE(c.native_name, '')), ?) > 0
@@ -518,6 +523,14 @@ export function quickSearch(searchText, { limit = 6 } = {}) {
   const query = String(searchText ?? '').trim().slice(0, 100).toLocaleLowerCase('en')
   if (query.length < 2) return { query, anime: [], animeTotal: 0, characters: [], characterTotal: 0 }
   const safeLimit = Math.max(1, Math.min(12, Math.trunc(Number(limit) || 6)))
+  const searchedBirthday = parseBirthdayQuery(query)
+  if (searchedBirthday) {
+    const result = searchCharacterCatalog({ searchText: query, sort: 'favourites', limit: safeLimit })
+    return {
+      query, anime: [], animeTotal: 0, characterTotal: result.total,
+      characters: result.characters.map((character) => ({ ...character, imageUrl: character.image?.url ?? null })),
+    }
+  }
   const prefix = `${query}%`
 
   const animeWhere = ANIME_TITLE_MATCH_SQL
@@ -525,7 +538,8 @@ export function quickSearch(searchText, { limit = 6 } = {}) {
   const animeTotal = db.prepare(`SELECT COUNT(*) AS count FROM anime_series s WHERE ${animeWhere}`).get(...animeParams).count
   const anime = db.prepare(`
     SELECT s.series_id AS id, s.title, s.title_english AS titleEnglish, s.format, s.season_year AS seasonYear,
-      s.average_score AS averageScore, s.popularity, s.cover_image AS coverImage
+      s.average_score AS averageScore, s.popularity, s.cover_image AS coverImage,
+      s.imdb_rating AS imdbRating
     FROM anime_series s
     WHERE ${animeWhere}
     ORDER BY (lower(s.title) = ? OR lower(COALESCE(s.title_english, '')) = ?) DESC,

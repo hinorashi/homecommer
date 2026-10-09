@@ -36,19 +36,18 @@ export function groupAnimeRelations(relations = []) {
 export function buildAnimeRelationGraph(relations, { animeOnly = true, type = 'all' } = {}) {
   const filtered = relations.filter((relation) =>
     (!animeOnly || relation.mediaType === 'ANIME') && (type === 'all' || (relation.relationType ?? 'OTHER') === type))
-  const groups = groupAnimeRelations(filtered)
   const nodes = []
-  const hubs = []
-  let cursor = 30
-  for (const group of groups) {
-    const firstY = cursor
-    group.items.forEach((relation, index) => {
-      nodes.push({ ...relation, key: `${group.type}-${relation.anilistId}-${index}`, x: 640, y: cursor, width: 240, height: 84 })
-      cursor += 102
-    })
-    hubs.push({ type: group.type, label: group.label, count: group.items.length, x: 365, y: (firstY + cursor - 102) / 2 + 42 })
-    cursor += 24
-  }
-  const height = Math.max(300, cursor + 6)
-  return { width: 910, height, center: { x: 20, y: Math.min(height / 2 - 42, 200), width: 230, height: 84 }, hubs, nodes }
+  const before = filtered.filter((item) => item.relationType === 'PREQUEL')
+  const after = filtered.filter((item) => item.relationType === 'SEQUEL')
+  const branches = filtered.filter((item) => !['PREQUEL', 'SEQUEL'].includes(item.relationType))
+  const add = (relation, index, x, y, lane) => nodes.push({
+    ...relation, key: `${relation.relationType}-${relation.anilistId}-${index}`,
+    x, y, width: 240, height: 84, lane,
+  })
+  before.forEach((item, index) => add(item, index, 20, 34 + index * 100, 'before'))
+  after.forEach((item, index) => add(item, index, 650, 34 + index * 100, 'after'))
+  const branchTop = 34 + Math.max(1, before.length, after.length) * 100 + 24
+  branches.forEach((item, index) => add(item, index, index % 2 ? 650 : 20, branchTop + Math.floor(index / 2) * 100, 'branch'))
+  const height = Math.max(160, ...nodes.map((node) => node.y + node.height + 20))
+  return { width: 910, height, center: { x: 335, y: 34, width: 240, height: 84 }, nodes }
 }

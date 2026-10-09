@@ -121,7 +121,7 @@ export default function QuickSearch({ onNavigate }) {
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={showPanel && items[activeIndex] ? `${listId}-${activeIndex}` : undefined}
-          placeholder="Tìm anime, nhân vật..."
+          placeholder="Tên anime, nhân vật hoặc sinh nhật (09/10)..."
           maxLength={100}
           value={input}
           onChange={(event) => { setInput(event.target.value); setOpen(true) }}
@@ -148,7 +148,10 @@ export default function QuickSearch({ onNavigate }) {
                         <span className="quick-search-thumb is-cover">{anime.coverImage ? <img src={anime.coverImage} alt="" loading="lazy" /> : null}</span>
                         <span className="quick-search-text">
                           <strong>{anime.title}</strong>
-                          <small>{[FORMAT_LABELS[anime.format] ?? anime.format, anime.seasonYear, anime.averageScore ? `★ ${anime.averageScore}%` : null].filter(Boolean).join(' · ')}</small>
+                          <span className="quick-search-anime-meta">
+                            <small>{[FORMAT_LABELS[anime.format] ?? anime.format, anime.seasonYear, anime.averageScore ? `★ ${anime.averageScore}%` : null].filter(Boolean).join(' · ')}</small>
+                            {anime.imdbRating != null ? <span className="quick-search-imdb" title="Điểm IMDb"><b>IMDb</b> {anime.imdbRating.toFixed(1)}</span> : null}
+                          </span>
                         </span>
                       </>
                     ), 'is-anime'))}
@@ -169,12 +172,12 @@ export default function QuickSearch({ onNavigate }) {
                         <span className="quick-search-thumb">{character.imageUrl ? <img src={character.imageUrl} alt="" loading="lazy" /> : character.name.slice(0, 1)}</span>
                         <span className="quick-search-text">
                           <strong>{character.name}</strong>
-                          <small>{character.primarySeries?.title ?? character.series}</small>
+                          <small>{character.primarySeries?.title ?? character.series}{character.dateOfBirth ? ` · Sinh nhật ${character.dateOfBirth.slice(-2)}/${character.dateOfBirth.slice(-5, -3)}` : ''}</small>
                         </span>
                       </>
                     ), 'is-character'))}
                   </ul>
-                ) : <p className="quick-search-note">Không có nhân vật khớp tên.</p>}
+                ) : <p className="quick-search-note">Không có nhân vật khớp tên hoặc ngày sinh.</p>}
                 <button type="button" className="quick-search-more" onMouseDown={(event) => event.preventDefault()} onClick={() => go(`/characters?q=${encodeURIComponent(query)}`)}>
                   {state.characterTotal ? `Xem tất cả ${state.characterTotal} nhân vật →` : 'Tìm trong thư viện nhân vật (gồm tên series) →'}
                 </button>

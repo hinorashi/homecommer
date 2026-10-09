@@ -167,7 +167,7 @@ app.get('/api/catalog/characters', (request, response) => {
       offset,
     }))
   } catch (error) {
-    return response.status(500).json({ error: `Catalog search failed: ${error.message}` })
+    return response.status(error.status ?? 500).json({ error: `Catalog search failed: ${error.message}` })
   }
 })
 
@@ -223,7 +223,7 @@ app.get('/api/search', (request, response) => {
   try {
     return response.json(quickSearch(q, { limit }))
   } catch (error) {
-    return response.status(500).json({ error: `Quick search failed: ${error.message}` })
+    return response.status(error.status ?? 500).json({ error: `Quick search failed: ${error.message}` })
   }
 })
 

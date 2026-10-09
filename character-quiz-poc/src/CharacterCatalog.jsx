@@ -296,14 +296,14 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
           </button>
         </div>
 
-        <form className="catalog-search-form" role="search" onSubmit={(event) => { event.preventDefault(); setLoading(true); setOffset(0); setQuery(queryInput.trim()) }}>
+        <form className="catalog-search-form" role="search" onSubmit={(event) => { event.preventDefault(); setLoading(true); setOffset(0); if (/^\d{1,2}[/-]\d{1,2}$/.test(queryInput.trim())) setBirthdayToday(false); setQuery(queryInput.trim()) }}>
           <label className="visually-hidden" htmlFor="catalog-search">Tìm theo tên nhân vật hoặc series</label>
           <Search size={18} aria-hidden="true" />
           <input
             id="catalog-search"
             type="search"
             maxLength={100}
-            placeholder="Tên nhân vật, bí danh, tên series..."
+            placeholder="Tên nhân vật, series hoặc sinh nhật (09/10)..."
             value={queryInput}
             onChange={(event) => setQueryInput(event.target.value)}
           />
@@ -511,11 +511,11 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
         <section className="catalog-grid" aria-label="Danh sách nhân vật">
           {catalog.characters.map((character) => (
             <article className="catalog-character" key={character.id}>
-              <div className="catalog-character-head">
                 <div className="catalog-avatar">
                   {character.image?.url ? <img src={character.image.url} alt={character.name} loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none'; event.currentTarget.nextElementSibling.style.display = 'flex' }} /> : null}
                   <span style={character.image?.url ? { display: 'none' } : undefined}>{character.name.slice(0, 1)}</span>
                 </div>
+              <div className="catalog-character-body">
                 <div className="catalog-character-title">
                   <h2>
                     <a
@@ -539,7 +539,6 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
                     </p>
                   ) : <p>{character.series}</p>}
                 </div>
-              </div>
               <div className="catalog-metadata-line">
                 {(character.animeGenreLinks ?? []).map((genre) => (
                   <button
@@ -556,10 +555,10 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
               </div>
               {birthdayToday || roleLabel(character.role) || genderLabel(character.gender) || character.favourites ? (
                 <div className="catalog-character-facts">
-                  {birthdayToday && character.dateOfBirth?.endsWith(today.slice(5)) ? <span>Sinh nhật: {today.slice(8)}/{today.slice(5, 7)}</span> : null}
-                  {roleLabel(character.role) ? <span>Vai {roleLabel(character.role).toLowerCase()}</span> : null}
-                  {genderLabel(character.gender) ? <span>{genderLabel(character.gender)}</span> : null}
-                  {character.favourites ? <span title="Lượt yêu thích trên AniList">♥ {character.favourites.toLocaleString('vi-VN')}</span> : null}
+                  {birthdayToday && character.dateOfBirth?.endsWith(today.slice(5)) ? <span className="catalog-fact-birthday">Sinh nhật: {today.slice(8)}/{today.slice(5, 7)}</span> : null}
+                  {roleLabel(character.role) ? <span className={`catalog-fact-role catalog-fact-role-${character.role.toLowerCase()}`}>Vai {roleLabel(character.role).toLowerCase()}</span> : null}
+                  {genderLabel(character.gender) ? <span className={`catalog-fact-gender catalog-fact-gender-${['male', 'female'].includes(character.gender.trim().toLowerCase()) ? character.gender.trim().toLowerCase() : 'other'}`}>{genderLabel(character.gender)}</span> : null}
+                  {character.favourites ? <span className="catalog-fact-favourites" title="Lượt yêu thích trên AniList" aria-label={`${character.favourites.toLocaleString('vi-VN')} lượt yêu thích trên AniList`}>♥ {character.favourites.toLocaleString('vi-VN')}</span> : null}
                 </div>
               ) : null}
               {character.traits?.length ? (
@@ -584,6 +583,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
                 {character.archetypes.map((item) => <span key={item.id}>{item.label}</span>)}
               </div>
               {character.image?.provider === 'AniList' ? <p className="catalog-image-note">Ảnh lưu từ AniList · quyền tái sử dụng chưa xác minh</p> : null}
+              </div>
             </article>
           ))}
         </section>

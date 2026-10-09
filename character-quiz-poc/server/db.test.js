@@ -11,7 +11,7 @@ process.env.SQLITE_PATH = resolve(temporaryDirectory, 'test.sqlite')
 const { db, findCharactersForMetadataSync, getAniListMetadataStatus, getMetadataFilterOptions, saveAniListCharacterMetadata, seedDatabase } = await import('./db.js')
 seedDatabase()
 const { matchFromDatabase } = await import('./match-service.js')
-const { searchCharacterCatalog } = await import('./catalog-service.js')
+const { searchCharacterCatalog, quickSearch } = await import('./catalog-service.js')
 
 after(() => {
   db.close()
@@ -50,6 +50,19 @@ test('browses the full catalog without quiz traits and applies search, filters, 
   assert.equal(page.hasMore, true)
 })
 
+test('quick anime search returns IMDb ratings including missing ratings', () => {
+  db.exec('SAVEPOINT quick_imdb_test')
+  try {
+    const series = db.prepare('SELECT series_id AS id, title FROM anime_series LIMIT 1').get()
+    db.prepare('UPDATE anime_series SET imdb_rating = ? WHERE series_id = ?').run(8.7, series.id)
+    assert.equal(quickSearch(series.title).anime.find((anime) => anime.id === series.id).imdbRating, 8.7)
+    db.prepare('UPDATE anime_series SET imdb_rating = NULL WHERE series_id = ?').run(series.id)
+    assert.equal(quickSearch(series.title).anime.find((anime) => anime.id === series.id).imdbRating, null)
+  } finally {
+    db.exec('ROLLBACK TO quick_imdb_test; RELEASE quick_imdb_test')
+  }
+})
+
 test('birthday catalog matches day/month, preserves pagination and excludes incomplete dates', () => {
   db.exec('SAVEPOINT birthday_test')
   try {
@@ -73,6 +86,11 @@ test('birthday catalog matches day/month, preserves pagination and excludes inco
     assert.equal(searchCharacterCatalog({ birthday: 'today', birthdayDate: '2024-02-29' }).total, 1)
     assert.equal(searchCharacterCatalog({ birthday: 'today', birthdayDate: '2026-10-11' }).total, 0)
     assert.equal(searchCharacterCatalog({ birthday: 'all' }).total, characters.length)
+    assert.equal(searchCharacterCatalog({ searchText: '9/10' }).total, 2)
+    assert.equal(quickSearch('09/10').characterTotal, 2)
+    assert.equal(quickSearch('09/10').characters[0].dateOfBirth.slice(-5), '10-09')
+    assert.equal(quickSearch('29/2').characterTotal, 1)
+    assert.throws(() => quickSearch('31/2'), { status: 400 })
     assert.equal(searchCharacterCatalog({ birthday: 'today', birthdayDate: '2026-10-09', searchText: characters[0].name }).total, 1)
   } finally {
     db.exec('ROLLBACK TO birthday_test; RELEASE birthday_test')

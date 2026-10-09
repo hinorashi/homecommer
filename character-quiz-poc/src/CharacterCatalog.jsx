@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDownUp, ArrowLeft, ArrowRight, Building2, Filter, RefreshCw, Search, Sparkles, UserRound, X } from 'lucide-react'
+import { ArrowDownUp, ArrowLeft, ArrowRight, Building2, Cake, ChevronDown, ChevronUp, Filter, RefreshCw, Search, Sparkles, UserRound, X } from 'lucide-react'
 import AppLayout from './AppLayout'
 import AnimeTagPicker from './AnimeTagPicker'
+import { initialBirthdayFilter, localDateString } from './catalogBirthday'
 import './CharacterCatalog.css'
 import './AnimeDetail.css'
 import { CHARACTER_GENDER_OPTIONS, CHARACTER_ROLE_OPTIONS, CHARACTER_SORT_OPTIONS, DEFAULT_CHARACTER_SORT, genderLabel, roleLabel } from './characterLabels'
@@ -13,7 +14,7 @@ function splitList(value) {
   return [...new Set(value.split(',').map((item) => item.trim().toLowerCase()).filter(Boolean))].slice(0, 20)
 }
 
-function buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, traits, roles, genders, sort, offset }) {
+function buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, traits, roles, genders, birthdayToday, today, sort, offset }) {
   const params = new URLSearchParams({
     q: query,
     contextGenre,
@@ -25,6 +26,8 @@ function buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTag
     trait: traits.length ? traits.join(',') : 'all',
     role: roles.length ? roles.join(',') : 'all',
     gender: genders.length ? genders.join(',') : 'all',
+    birthday: birthdayToday ? 'today' : 'all',
+    ...(birthdayToday ? { birthdayDate: today } : {}),
     sort,
     limit: String(PAGE_SIZE),
     offset: String(offset),
@@ -46,12 +49,13 @@ function readInitialState() {
     traits: splitList(params.get('trait')),
     roles: splitList(params.get('role')).filter((role) => CHARACTER_ROLE_OPTIONS.some((option) => option.value === role)),
     genders: splitList(params.get('gender')).filter((gender) => CHARACTER_GENDER_OPTIONS.some((option) => option.value === gender)),
+    birthdayToday: initialBirthdayFilter(params),
     sort: CHARACTER_SORT_OPTIONS.some((option) => option.value === params.get('sort')) ? params.get('sort') : DEFAULT_CHARACTER_SORT,
     offset: offset - (offset % PAGE_SIZE),
   }
 }
 
-function buildPageUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, traits, roles, genders, sort, offset }) {
+function buildPageUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, traits, roles, genders, birthdayToday, sort, offset }) {
   const params = new URLSearchParams()
   if (query) params.set('q', query)
   if (animeGenres.length) params.set('animeGenre', animeGenres.join(','))
@@ -61,6 +65,7 @@ function buildPageUrl({ query, contextGenre, archetype, animeGenres, animeTags, 
   if (traits.length) params.set('trait', traits.join(','))
   if (roles.length) params.set('role', roles.join(','))
   if (genders.length) params.set('gender', genders.join(','))
+  params.set('birthday', birthdayToday ? 'today' : 'all')
   if (sort !== DEFAULT_CHARACTER_SORT) params.set('sort', sort)
   if (contextGenre !== 'all') params.set('contextGenre', contextGenre)
   if (archetype !== 'all') params.set('archetype', archetype)
@@ -82,6 +87,9 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
   const [traits, setTraits] = useState(initialState.traits)
   const [roles, setRoles] = useState(initialState.roles)
   const [genders, setGenders] = useState(initialState.genders)
+  const [birthdayToday, setBirthdayToday] = useState(initialState.birthdayToday)
+  const [today, setToday] = useState(localDateString)
+  const [showTraits, setShowTraits] = useState(initialState.traits.length > 0)
   const [sort, setSort] = useState(initialState.sort)
   const [traitGroups, setTraitGroups] = useState([])
   const [offset, setOffset] = useState(initialState.offset)
@@ -96,6 +104,19 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
   const [error, setError] = useState('')
   const [syncProgress, setSyncProgress] = useState(null)
   const syncController = useRef(null)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const currentDate = localDateString()
+      if (currentDate === today) return
+      setToday(currentDate)
+      if (birthdayToday) {
+        setLoading(true)
+        setOffset(0)
+      }
+    }, 30000)
+    return () => window.clearInterval(timer)
+  }, [today, birthdayToday])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -115,15 +136,15 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
   }, [])
 
   useEffect(() => {
-    const pageUrl = buildPageUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), animeTags: splitList(animeTagKey), genreMode, studio, traits: splitList(traitKey), roles: splitList(roleKey), genders: splitList(genderKey), sort, offset })
+    const pageUrl = buildPageUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), animeTags: splitList(animeTagKey), genreMode, studio, traits: splitList(traitKey), roles: splitList(roleKey), genders: splitList(genderKey), birthdayToday, sort, offset })
     if (window.location.pathname + window.location.search !== pageUrl) {
       window.history.replaceState(window.history.state, '', pageUrl)
     }
-  }, [query, contextGenre, archetype, animeGenreKey, animeTagKey, genreMode, studio, traitKey, roleKey, genderKey, sort, offset])
+  }, [query, contextGenre, archetype, animeGenreKey, animeTagKey, genreMode, studio, traitKey, roleKey, genderKey, birthdayToday, sort, offset])
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), animeTags: splitList(animeTagKey), genreMode, studio, traits: splitList(traitKey), roles: splitList(roleKey), genders: splitList(genderKey), sort, offset }), { signal: controller.signal })
+    fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres: splitList(animeGenreKey), animeTags: splitList(animeTagKey), genreMode, studio, traits: splitList(traitKey), roles: splitList(roleKey), genders: splitList(genderKey), birthdayToday, today, sort, offset }), { signal: controller.signal })
       .then(async (response) => {
         const payload = await response.json()
         if (!response.ok) throw new Error(payload.error ?? `Catalog API returned ${response.status}`)
@@ -137,7 +158,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
         if (!controller.signal.aborted) setLoading(false)
       })
     return () => controller.abort()
-  }, [query, contextGenre, archetype, animeGenreKey, animeTagKey, genreMode, studio, traitKey, roleKey, genderKey, sort, offset])
+  }, [query, contextGenre, archetype, animeGenreKey, animeTagKey, genreMode, studio, traitKey, roleKey, genderKey, birthdayToday, today, sort, offset])
 
   useEffect(() => () => syncController.current?.abort(), [])
 
@@ -176,6 +197,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
     setTraits([])
     setRoles([])
     setGenders([])
+    setBirthdayToday(false)
     setContextGenre('all')
     setArchetype('all')
     setOffset(0)
@@ -193,7 +215,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
   const tagLabel = (id) => filterOptions.animeTags.find((tag) => tag.id === id)?.name ?? id
   const traitById = new Map(traitGroups.flatMap((group) => group.traits.map((trait) => [trait.id, trait])))
   const traitLabel = (id) => traitById.get(id)?.label ?? id
-  const hasCharacterFilters = traits.length > 0 || roles.length > 0 || genders.length > 0
+  const hasCharacterFilters = traits.length > 0 || roles.length > 0 || genders.length > 0 || birthdayToday
   const hasActiveFilters = animeGenres.length > 0 || animeTags.length > 0 || studio !== 'all' || contextGenre !== 'all' || archetype !== 'all' || hasCharacterFilters
 
   async function syncCurrentPage() {
@@ -242,7 +264,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
     syncController.current = null
     setSyncProgress((current) => ({ ...current, running: false }))
     try {
-      const response = await fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, traits: splitList(traitKey), roles: splitList(roleKey), genders: splitList(genderKey), sort, offset }))
+      const response = await fetch(buildCatalogUrl({ query, contextGenre, archetype, animeGenres, animeTags, genreMode, studio, traits: splitList(traitKey), roles: splitList(roleKey), genders: splitList(genderKey), birthdayToday, today, sort, offset }))
       if (response.ok) setCatalog(await response.json())
     } catch {
       // Keep the current page if refreshing after sync fails.
@@ -335,6 +357,11 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
         </section>
 
         <section className="catalog-character-filters" aria-label="Lọc theo đặc điểm nhân vật">
+          <label className="catalog-birthday-filter">
+            <input type="checkbox" checked={birthdayToday} onChange={(event) => changeFilter(setBirthdayToday, event.target.checked)} />
+            <Cake size={16} /> Sinh nhật hôm nay
+            <small>{today.slice(8)}/{today.slice(5, 7)} · theo ngày địa phương</small>
+          </label>
           <div className="catalog-chip-row" role="group" aria-label="Vai trò trong anime">
             <span className="catalog-chip-row-label"><UserRound size={13} /> Vai trò</span>
             {CHARACTER_ROLE_OPTIONS.map((option) => (
@@ -363,11 +390,13 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
               </button>
             ))}
           </div>
-          <details className="catalog-trait-panel" open={traits.length > 0 || undefined}>
-            <summary>
+          <div className="catalog-trait-panel">
+            <button type="button" className="catalog-trait-toggle" aria-expanded={showTraits} aria-controls="catalog-trait-options" onClick={() => setShowTraits((value) => !value)}>
               <Sparkles size={13} /> Đặc điểm &amp; hình mẫu {traits.length ? <em>{traits.length} đã chọn</em> : null}
-              <small>Tự động trích từ mô tả AniList · có thể chưa chính xác · chọn nhiều = phải có tất cả</small>
-            </summary>
+              <span className="catalog-trait-toggle-action">{showTraits ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'} {showTraits ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+            </button>
+            <div id="catalog-trait-options" hidden={!showTraits}>
+            <p className="catalog-trait-note">Tự động trích từ mô tả AniList · có thể chưa chính xác · chọn nhiều = phải có tất cả</p>
             {traitGroups.map((group) => (
               <div className="catalog-chip-row" role="group" aria-label={group.label} key={group.id}>
                 <span className="catalog-chip-row-label">{group.label}</span>
@@ -390,7 +419,8 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
                 })}
               </div>
             ))}
-          </details>
+            </div>
+          </div>
         </section>
 
         <section className="catalog-filter-bar" aria-label="Bộ lọc nhân vật">
@@ -445,6 +475,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
               </span>
             ) : null}
             {[
+              ...(birthdayToday ? [{ key: 'birthday', label: `Sinh nhật hôm nay (${today.slice(8)}/${today.slice(5, 7)})`, remove: () => changeFilter(setBirthdayToday, false) }] : []),
               ...roles.map((value) => ({ key: `r:${value}`, label: CHARACTER_ROLE_OPTIONS.find((option) => option.value === value)?.label ?? value, remove: () => toggleListValue(setRoles, roles, value) })),
               ...genders.map((value) => ({ key: `s:${value}`, label: `Giới tính: ${CHARACTER_GENDER_OPTIONS.find((option) => option.value === value)?.label ?? value}`, remove: () => toggleListValue(setGenders, genders, value) })),
               ...traits.map((id) => ({ key: `c:${id}`, label: `✦ ${traitLabel(id)}`, remove: () => toggleTrait(id) })),
@@ -471,7 +502,10 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
         {error ? <p className="catalog-error" role="alert">{error}</p> : null}
         {loading ? <p className="catalog-status" role="status">Đang tải thư viện...</p> : null}
         {!loading && !error && catalog.characters.length === 0 ? (
-          <p className="catalog-empty" role="status">Không tìm thấy nhân vật phù hợp.</p>
+          <p className="catalog-empty" role="status">
+            {birthdayToday ? 'Không có nhân vật sinh nhật hôm nay khớp các bộ lọc.' : 'Không tìm thấy nhân vật phù hợp.'}
+            {birthdayToday ? <> <button type="button" className="catalog-clear-filters" onClick={() => changeFilter(setBirthdayToday, false)}>Xem nhân vật mọi ngày</button></> : null}
+          </p>
         ) : null}
 
         <section className="catalog-grid" aria-label="Danh sách nhân vật">
@@ -520,8 +554,9 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
                   </button>
                 ))}
               </div>
-              {roleLabel(character.role) || genderLabel(character.gender) || character.favourites ? (
+              {birthdayToday || roleLabel(character.role) || genderLabel(character.gender) || character.favourites ? (
                 <div className="catalog-character-facts">
+                  {birthdayToday && character.dateOfBirth?.endsWith(today.slice(5)) ? <span>Sinh nhật: {today.slice(8)}/{today.slice(5, 7)}</span> : null}
                   {roleLabel(character.role) ? <span>Vai {roleLabel(character.role).toLowerCase()}</span> : null}
                   {genderLabel(character.gender) ? <span>{genderLabel(character.gender)}</span> : null}
                   {character.favourites ? <span title="Lượt yêu thích trên AniList">♥ {character.favourites.toLocaleString('vi-VN')}</span> : null}

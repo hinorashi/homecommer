@@ -50,6 +50,30 @@
 .anime-relations > h2 { margin: 0 0 12px; color: #203a32; font: 600 26px 'Newsreader', Georgia, serif; }
 .anime-relations > h2 span { color: #8a9a93; font-size: 18px; }
 .anime-relation-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.anime-relation-graph { margin-bottom: 18px; padding: 14px; border: 1px solid #d7e1dc; border-radius: 6px; background: #fff; }
+.anime-graph-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: #31544a; font-size: 11px; }
+.anime-graph-controls > strong, .anime-graph-controls label { display: inline-flex; align-items: center; gap: 5px; }
+.anime-graph-controls input { accent-color: #2a6f62; }
+.anime-graph-controls select { max-width: 100%; padding: 6px; border: 1px solid #c9d9d1; border-radius: 4px; background: #fff; color: #31544a; font: inherit; }
+.anime-graph-zoom { display: flex; gap: 3px; margin-left: auto; }
+.anime-graph-zoom button { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; min-height: 30px; border: 1px solid #c9d9d1; border-radius: 4px; background: #f4f8f6; color: #31544a; font: inherit; cursor: pointer; }
+.anime-graph-zoom button:disabled { opacity: .4; cursor: default; }
+.anime-graph-note { margin: 9px 0; color: #71837b; font-size: 11px; line-height: 1.55; }
+.anime-graph-viewport { max-height: 560px; overflow: auto; border: 1px solid #e3ebe7; border-radius: 5px; background: #f4f8f6; }
+.anime-graph-canvas { position: relative; transform-origin: top left; }
+.anime-graph-canvas > svg { position: absolute; inset: 0; }
+.anime-graph-trunk, .anime-graph-branch { fill: none; stroke: #93baaa; stroke-width: 2; }
+.anime-graph-branch { stroke: #b3cfc3; stroke-width: 1.5; }
+.anime-graph-node { position: absolute; display: flex; align-items: center; gap: 10px; height: 84px; padding: 8px; box-sizing: border-box; border: 1px solid #b3cfc3; border-radius: 6px; background: #fff; color: #203a32; text-decoration: none; }
+.anime-graph-node img { flex: 0 0 44px; width: 44px; height: 66px; border-radius: 3px; object-fit: cover; }
+.anime-graph-node > div { min-width: 0; }
+.anime-graph-node strong { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font: 600 14px/1.2 'Newsreader', Georgia, serif; overflow-wrap: anywhere; }
+.anime-graph-node small { display: block; margin-top: 3px; color: #71837b; font-size: 9px; }
+a.anime-graph-node:hover, a.anime-graph-node:focus-visible { border-color: #2a6f62; box-shadow: 0 2px 8px rgba(30, 55, 47, .12); }
+.anime-graph-center { border: 2px solid #2a6f62; background: #e9f4ee; }
+.anime-graph-center small { margin: 0 0 4px; color: #2a6f62; font-weight: 800; }
+.anime-graph-hub { position: absolute; display: flex; flex-direction: column; justify-content: center; width: 185px; height: 52px; padding: 6px; box-sizing: border-box; border: 1px solid #b3cfc3; border-radius: 24px; background: #edf5f0; text-align: center; color: #31544a; font-size: 11px; }
+.anime-graph-hub small { margin-top: 3px; color: #71837b; font-size: 9px; }
 .anime-tags { margin-top: 14px; }
 .anime-tags-head { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
 .anime-tags-head > span { color: #6b7f77; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }

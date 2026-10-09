@@ -50,6 +50,35 @@ test('browses the full catalog without quiz traits and applies search, filters, 
   assert.equal(page.hasMore, true)
 })
 
+test('birthday catalog matches day/month, preserves pagination and excludes incomplete dates', () => {
+  db.exec('SAVEPOINT birthday_test')
+  try {
+    const characters = searchCharacterCatalog({ limit: 50 }).characters
+    db.prepare('UPDATE characters SET date_of_birth = NULL').run()
+    const update = db.prepare('UPDATE characters SET date_of_birth = ? WHERE id = ?')
+    update.run('??-10-09', characters[0].id)
+    update.run('1990-10-09', characters[1].id)
+    update.run('??-10-??', characters[2].id)
+    update.run('??-??-09', characters[3].id)
+    update.run('??-10-10', characters[4].id)
+    update.run('??-02-29', characters[5].id)
+    const result = searchCharacterCatalog({ birthday: 'today', birthdayDate: '2026-10-09', limit: 1 })
+    assert.equal(result.total, 2)
+    assert.equal(result.characters.length, 1)
+    assert.equal(result.hasMore, true)
+    assert.ok(result.characters[0].dateOfBirth.endsWith('10-09'))
+    const next = searchCharacterCatalog({ birthday: 'today', birthdayDate: '2026-10-09', offset: 1, limit: 1 })
+    assert.notEqual(result.characters[0].id, next.characters[0].id)
+    assert.equal(next.hasMore, false)
+    assert.equal(searchCharacterCatalog({ birthday: 'today', birthdayDate: '2024-02-29' }).total, 1)
+    assert.equal(searchCharacterCatalog({ birthday: 'today', birthdayDate: '2026-10-11' }).total, 0)
+    assert.equal(searchCharacterCatalog({ birthday: 'all' }).total, characters.length)
+    assert.equal(searchCharacterCatalog({ birthday: 'today', birthdayDate: '2026-10-09', searchText: characters[0].name }).total, 1)
+  } finally {
+    db.exec('ROLLBACK TO birthday_test; RELEASE birthday_test')
+  }
+})
+
 test('persists AniList series genres, aliases, image source, and sync idempotently', () => {
   const characterId = 'kaguya-shinomiya-ultra-romantic'
   const userTraits = [{ tagId: 'plans-alternatives', count: 1 }]

@@ -2,6 +2,7 @@ import { db } from './db.js'
 import { saveCharacterDetails, saveAnimeRelations } from './crawl-store.js'
 import { fetchAnimeRelations, fetchCharacterDetails } from './integrations/anilist-graphql.js'
 import { TRAIT_GROUPS, TRAIT_LEXICON, getTrait } from './character-traits.js'
+import { birthdayMonthDay, localDateString } from '../src/catalogBirthday.js'
 
 function parseJson(value, fallback = []) {
   try {
@@ -58,6 +59,8 @@ export function searchCharacterCatalog({
   trait = 'all',
   role = 'all',
   gender = 'all',
+  birthday = 'all',
+  birthdayDate = localDateString(),
   sort = 'name',
   limit = 24,
   offset = 0,
@@ -65,6 +68,10 @@ export function searchCharacterCatalog({
   const conditions = []
   const parameters = []
   const query = String(searchText ?? '').trim().slice(0, 100).toLocaleLowerCase('en')
+  if (birthday === 'today') {
+    conditions.push('substr(c.date_of_birth, -5) = ?')
+    parameters.push(birthdayMonthDay(birthdayDate))
+  }
 
   if (query) {
     conditions.push(`(
@@ -161,7 +168,7 @@ export function searchCharacterCatalog({
   const rows = db.prepare(`
     SELECT c.id, c.anilist_id AS anilistId, c.name, c.native_name AS nativeName,
       c.series, c.source_url AS sourceUrl, c.latest_release AS releaseMilestone,
-      c.latest_release_url AS releaseSourceUrl, c.gender, c.favourites,
+      c.latest_release_url AS releaseSourceUrl, c.gender, c.favourites, c.date_of_birth AS dateOfBirth,
       (SELECT MIN(${ROLE_ORDER}) FROM character_series cs WHERE cs.character_id = c.id) AS roleRank,
       COALESCE((SELECT json_group_array(dt.trait_id) FROM character_derived_traits dt WHERE dt.character_id = c.id), '[]') AS traitIdsJson,
       COALESCE((
@@ -230,6 +237,7 @@ export function searchCharacterCatalog({
     anilistId: row.anilistId,
     name: row.name,
     nativeName: row.nativeName,
+    dateOfBirth: row.dateOfBirth,
     series: row.series,
     sourceUrl: row.sourceUrl,
     releaseMilestone: row.releaseMilestone,

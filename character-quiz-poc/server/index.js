@@ -21,6 +21,7 @@ import { getCrawlJob, listCrawlCommands, shutdownCrawlJob, startCrawlJob, stopCr
 import { getCrawlStats } from './crawl-store.js'
 import { searchAniListCharacters, syncAniListCharacterMetadataBatch } from './integrations/anilist.js'
 import { matchFromDatabase } from './match-service.js'
+import { birthdayMonthDay } from '../src/catalogBirthday.js'
 
 const app = express()
 const port = Number(process.env.API_PORT || 3001)
@@ -116,7 +117,7 @@ app.get('/api/metadata/anime-tags', (_request, response) => {
 app.get('/api/catalog/characters', (request, response) => {
   const {
     q = '', contextGenre = 'all', archetype = 'all', animeGenre = 'all', genreMode = 'all', animeTag = 'all', studio = 'all',
-    trait = 'all', role = 'all', gender = 'all', sort = 'name',
+    trait = 'all', role = 'all', gender = 'all', sort = 'name', birthday = 'all', birthdayDate,
   } = request.query
   const limit = Number(request.query.limit ?? 24)
   const offset = Number(request.query.offset ?? 0)
@@ -132,6 +133,16 @@ app.get('/api/catalog/characters', (request, response) => {
   }
   if (!['all', 'any'].includes(genreMode)) {
     return response.status(400).json({ error: 'genreMode must be "all" or "any".' })
+  }
+  if (!['all', 'today'].includes(birthday)) {
+    return response.status(400).json({ error: 'birthday must be "all" or "today".' })
+  }
+  if (birthdayDate !== undefined) {
+    try {
+      birthdayMonthDay(birthdayDate)
+    } catch (error) {
+      return response.status(400).json({ error: error.message })
+    }
   }
   if (!Number.isInteger(limit) || !Number.isInteger(offset) || limit < 1 || offset < 0) {
     return response.status(400).json({ error: 'limit must be positive and offset must not be negative.' })
@@ -149,6 +160,8 @@ app.get('/api/catalog/characters', (request, response) => {
       trait,
       role,
       gender,
+      birthday,
+      birthdayDate,
       sort,
       limit,
       offset,

@@ -73,10 +73,13 @@
 .catalog-chip-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .catalog-chip-row-label { display: inline-flex; align-items: center; gap: 5px; min-width: 128px; color: #536b62; font-size: 10px; font-weight: 800; text-transform: uppercase; }
 .catalog-trait-panel { border-top: 1px dashed #dbe5e0; padding-top: 9px; }
-.catalog-trait-panel summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #536b62; font-size: 10px; font-weight: 800; text-transform: uppercase; cursor: pointer; }
-.catalog-trait-panel summary em { padding: 2px 7px; border-radius: 9px; background: #2a6f62; color: #fff; font-style: normal; text-transform: none; }
-.catalog-trait-panel summary small { color: #8a9a93; font-weight: 600; text-transform: none; }
-.catalog-trait-panel[open] summary { margin-bottom: 9px; }
+.catalog-trait-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; padding: 7px 0; border: 0; background: none; color: #536b62; font: 800 10px 'Manrope', sans-serif; text-transform: uppercase; text-align: left; cursor: pointer; }
+.catalog-trait-toggle em { padding: 2px 7px; border-radius: 9px; background: #2a6f62; color: #fff; font-style: normal; text-transform: none; }
+.catalog-trait-toggle-action { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 5px 9px; border: 1px solid #b8d2c7; border-radius: 4px; color: #2a6f62; background: #f2f8f5; text-transform: none; }
+.catalog-trait-note { margin: 4px 0 9px; color: #8a9a93; font-size: 10px; }
+.catalog-birthday-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; color: #2a6f62; font-size: 12px; font-weight: 700; cursor: pointer; }
+.catalog-birthday-filter input { accent-color: #2a6f62; }
+.catalog-birthday-filter small { color: #71837b; font-size: 10px; font-weight: 500; }
 .catalog-trait-panel .catalog-chip-row + .catalog-chip-row { margin-top: 7px; }
 .catalog-character-facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; color: #61766d; font-size: 10px; font-weight: 700; }
 .catalog-character-facts span + span::before { content: '·'; margin-right: 8px; color: #b5c4bd; }

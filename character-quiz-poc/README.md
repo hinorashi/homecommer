@@ -32,6 +32,12 @@ Màn thư viện riêng tại `/characters` tìm theo tên/bí danh/tên series,
 
 Trang `/anime` là danh sách anime riêng: tìm theo tên (Romaji/tiếng Anh/tiếng Nhật), lọc nhiều genre + tag (tất cả/bất kỳ), studio, định dạng, trạng thái, khoảng năm, điểm tối thiểu, điểm IMDb tối thiểu (`minImdb=8.5`), sắp xếp (phổ biến, điểm, điểm IMDb, yêu thích, mới/cũ, tên, số nhân vật); bộ lọc đồng bộ lên URL, bấm studio/genre/tag trên thẻ để bật/tắt lọc. Ô tìm nhanh trên thanh điều hướng (phím tắt `/`) hiển thị hai khung kết quả Anime | Nhân vật, điều hướng bằng phím mũi tên, Enter mở mục đang chọn, link "Xem tất cả" chuyển sang `/anime?q=` hoặc `/characters?q=`. Nút đồng bộ xử lý các hồ sơ của trang đang xem và hiển thị phần trăm hoàn tất theo số hồ sơ thực đã xử lý. Các bộ lọc catalog không thay đổi điểm matching.
 
+**Sinh nhật và bộ lọc nhân vật.** Mở trực tiếp `/characters` mặc định bật “Sinh nhật hôm nay”; bỏ chọn hoặc dùng `birthday=all` để xem mọi ngày. Link đã lọc từ studio/trait/tìm nhanh không tự bật bộ lọc sinh nhật. Giao diện gửi `birthday=today&birthdayDate=YYYY-MM-DD` theo ngày địa phương của trình duyệt, tự cập nhật khi sang ngày mới; backend so ngày/tháng, không yêu cầu năm sinh. API giữ mặc định `birthday=all` để không đổi hành vi các client khác, và dùng ngày của server nếu không gửi `birthdayDate`. Ngày sinh thiếu ngày hoặc tháng không được tính vào kết quả. Bộ lọc này kết hợp với tìm kiếm, các bộ lọc khác và phân trang như bình thường. “Đặc điểm & hình mẫu” có nút Hiện/Ẩn bộ lọc rõ ràng; thu gọn không xóa các lựa chọn.
+
+**Đồ thị quan hệ anime.** Trang `/anime/:id` có sơ đồ anime đang xem → nhóm quan hệ → tác phẩm liên quan, kèm ảnh bìa và link chi tiết (hoặc link AniList nếu chưa có trong database). Có lọc loại quan hệ, bật/tắt chỉ anime, phóng to/thu nhỏ và vùng cuộn riêng; danh sách thẻ liên quan vẫn được giữ bên dưới. Nhãn lấy nguyên từ AniList, không suy đoán thứ tự theo năm phát hành. AniList chưa có nhãn riêng cho midquel/interquel/paraquel/remake/reboot: giao diện giữ “Ngoại truyện”, “Phiên bản khác”… theo dữ liệu nguồn và có ghi chú; bộ dựng đồ thị cũng hỗ trợ các nhãn riêng này nếu có dữ liệu bổ sung về sau.
+
+Điểm AniList trên card `/anime` được căn giữa ngang ở cạnh dưới ảnh bìa; badge IMDb giữ ở dòng định dạng/năm/số tập.
+
 Đồng bộ metadata chủ động từ terminal (mặc định toàn bộ catalog SQLite):
 
 ```powershell

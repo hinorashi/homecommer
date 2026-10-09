@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ExternalLink, Eye, EyeOff, Heart, Star, Users } from 'lucide-react'
 import AppLayout from './AppLayout'
+import AnimeRelationGraph from './AnimeRelationGraph'
+import { groupAnimeRelations } from './animeRelationLayout'
 import { FORMAT_LABELS, SEASON_LABELS, STATUS_LABELS } from './animeLabels'
 import './CharacterCatalog.css'
 import './AnimeDetail.css'
@@ -12,33 +14,9 @@ const ROLE_TABS = [
   { id: 'BACKGROUND', label: 'Nền' },
 ]
 const ROLE_LABELS = { MAIN: 'Chính', SUPPORTING: 'Phụ', BACKGROUND: 'Nền' }
-const RELATION_LABELS = {
-  PREQUEL: 'Phần trước',
-  SEQUEL: 'Phần sau',
-  PARENT: 'Câu chuyện gốc',
-  SIDE_STORY: 'Ngoại truyện',
-  SPIN_OFF: 'Spin-off',
-  ALTERNATIVE: 'Phiên bản khác',
-  SUMMARY: 'Tóm tắt',
-  SOURCE: 'Nguyên tác',
-  ADAPTATION: 'Chuyển thể',
-  CHARACTER: 'Chung nhân vật',
-  COMPILATION: 'Tổng hợp',
-  CONTAINS: 'Bao gồm',
-  OTHER: 'Khác',
-}
 const MEDIA_FORMAT_LABELS = { ...FORMAT_LABELS, MANGA: 'Manga', NOVEL: 'Light novel', ONE_SHOT: 'One-shot' }
 const numberFormat = new Intl.NumberFormat('vi-VN')
 
-function groupRelations(relations = []) {
-  const groups = new Map()
-  for (const relation of relations) {
-    const key = relation.relationType ?? 'OTHER'
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push(relation)
-  }
-  return [...groups.entries()].map(([type, items]) => ({ type, label: RELATION_LABELS[type] ?? type, items }))
-}
 
 const TAG_PREVIEW_COUNT = 12
 
@@ -147,7 +125,7 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
     onNavigate(`/characters?studio=${encodeURIComponent(studioId)}`)
   }
 
-  const relationGroups = useMemo(() => groupRelations(anime?.relations), [anime])
+  const relationGroups = useMemo(() => groupAnimeRelations(anime?.relations), [anime])
 
   const facts = anime ? [
     anime.format && ['Định dạng', FORMAT_LABELS[anime.format] ?? anime.format],
@@ -272,6 +250,7 @@ export default function AnimeDetail({ seriesId, pathname, onNavigate }) {
             {relationGroups.length ? (
               <section className="anime-relations" aria-labelledby="anime-relations-heading">
                 <h2 id="anime-relations-heading">Liên quan <span>({anime.relations.length})</span></h2>
+                <AnimeRelationGraph key={anime.id} anime={anime} onNavigate={onNavigate} />
                 <div className="anime-relation-list">
                   {relationGroups.flatMap((group) => group.items.map((relation) => {
                     const internal = Boolean(relation.seriesId)

@@ -42,6 +42,8 @@ Trang `/anime` là danh sách anime riêng: tìm theo tên (Romaji/tiếng Anh/t
 
 Kết quả anime trong tìm nhanh hiển thị thêm badge IMDb màu vàng và điểm một chữ số thập phân bên cạnh metadata AniList; không hiển thị badge khi chưa có điểm. API `/api/search` trả `imdbRating` trong từng kết quả anime.
 
+Chế độ Thẻ/Đồ thị của mục Liên quan được điều khiển bằng một nút switch duy nhất (có trạng thái `aria-checked`); mặc định là Thẻ.
+
 Điểm AniList trên card `/anime` được căn giữa ngang ở cạnh dưới ảnh bìa; badge IMDb giữ ở dòng định dạng/năm/số tập.
 
 Đồng bộ metadata chủ động từ terminal (mặc định toàn bộ catalog SQLite):

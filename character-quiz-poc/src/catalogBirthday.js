@@ -24,7 +24,7 @@ export function parseBirthdayQuery(query) {
   try {
     return birthdayMonthDay(date)
   } catch {
-    const error = new Error('Ngày sinh không hợp lệ. Hãy nhập ngày/tháng, ví dụ 09/10.')
+    const error = new Error('Ngày sinh không hợp lệ. Hãy nhập ngày/tháng, ví dụ 31/10.')
     error.status = 400
     throw error
   }

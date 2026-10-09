@@ -121,7 +121,7 @@ export default function QuickSearch({ onNavigate }) {
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={showPanel && items[activeIndex] ? `${listId}-${activeIndex}` : undefined}
-          placeholder="Tên anime, nhân vật hoặc sinh nhật (09/10)..."
+          placeholder="Tên anime, nhân vật hoặc sinh nhật (31/10)..."
           maxLength={100}
           value={input}
           onChange={(event) => { setInput(event.target.value); setOpen(true) }}

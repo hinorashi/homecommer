@@ -303,7 +303,7 @@ export default function CharacterCatalog({ pathname = '/characters', onNavigate 
             id="catalog-search"
             type="search"
             maxLength={100}
-            placeholder="Tên nhân vật, series hoặc sinh nhật (09/10)..."
+            placeholder="Tên nhân vật, series hoặc sinh nhật (31/10)..."
             value={queryInput}
             onChange={(event) => setQueryInput(event.target.value)}
           />
